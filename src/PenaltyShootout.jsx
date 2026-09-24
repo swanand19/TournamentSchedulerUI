@@ -1,8 +1,11 @@
+import { font, footballTheme as theme } from "./theme";
 import { useState, useEffect } from "react";
+import Bump from "./Bump";
+import { BallIcon, MissIcon, TargetIcon } from "./icons";
 import { getPenalties, recordPenaltyKick, endPenaltiesManually } from "./api/matchesApi";
+import ErrorBanner from "./ErrorBanner";
 
 export default function PenaltyShootout({ matchId, match, onDecided }) {
-  const font = { display: "'Anton', sans-serif", body: "'Inter', sans-serif" };
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -15,6 +18,8 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
     try {
       const d = await getPenalties(matchId);
       setData(d);
+      // Follow the shootout's own order rather than making the scorer remember it.
+      if (d.nextTeamId) setSelectedTeamId(d.nextTeamId);
       if (d.outcome !== "InProgress") onDecided();
     } catch (e) {
       setError(e.message);
@@ -75,18 +80,16 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
     <div>
       <div style={{ background: "#F7F5EF", color: "#1B1B1B", borderRadius: 14, padding: "1.5rem", marginBottom: 20, textAlign: "center" }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: "#8a4b1b", letterSpacing: "0.08em", marginBottom: 8 }}>
-          🎯 PENALTY SHOOTOUT
+          <TargetIcon size={14} /> PENALTY SHOOTOUT
         </div>
-        <div style={{ fontFamily: font.display, fontSize: 42, color: "#1B4332" }}>
-          {data.homeScore} - {data.awayScore}
+        <div className="num" style={{ fontFamily: font.display, fontSize: 42, color: "#1B4332", display: "flex", justifyContent: "center", gap: 12 }}>
+          <Bump value={data.homeScore} />
+          <span style={{ opacity: 0.35 }}>–</span>
+          <Bump value={data.awayScore} />
         </div>
       </div>
 
-      {error && (
-        <div style={{ background: "rgba(226,75,74,0.15)", border: "1px solid #e24b4a", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
-          {error}
-        </div>
-      )}
+      <ErrorBanner message={error} />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
         {teams.map((t) => (
@@ -94,33 +97,51 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
             <h4 style={{ fontFamily: font.display, fontSize: 16, margin: "0 0 8px" }}>{t.name}</h4>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {kickList(t.id).map((k) => (
-                <span key={k.id} style={{ fontSize: 20 }} title={k.isSuddenDeath ? "Sudden death" : `Round ${k.roundNumber}`}>
-                  {k.scored ? "⚽" : "❌"}
+                <span key={k.id} className="pop-in" style={{ fontSize: 20 }} title={k.isSuddenDeath ? "Sudden death" : `Round ${k.roundNumber}`}>
+                  {k.scored ? <BallIcon size={20} /> : <MissIcon size={20} style={{ color: theme.dangerSolid }} />}
+                  <span className="sr-only">{k.scored ? "scored" : "missed"}</span>
                 </span>
               ))}
-              {kickList(t.id).length === 0 && <span style={{ fontSize: 12, color: "#8a8677" }}>No kicks yet</span>}
+              {kickList(t.id).length === 0 && <span style={{ fontSize: 12, color: theme.muted }}>No kicks yet</span>}
             </div>
           </div>
         ))}
       </div>
 
       <div style={{ background: "rgba(247,245,239,0.06)", border: "1px solid rgba(247,245,239,0.15)", borderRadius: 12, padding: "1.2rem", marginBottom: 20 }}>
-        <p style={{ fontSize: 12, color: "rgba(247,245,239,0.7)", marginBottom: 8 }}>Team taking this kick</p>
+        <p style={{ fontSize: 12, color: "rgba(247,245,239,0.7)", marginBottom: 8 }}>
+          Team taking this kick
+          {data.nextTeamId && (
+            <span style={{ color: "#F2A93B", fontWeight: 700 }}>
+              {" — "}{(teams.find((t) => t.id === data.nextTeamId) || {}).name} are up
+            </span>
+          )}
+        </p>
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-          {teams.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => { setSelectedTeamId(t.id); setSelectedPlayerId(null); }}
-              style={{
-                flex: 1, padding: "0.5rem", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none",
-                background: selectedTeamId === t.id ? "#1B4332" : "rgba(247,245,239,0.15)",
-                color: "#F7F5EF",
-              }}
-            >
-              {t.name}
-            </button>
-          ))}
+          {teams.map((t) => {
+            const isTurn = data.nextTeamId === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => { setSelectedTeamId(t.id); setSelectedPlayerId(null); }}
+                style={{
+                  flex: 1, padding: "0.5rem", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
+                  border: isTurn ? "1.5px solid #F2A93B" : "1.5px solid transparent",
+                  background: selectedTeamId === t.id ? "#1B4332" : "rgba(247,245,239,0.15)",
+                  color: "#F7F5EF",
+                }}
+              >
+                {t.name}{isTurn ? " ●" : ""}
+              </button>
+            );
+          })}
         </div>
+        {data.nextTeamId && selectedTeamId && selectedTeamId !== data.nextTeamId && (
+          <p style={{ fontSize: 12, color: "#F2A93B", marginBottom: 10 }}>
+            Out of turn — {(teams.find((t) => t.id === data.nextTeamId) || {}).name} are due to kick.
+            Recording anyway is allowed if that's what happened on the pitch.
+          </p>
+        )}
 
         {selectedTeamId && (
           <>
@@ -149,23 +170,23 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
                     );
                 })}
                 {eligiblePlayers(selectedTeamId === match.homeTeamId ? match.homeTeam : match.awayTeam).length === 0 && (
-                    <p style={{ fontSize: 12, color: "#8a8677" }}>No eligible players currently on the pitch for this team.</p>
+                    <p style={{ fontSize: 12, color: theme.muted }}>No eligible players currently on the pitch for this team.</p>
                 )}
             </div>
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => submitKick(true)} disabled={busy || !selectedPlayerId} style={{ flex: 1, background: "#639922", color: "#fff", border: "none", borderRadius: 8, padding: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                ⚽ Scored
+              <button onClick={() => submitKick(true)} disabled={busy || !selectedPlayerId} style={{ flex: 1, background: theme.successSolid, color: "#fff", border: "none", borderRadius: 8, padding: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
+                <BallIcon /> Scored
               </button>
-              <button onClick={() => submitKick(false)} disabled={busy || !selectedPlayerId} style={{ flex: 1, background: "#e24b4a", color: "#fff", border: "none", borderRadius: 8, padding: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                ❌ Missed
+              <button onClick={() => submitKick(false)} disabled={busy || !selectedPlayerId} style={{ flex: 1, background: theme.dangerSolid, color: "#fff", border: "none", borderRadius: 8, padding: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
+                <MissIcon /> Missed
               </button>
             </div>
           </>
         )}
       </div>
 
-      <p style={{ fontSize: 12, color: "rgba(247,245,239,0.5)", marginBottom: 8 }}>
+      <p style={{ fontSize: 12, color: "rgba(247,245,239,0.7)", marginBottom: 8 }}>
         If the shootout can't reasonably continue, end it manually and declare a winner:
       </p>
       <div style={{ display: "flex", gap: 8 }}>

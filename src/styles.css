@@ -1,0 +1,312 @@
+/* The only global CSS the app needs.
+ *
+ * Styling is otherwise done with inline style objects. This file exists for the few things inline
+ * styles cannot express — keyframes, pseudo-classes (:active, :focus-visible, :hover), media queries
+ * and entry animations.
+ *
+ * Note: index.css and App.css are dead Vite-template leftovers (a purple palette and a fixed
+ * 1126px #root) and are deliberately NOT imported — doing so would break the layout. */
+
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* Overwritten per sport via <html data-sport>; see syncDocumentSport in theme.js. */
+  --accent: #f2a93b;
+  --page: #17402e;
+}
+
+html[data-sport="Cricket"] {
+  --accent: #e8b03a;
+  --page: #0f1f34;
+}
+
+/* Without this the browser's 8px body margin framed the floodlit pitch in white, and overscroll
+ * past the page flashed white too. */
+body {
+  margin: 0;
+  /* Set here as well as on the app shell, because dialogs render straight into <body>. */
+  font-family: "Inter", sans-serif;
+  background: var(--page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Form controls don't inherit the page font by default, so every button that set a size but no
+ * family was rendering in the system font instead of Inter. */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* --- Press feedback ------------------------------------------------------------------------
+ * A scorer taps these pitch-side, often without looking twice. A small scale on press confirms the
+ * tap landed before the server answers. */
+button,
+.pressable {
+  /* Colours ease too, so a toggled chip, tab or Wide/No-ball switch changes state rather than
+   * blinking. Kept at 150ms: these are tapped tens of times a match. */
+  transition:
+    transform 140ms var(--ease-out),
+    opacity 120ms ease,
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:not(:disabled):active,
+.pressable:active {
+  transform: scale(0.97);
+}
+
+/* Dim a disabled button only if it stays disabled. Buttons go disabled for the ~100ms of every API
+ * call; dimming instantly made the whole run pad flicker once per ball. */
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transition: opacity 150ms ease 250ms;
+}
+
+/* The amber ring alone is 1.8:1 against the cream cards, so a band of the pitch colour sits under
+ * it: it reads as dark-on-cream on the cards and amber-on-dark everywhere else. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--page);
+}
+
+/* Every heading is set in Anton, which ships one weight. The browser default bold made it fake a
+ * heavier cut, which smeared the letterforms. */
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 400;
+  text-wrap: balance;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pressable:hover {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+}
+
+/* --- Numbers -------------------------------------------------------------------------------
+ * Scores, clocks and table columns: fixed-width digits so a running clock or a changing score
+ * doesn't make its neighbours shuffle. */
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Layout that has to change on a phone -------------------------------------------------- */
+
+/* A grid whose column count is chosen in JS (--cols) but collapses to one column on a phone. */
+.cols {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+  .cols {
+    grid-template-columns: repeat(var(--cols-sm, 1), minmax(0, 1fr));
+  }
+}
+
+/* Broadcast-style scorebug: home name | score | away name. On a phone the names get their own
+ * line above the score rather than being crushed to a few characters. */
+.scorebug {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+}
+
+@media (max-width: 520px) {
+  .scorebug {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 4px 12px;
+  }
+  .scorebug > .scorebug-score {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .scorebug > :first-child {
+    text-align: left !important;
+  }
+  .scorebug > :last-child {
+    text-align: right !important;
+  }
+}
+
+/* iOS zooms the page when focusing any input under 16px. That zoom is disorienting mid-match. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* --- Motion -------------------------------------------------------------------------------- */
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* The "● LIVE" dot. Constant, calm, and the only thing on the list that moves — so a live match is
+ * findable at a glance. */
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  margin-right: 5px;
+  vertical-align: 1px;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* A goal or a wicket: rare, and the most important thing that happens on the screen. The new
+ * number drops into place. Runs, which change every ball, deliberately do not animate. */
+@keyframes score-in {
+  from {
+    opacity: 0;
+    transform: translateY(-40%) scale(1.15);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+.score-bump {
+  display: inline-block;
+  animation: score-in 420ms var(--ease-out);
+}
+
+/* Modals: the backdrop fades, the panel rises slightly from centre. Entry only — exits are
+ * instant, because the scorer has already decided and is waiting on the result. */
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+.modal-backdrop {
+  animation: backdrop-in 200ms ease-out;
+}
+
+.modal-panel {
+  animation: panel-in 240ms var(--ease-out);
+}
+
+/* The panel takes focus on open so the dialog is announced; it isn't a control, so no ring. */
+.modal-panel:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Every entry below uses fill-mode `backwards`, never `both`: a finished animation that keeps
+ * holding `transform: none` would override the :active press scale on the same element. */
+
+/* A stage or tab swapping in (setup → groups → schedule, Matches ↔ Stats). Without it the new
+ * screen teleports in and the eye has to find its place again. */
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.view-in {
+  animation: view-in 220ms var(--ease-out) backwards;
+}
+
+/* Lists arriving together — tournaments, fixtures, match cards. Each child sets --i; the delay caps
+ * at the tenth item so a 40-fixture schedule doesn't take two seconds to finish appearing. */
+.stagger > * {
+  animation: view-in 260ms var(--ease-out) backwards;
+  animation-delay: calc(min(var(--i, 0), 10) * 40ms);
+}
+
+/* Banners (errors, "time is up", "half time") and newly logged timeline events: they arrive from
+ * above, where the newest thing on the screen lives. */
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.drop-in {
+  animation: drop-in 220ms var(--ease-out) backwards;
+}
+
+/* Small, rare, important markers: a penalty kick result, the FREE HIT badge. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+.pop-in {
+  display: inline-block;
+  animation: pop-in 200ms var(--ease-out) backwards;
+}
+
+/* Stoppage-time badge while the clock is in added time. */
+.stoppage-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Visible only to assistive technology. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot,
+  .stoppage-pulse {
+    animation: none;
+  }
+  .score-bump,
+  .modal-panel,
+  .view-in,
+  .stagger > *,
+  .drop-in,
+  .pop-in {
+    animation-name: backdrop-in; /* opacity only, no movement */
+  }
+  .stagger > * {
+    animation-delay: 0ms;
+  }
+  button:not(:disabled):active,
+  .pressable:active {
+    transform: none;
+  }
+}

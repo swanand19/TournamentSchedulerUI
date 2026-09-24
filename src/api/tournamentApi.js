@@ -1,10 +1,8 @@
+import { responseError } from "./errors";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 async function handleResponse(res) {
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Request failed with status ${res.status}`);
-  }
+  if (!res.ok) throw await responseError(res);
   return res.json();
 }
 
@@ -26,11 +24,11 @@ export async function setManualGroups(groups) {
   return handleResponse(res);
 }
 
-export async function generateSchedule(groups, matchesPerTeam) {
+export async function generateSchedule(groups, matchesPerTeam, allowRepeatFixtures = false) {
   const res = await fetch(`${BASE_URL}/tournament/schedule`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ groups, matchesPerTeam }),
+    body: JSON.stringify({ groups, matchesPerTeam, allowRepeatFixtures }),
   });
   return handleResponse(res);
 }

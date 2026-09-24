@@ -1,10 +1,8 @@
+import { responseError } from "./errors";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 async function handleResponse(res) {
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Request failed with status ${res.status}`);
-  }
+  if (!res.ok) throw await responseError(res);
   if (res.status === 204) return null;
   return res.json();
 }
@@ -23,11 +21,20 @@ export async function createTeam(tournamentId, name) {
   return handleResponse(res);
 }
 
-export async function updateTeam(tournamentId, teamId, name) {
+/**
+ * Renames a team, and optionally sets its default captain. `setCaptain` is what distinguishes
+ * "clear the captain" from "this caller does not deal in captains" — both send null otherwise.
+ */
+export async function updateTeam(tournamentId, teamId, name, options = {}) {
+  const body = { name };
+  if ("defaultCaptainPlayerId" in options) {
+    body.setCaptain = true;
+    body.defaultCaptainPlayerId = options.defaultCaptainPlayerId ?? null;
+  }
   const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/teams/${teamId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(body),
   });
   return handleResponse(res);
 }
