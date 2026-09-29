@@ -204,11 +204,17 @@ function BatterRow({ batter, striker }) {
   );
 }
 
-/** Who comes in, or who bowls next — the same shape of question, so the same little form. */
-function PickPlayer({ title, players, onPick, busy, cta, animate = false }) {
+/**
+ * Who comes in, or who bowls next — the same shape of question, so the same little form. For the
+ * next batter, `strike` adds who faces the next ball: pre-set to the end the engine left empty,
+ * which the scorer can overrule (it replaces asking whether the batters crossed).
+ */
+function PickPlayer({ title, players, onPick, busy, cta, animate = false, strike }) {
   // Opt-in: a new batter (after a wicket) is rare enough to mark; the next bowler comes every over.
   const enter = animate ? "drop-in" : undefined;
   const [playerId, setPlayerId] = useState("");
+  const [newOnStrike, setNewOnStrike] = useState(strike?.newOnStrike ?? true);
+  const newName = players.find((p) => String(p.playerId) === playerId)?.playerName ?? "New batter";
 
   if (players.length === 0) {
     return (
@@ -232,13 +238,36 @@ function PickPlayer({ title, players, onPick, busy, cta, animate = false }) {
           ))}
         </select>
         <button
-          onClick={() => playerId && onPick(Number(playerId))}
+          onClick={() => playerId && onPick(Number(playerId), strike ? newOnStrike : undefined)}
           disabled={!playerId || busy}
           style={{ ...button(theme.deep, theme.cream), opacity: playerId && !busy ? 1 : 0.5 }}
         >
           {cta}
         </button>
       </div>
+
+      {strike && (
+        <div style={{ marginTop: 12 }}>
+          <div id="strike-label" style={{ fontSize: 12, color: theme.muted, marginBottom: 6 }}>Faces the next ball</div>
+          <div role="radiogroup" aria-labelledby="strike-label" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {[[true, newName], [false, strike.survivorName]].map(([value, label]) => (
+              <button
+                key={String(value)}
+                type="button"
+                role="radio"
+                aria-checked={newOnStrike === value}
+                onClick={() => setNewOnStrike(value)}
+                style={{
+                  ...button(newOnStrike === value ? theme.deep : "transparent", newOnStrike === value ? theme.cream : theme.ink),
+                  border: newOnStrike === value ? "none" : "1.5px solid #d8d4c8",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -313,13 +342,15 @@ function WicketDialog({ state, onCancel, onConfirm, busy }) {
   // fielder who took the throw is recorded for the scorecard only.
   const [directHit, setDirectHit] = useState(true);
   const [receiver, setReceiver] = useState("");
-  const [crossed, setCrossed] = useState(false);
   const [runs, setRuns] = useState(0);
 
   const fielders = state.squad.filter((p) => p.teamId === live.bowlingTeamId && p.squadStatus === "Playing");
   const needsFielder = ["Caught", "RunOut", "Stumped"].includes(type);
   const isRunOut = type === "RunOut";
   const twoFielders = isRunOut && !directHit;
+  // Caught, bowled, LBW, stumped… only ever the batter facing. Mirrors DismissalRules.CanDismissNonStriker.
+  const eitherEnd = ["RunOut", "ObstructingTheField", "RetiredHurt", "RetiredOut"].includes(type);
+  const outId = eitherEnd ? dismissed : String(live.striker?.playerId ?? "");
 
   return (
     <Modal labelledBy="wicket-title" onClose={onCancel} panelStyle={{ ...lightPanel, marginBottom: 0 }}>
@@ -332,11 +363,17 @@ function WicketDialog({ state, onCancel, onConfirm, busy }) {
             ))}
           </select>
 
-          <select aria-label="Batter out" style={select} value={dismissed} onChange={(e) => setDismissed(e.target.value)}>
-            {[live.striker, live.nonStriker].filter(Boolean).map((b) => (
-              <option key={b.playerId} value={b.playerId}>{b.playerName}</option>
-            ))}
-          </select>
+          {eitherEnd ? (
+            <select aria-label="Batter out" style={select} value={dismissed} onChange={(e) => setDismissed(e.target.value)}>
+              {[live.striker, live.nonStriker].filter(Boolean).map((b) => (
+                <option key={b.playerId} value={b.playerId}>{b.playerName}{b.onStrike ? " (striker)" : " (non-striker)"}</option>
+              ))}
+            </select>
+          ) : live.striker && (
+            <div style={{ fontSize: 14 }}>
+              Out: <strong>{live.striker.playerName}</strong> <span style={{ color: theme.muted }}>(striker)</span>
+            </div>
+          )}
 
           {isRunOut && (
             <div role="radiogroup" aria-label="How the run-out happened" style={{ display: "flex", gap: 6 }}>
@@ -402,26 +439,19 @@ function WicketDialog({ state, onCancel, onConfirm, busy }) {
             />
           </label>
 
-          {type === "Caught" && (
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-              <input type="checkbox" checked={crossed} onChange={(e) => setCrossed(e.target.checked)} />
-              The batters crossed
-            </label>
-          )}
         </div>
 
         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
           <button
             onClick={() => onConfirm({
               wicketType: type,
-              dismissedPlayerId: Number(dismissed),
+              dismissedPlayerId: Number(outId),
               fielderId: fielder ? Number(fielder) : null,
               isDirectHit: isRunOut && directHit,
               runOutReceiverId: twoFielders && receiver ? Number(receiver) : null,
-              battersCrossed: crossed,
               runsOffBat: runs,
             })}
-            disabled={busy}
+            disabled={busy || !outId}
             style={button(theme.dangerSolid, "#fff")}
           >
             Confirm wicket
@@ -504,6 +534,8 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
   const live = state.current;
   const actions = state.actions;
   const finished = state.status === "Completed" || state.status === "Abandoned";
+  // After a wicket, the batter still in — the one the new batter may or may not take strike from.
+  const survivor = live?.striker ?? live?.nonStriker ?? null;
 
   return (
     <div style={{ color: theme.onDark, fontFamily: font.body }}>
@@ -617,7 +649,8 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
               players={actions.availableBatters}
               busy={busy}
               cta="Send them out"
-              onPick={(playerId) => act(() => setBatter(matchId, playerId))}
+              strike={survivor ? { survivorName: survivor.playerName, newOnStrike: !live.striker } : undefined}
+              onPick={(playerId, onStrike) => act(() => setBatter(matchId, playerId, onStrike))}
             />
           )}
 

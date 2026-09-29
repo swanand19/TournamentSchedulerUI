@@ -1,11 +1,6 @@
-import { responseError } from "./errors";
+import { handleResponse } from "./http";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-async function handleResponse(res) {
-  if (!res.ok) throw await responseError(res);
-  if (res.status === 204) return null;
-  return res.json();
-}
 
 // Omitting `sport` returns every tournament; the home page always passes one so each tab
 // only ever lists its own.

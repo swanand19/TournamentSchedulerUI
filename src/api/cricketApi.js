@@ -1,15 +1,10 @@
-import { responseError } from "./errors";
+import { handleResponse } from "./http";
 // The cricket scoring endpoints. Every action but the two GETs answers with the whole match state
 // — score, crease, and what is legal next — so a screen redraws from the response it already has
 // rather than refetching after each ball.
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-async function handleResponse(res) {
-  if (!res.ok) throw await responseError(res);
-  if (res.status === 204) return null;
-  return res.json();
-}
 
 const post = async (path, body) =>
   handleResponse(
@@ -32,7 +27,8 @@ export const setupCricketMatch = (matchId, payload) => post(`${matchId}/setup`, 
 export const startInnings = (matchId, payload) => post(`${matchId}/innings/start`, payload);
 export const recordBall = (matchId, payload) => post(`${matchId}/balls`, payload);
 export const undoBall = (matchId) => post(`${matchId}/balls/undo`, {});
-export const setBatter = (matchId, playerId) => post(`${matchId}/batter`, { playerId });
+// onStrike: whether the new batter faces the next ball; undefined leaves it to the engine.
+export const setBatter = (matchId, playerId, onStrike) => post(`${matchId}/batter`, { playerId, onStrike });
 export const setBowler = (matchId, playerId) => post(`${matchId}/bowler`, { playerId });
 export const endInnings = (matchId, reason) => post(`${matchId}/innings/end`, { reason });
 // Rain: take overs off the innings in play. Under DLS the chase target is revised on the spot.

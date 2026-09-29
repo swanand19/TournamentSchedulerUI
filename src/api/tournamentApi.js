@@ -1,10 +1,6 @@
-import { responseError } from "./errors";
+import { handleResponse } from "./http";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-async function handleResponse(res) {
-  if (!res.ok) throw await responseError(res);
-  return res.json();
-}
 
 export async function randomizeGroups(teamNames, groupCount) {
   const res = await fetch(`${BASE_URL}/tournament/groups/randomize`, {

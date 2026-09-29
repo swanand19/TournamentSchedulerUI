@@ -1,9 +1,9 @@
 // What a failed request says to the person using the app.
 //
-// The API explains its own rules in plain text ("Minutes per half must be at least 1."), and
-// those pass straight through: they already say what to fix. What gets translated is everything
-// that doesn't: a bare status code, an ASP.NET problem-details JSON body, an HTML error page, or
-// fetch failing because the API isn't reachable at all.
+// The API explains its own rules in status.message of its { status, data } envelope ("Minutes per
+// half must be at least 1."), and those pass straight through: they already say what to fix. What
+// gets translated is everything that doesn't: a bare status code, an older server's plain-text or
+// problem-details body, an HTML error page, or fetch failing because the API isn't reachable at all.
 
 function serverMessage(text) {
   const t = (text || "").trim();
@@ -12,6 +12,7 @@ function serverMessage(text) {
   if (t.startsWith("{")) {
     try {
       const body = JSON.parse(t);
+      if (typeof body.status?.message === "string") return body.status.message;
       const firstFieldError = body.errors && Object.values(body.errors).flat()[0];
       return String(firstFieldError || body.detail || body.message || body.title || "");
     } catch {
