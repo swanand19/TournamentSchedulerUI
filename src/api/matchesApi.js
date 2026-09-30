@@ -1,111 +1,44 @@
-import { handleResponse } from "./http";
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { api } from "./client";
 
+// Football matches. Every call goes through the secure gateway (see client.js).
 
-export async function getMatches(tournamentId) {
-  const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/matches`);
-  return handleResponse(res);
-}
+export const getMatches = (tournamentId) => api.call("TOURNAMENT_MATCHES", { routeParams: { id: tournamentId } });
 
-export async function getMatch(matchId) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}`);
-  return handleResponse(res);
-}
+export const getMatch = (matchId) => api.call("MATCH_GET", { routeParams: { matchId } });
 
-export async function setupAndStartMatch(matchId, payload) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/setup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return handleResponse(res);
-}
+export const setupAndStartMatch = (matchId, payload) => api.call("MATCH_SETUP", { routeParams: { matchId }, body: payload });
 
-export async function getMatchEvents(matchId) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/events`);
-  return handleResponse(res);
-}
+export const getMatchEvents = (matchId) => api.call("MATCH_EVENTS", { routeParams: { matchId } });
 
-export async function recordEvent(matchId, payload) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/events`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return handleResponse(res);
-}
+export const recordEvent = (matchId, payload) => api.call("MATCH_EVENT_RECORD", { routeParams: { matchId }, body: payload });
 
-export async function pauseClock(matchId) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/clock/pause`, { method: "POST" });
-  return handleResponse(res);
-}
+export const pauseClock = (matchId) => api.call("MATCH_CLOCK_PAUSE", { routeParams: { matchId } });
 
-export async function resumeClock(matchId) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/clock/resume`, { method: "POST" });
-  return handleResponse(res);
-}
+export const resumeClock = (matchId) => api.call("MATCH_CLOCK_RESUME", { routeParams: { matchId } });
 
-export async function addTime(matchId, minutes) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/clock/add-time`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ minutes }),
-  });
-  return handleResponse(res);
-}
+export const addTime = (matchId, minutes) => api.call("MATCH_CLOCK_ADD_TIME", { routeParams: { matchId }, body: { minutes } });
 
 // Blows the whistle on the current period. Separate from starting the next one, so half time
 // and full time stay distinguishable.
-export async function endPeriod(matchId) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/half/end`, { method: "POST" });
-  return handleResponse(res);
-}
+export const endPeriod = (matchId) => api.call("MATCH_PERIOD_END", { routeParams: { matchId } });
 
-export async function nextHalf(matchId) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/half/next`, { method: "POST" });
-  return handleResponse(res);
-}
+export const nextHalf = (matchId) => api.call("MATCH_PERIOD_NEXT", { routeParams: { matchId } });
 
-export async function completeMatch(matchId, options = {}) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/complete`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+export const completeMatch = (matchId, options = {}) =>
+  api.call("MATCH_COMPLETE", {
+    routeParams: { matchId },
+    body: {
       force: options.force ?? false,
       awardWinnerTeamId: options.awardWinnerTeamId ?? null,
-    }),
+    },
   });
-  return handleResponse(res);
-}
 
-export async function startPenalties(matchId, takersPerSide) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/penalties/start`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ takersPerSide }),
-  });
-  return handleResponse(res);
-}
+export const startPenalties = (matchId, takersPerSide) =>
+  api.call("MATCH_PENALTIES_START", { routeParams: { matchId }, body: { takersPerSide } });
 
-export async function getPenalties(matchId) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/penalties`);
-  return handleResponse(res);
-}
+export const getPenalties = (matchId) => api.call("MATCH_PENALTIES_GET", { routeParams: { matchId } });
 
-export async function recordPenaltyKick(matchId, payload) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/penalties/kick`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  return handleResponse(res);
-}
+export const recordPenaltyKick = (matchId, payload) => api.call("MATCH_PENALTY_KICK", { routeParams: { matchId }, body: payload });
 
-export async function endPenaltiesManually(matchId, winningTeamId) {
-  const res = await fetch(`${BASE_URL}/matches/${matchId}/penalties/end`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ winningTeamId }),
-  });
-  return handleResponse(res);
-}
+export const endPenaltiesManually = (matchId, winningTeamId) =>
+  api.call("MATCH_PENALTIES_END", { routeParams: { matchId }, body: { winningTeamId } });

@@ -1,65 +1,36 @@
-import { handleResponse } from "./http";
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { api, ApiError } from "./client";
 
+// Tournaments, their schedules and stats. Every call goes through the secure gateway (see client.js).
 
 // Omitting `sport` returns every tournament; the home page always passes one so each tab
 // only ever lists its own.
-export async function getTournaments(sport) {
-  const query = sport ? `?sport=${encodeURIComponent(sport)}` : "";
-  const res = await fetch(`${BASE_URL}/tournaments${query}`);
-  return handleResponse(res);
-}
+export const getTournaments = (sport) => api.call("TOURNAMENT_LIST", { query: { sport } });
 
-export async function createTournament(name, sport = "Football") {
-  const res = await fetch(`${BASE_URL}/tournaments`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, sport }),
-  });
-  return handleResponse(res);
-}
+export const createTournament = (name, sport = "Football") => api.call("TOURNAMENT_CREATE", { body: { name, sport } });
 
+/** The active schedule, or null when none has been approved yet (the API answers 404). */
 export async function getTournamentSchedule(id) {
-  const res = await fetch(`${BASE_URL}/tournaments/${id}/schedule`);
-  if (res.status === 404) return null;
-  return handleResponse(res);
+  try {
+    return await api.call("SCHEDULE_ACTIVE", { routeParams: { id } });
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
 }
 
-export async function deleteTournament(id) {
-  const res = await fetch(`${BASE_URL}/tournaments/${id}`, { method: "DELETE" });
-  return handleResponse(res);
-}
+export const deleteTournament = (id) => api.call("TOURNAMENT_DELETE", { routeParams: { id } });
 
-export async function getScheduleHistory(tournamentId) {
-  const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/schedules`);
-  return handleResponse(res);
-}
+export const getScheduleHistory = (tournamentId) => api.call("SCHEDULE_HISTORY", { routeParams: { id: tournamentId } });
 
-export async function activateSchedule(tournamentId, scheduleId) {
-  const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/schedules/${scheduleId}/activate`, {
-    method: "POST",
-  });
-  return handleResponse(res);
-}
+export const activateSchedule = (tournamentId, scheduleId) =>
+  api.call("SCHEDULE_ACTIVATE", { routeParams: { id: tournamentId, scheduleId } });
 
-export async function getTournament(id) {
-  const res = await fetch(`${BASE_URL}/tournaments/${id}`);
-  return handleResponse(res);
-}
+export const getTournament = (id) => api.call("TOURNAMENT_GET", { routeParams: { id } });
 
-export async function startTournament(id) {
-  const res = await fetch(`${BASE_URL}/tournaments/${id}/start`, { method: "POST" });
-  return handleResponse(res);
-}
+export const startTournament = (id) => api.call("TOURNAMENT_START", { routeParams: { id } });
 
 // Every leaderboard for a tournament, plus the standings and an overall summary.
-export async function getTournamentStats(id) {
-  const res = await fetch(`${BASE_URL}/tournaments/${id}/stats`);
-  return handleResponse(res);
-}
+export const getTournamentStats = (id) => api.call("TOURNAMENT_STATS", { routeParams: { id } });
 
 // Cricket: points table with NRR, leaderboards, MVP and records, folded from the ball-by-ball.
-export async function getCricketStats(id) {
-  const res = await fetch(`${BASE_URL}/tournaments/${id}/cricket-stats`);
-  return handleResponse(res);
-}
+export const getCricketStats = (id) => api.call("TOURNAMENT_CRICKET_STATS", { routeParams: { id } });

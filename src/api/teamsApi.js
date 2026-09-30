@@ -1,65 +1,31 @@
-import { handleResponse } from "./http";
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { api } from "./client";
 
+// Teams and players. Every call goes through the secure gateway (see client.js).
 
-export async function getTeams(tournamentId) {
-  const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/teams`);
-  return handleResponse(res);
-}
+export const getTeams = (tournamentId) => api.call("TEAM_LIST", { routeParams: { id: tournamentId } });
 
-export async function createTeam(tournamentId, name) {
-  const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/teams`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
-  return handleResponse(res);
-}
+export const createTeam = (tournamentId, name) => api.call("TEAM_CREATE", { routeParams: { id: tournamentId }, body: { name } });
 
 /**
  * Renames a team, and optionally sets its default captain. `setCaptain` is what distinguishes
  * "clear the captain" from "this caller does not deal in captains" — both send null otherwise.
  */
-export async function updateTeam(tournamentId, teamId, name, options = {}) {
+export function updateTeam(tournamentId, teamId, name, options = {}) {
   const body = { name };
   if ("defaultCaptainPlayerId" in options) {
     body.setCaptain = true;
     body.defaultCaptainPlayerId = options.defaultCaptainPlayerId ?? null;
   }
-  const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/teams/${teamId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return handleResponse(res);
+  return api.call("TEAM_UPDATE", { routeParams: { id: tournamentId, teamId }, body });
 }
 
-export async function deleteTeam(tournamentId, teamId) {
-  const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/teams/${teamId}`, { method: "DELETE" });
-  return handleResponse(res);
-}
+export const deleteTeam = (tournamentId, teamId) => api.call("TEAM_DELETE", { routeParams: { id: tournamentId, teamId } });
 
-export async function addPlayer(tournamentId, teamId, player) {
-  const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/teams/${teamId}/players`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(player),
-  });
-  return handleResponse(res);
-}
+export const addPlayer = (tournamentId, teamId, player) =>
+  api.call("PLAYER_CREATE", { routeParams: { id: tournamentId, teamId }, body: player });
 
-export async function updatePlayer(tournamentId, teamId, playerId, player) {
-  const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/teams/${teamId}/players/${playerId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(player),
-  });
-  return handleResponse(res);
-}
+export const updatePlayer = (tournamentId, teamId, playerId, player) =>
+  api.call("PLAYER_UPDATE", { routeParams: { id: tournamentId, teamId, playerId }, body: player });
 
-export async function deletePlayer(tournamentId, teamId, playerId) {
-  const res = await fetch(`${BASE_URL}/tournaments/${tournamentId}/teams/${teamId}/players/${playerId}`, {
-    method: "DELETE",
-  });
-  return handleResponse(res);
-}
+export const deletePlayer = (tournamentId, teamId, playerId) =>
+  api.call("PLAYER_DELETE", { routeParams: { id: tournamentId, teamId, playerId } });

@@ -34,15 +34,37 @@ function messageFor(status, text) {
   return server || `The request was refused (error ${status}). Reload the page and try again.`;
 }
 
-/** The Error to throw for a response that wasn't ok. */
-export async function responseError(res) {
-  return new Error(messageFor(res.status, await res.text()));
+/** An error the API answered with. Keeps the status for code that needs to tell cases apart. */
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+/**
+ * The error for a failed answer. `envelopeText` is the { status, data } envelope as JSON — decrypted
+ * when the answer was encrypted, as sent when the gateway refused the request before decrypting it.
+ */
+export function apiError(status, envelopeText) {
+  return new ApiError(messageFor(status, envelopeText), status);
+}
+
+/** The server's encrypted answer couldn't be opened — corrupted in transit, or not from our server. */
+export function unreadableAnswer(status) {
+  return new ApiError("The server's answer couldn't be read. Reload the page and try again.", status);
+}
+
+const UNREACHABLE = "Can't reach the server. Check that the API is running and you're online, then try again.";
+
+/** fetch itself failed: the API is down or unreachable. */
+export function unreachable() {
+  return new Error(UNREACHABLE);
 }
 
 /** Also covers errors thrown before any response exists: the API is down or unreachable. */
 export function describeError(message) {
-  if (/failed to fetch|networkerror|load failed/i.test(message)) {
-    return "Can't reach the server. Check that the API is running and you're online, then try again.";
-  }
+  if (/failed to fetch|networkerror|load failed/i.test(message)) return UNREACHABLE;
   return message;
 }

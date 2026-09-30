@@ -1,43 +1,37 @@
-import { handleResponse } from "./http";
-// The cricket scoring endpoints. Every action but the two GETs answers with the whole match state
-// — score, crease, and what is legal next — so a screen redraws from the response it already has
-// rather than refetching after each ball.
+import { api } from "./client";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// The cricket scoring endpoints. Every action but the GETs answers with the whole match state —
+// score, crease, and what is legal next — so a screen redraws from the response it already has
+// rather than refetching after each ball. Every call goes through the secure gateway (see client.js).
 
+const at = (matchId) => ({ matchId });
 
-const post = async (path, body) =>
-  handleResponse(
-    await fetch(`${BASE_URL}/cricket-matches/${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-  );
+export const getCricketMatch = (matchId) => api.call("CRICKET_MATCH_GET", { routeParams: at(matchId) });
+export const getSetupOptions = (matchId) => api.call("CRICKET_SETUP_OPTIONS", { routeParams: at(matchId) });
+export const getCricketScorecard = (matchId) => api.call("CRICKET_SCORECARD", { routeParams: at(matchId) });
+export const getCricketBalls = (matchId) => api.call("CRICKET_BALLS", { routeParams: at(matchId) });
+export const getCricketEvents = (matchId) => api.call("CRICKET_EVENTS", { routeParams: at(matchId) });
 
-const get = async (path) => handleResponse(await fetch(`${BASE_URL}/cricket-matches/${path}`));
-
-export const getCricketMatch = (matchId) => get(`${matchId}`);
-export const getSetupOptions = (matchId) => get(`${matchId}/setup-options`);
-export const getCricketScorecard = (matchId) => get(`${matchId}/scorecard`);
-export const getCricketBalls = (matchId) => get(`${matchId}/balls`);
-export const getCricketEvents = (matchId) => get(`${matchId}/events`);
-
-export const setupCricketMatch = (matchId, payload) => post(`${matchId}/setup`, payload);
-export const startInnings = (matchId, payload) => post(`${matchId}/innings/start`, payload);
-export const recordBall = (matchId, payload) => post(`${matchId}/balls`, payload);
-export const undoBall = (matchId) => post(`${matchId}/balls/undo`, {});
+export const setupCricketMatch = (matchId, payload) => api.call("CRICKET_SETUP", { routeParams: at(matchId), body: payload });
+export const startInnings = (matchId, payload) => api.call("CRICKET_INNINGS_START", { routeParams: at(matchId), body: payload });
+export const recordBall = (matchId, payload) => api.call("CRICKET_BALL_RECORD", { routeParams: at(matchId), body: payload });
+export const undoBall = (matchId) => api.call("CRICKET_BALL_UNDO", { routeParams: at(matchId), body: {} });
 // onStrike: whether the new batter faces the next ball; undefined leaves it to the engine.
-export const setBatter = (matchId, playerId, onStrike) => post(`${matchId}/batter`, { playerId, onStrike });
-export const setBowler = (matchId, playerId) => post(`${matchId}/bowler`, { playerId });
-export const endInnings = (matchId, reason) => post(`${matchId}/innings/end`, { reason });
+export const setBatter = (matchId, playerId, onStrike) =>
+  api.call("CRICKET_BATTER_SET", { routeParams: at(matchId), body: { playerId, onStrike } });
+export const setBowler = (matchId, playerId) => api.call("CRICKET_BOWLER_SET", { routeParams: at(matchId), body: { playerId } });
+export const endInnings = (matchId, reason) => api.call("CRICKET_INNINGS_END", { routeParams: at(matchId), body: { reason } });
 // Rain: take overs off the innings in play. Under DLS the chase target is revised on the spot.
-export const reduceOvers = (matchId, newOversLimit) => post(`${matchId}/innings/reduce-overs`, { newOversLimit });
-export const enforceFollowOn = (matchId) => post(`${matchId}/follow-on`, {});
-export const startSuperOver = (matchId) => post(`${matchId}/super-over/start`, {});
+export const reduceOvers = (matchId, newOversLimit) =>
+  api.call("CRICKET_REDUCE_OVERS", { routeParams: at(matchId), body: { newOversLimit } });
+export const enforceFollowOn = (matchId) => api.call("CRICKET_FOLLOW_ON", { routeParams: at(matchId), body: {} });
+export const startSuperOver = (matchId) => api.call("CRICKET_SUPER_OVER_START", { routeParams: at(matchId), body: {} });
 export const completeCricketMatch = (matchId, options = {}) =>
-  post(`${matchId}/complete`, {
-    force: options.force ?? false,
-    awardWinnerTeamId: options.awardWinnerTeamId ?? null,
-    noResult: options.noResult ?? false,
+  api.call("CRICKET_COMPLETE", {
+    routeParams: at(matchId),
+    body: {
+      force: options.force ?? false,
+      awardWinnerTeamId: options.awardWinnerTeamId ?? null,
+      noResult: options.noResult ?? false,
+    },
   });
