@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
+import AuthGate from "./auth/AuthGate.jsx";
 import "./styles.css";
 
 // Browsers step a focused number field when the mouse wheel turns over it. On a long form that
@@ -18,6 +19,8 @@ document.addEventListener(
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <App />
+    <AuthGate>
+      <App />
+    </AuthGate>
   </StrictMode>
 );

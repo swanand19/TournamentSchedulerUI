@@ -1,5 +1,5 @@
 import { font, footballTheme as theme } from "./theme";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Bump from "./Bump";
 import {
   getMatch, getMatchEvents, recordEvent, pauseClock, resumeClock,
@@ -8,6 +8,7 @@ import {
 import PenaltyShootout from "./PenaltyShootout";
 import Modal from "./Modal";
 import ErrorBanner from "./ErrorBanner";
+import ScoringBanner, { ScoringControls } from "./ScoringBanner";
 import {
   BallIcon, CardIcon, SwapIcon, PlayIcon, PauseIcon, StopIcon, TimerIcon, FlagIcon, TargetIcon,
   MissIcon, BanIcon,
@@ -147,6 +148,21 @@ export default function LiveMatch({ matchId, onBack, onCompleted }) {
       setInitialEventIds(new Set(evts.map((e) => e.id)));
       setLoading(false);
     })();
+  }, [matchId]);
+
+  // Re-read the match every 5 seconds while the tab is visible and nothing is being sent: another
+  // phone may be scoring it, or asking this one to hand scoring over.
+  const busyRef = useRef(false);
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!document.hidden && !busyRef.current) refresh();
+    }, 5000);
+    return () => clearInterval(timer);
+    // refresh only reads matchId, which restarts this effect when it changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
 
   const startingPlayers = (team) =>
@@ -404,6 +420,8 @@ export default function LiveMatch({ matchId, onBack, onCompleted }) {
 
   const isDone = match.status === "Completed";
   const isPenaltyShootout = match.status === "PenaltyShootout";
+  // Someone else is scoring (or the tournament is closed): follow along, but the buttons are off.
+  const locked = !isDone && !!match.scoring && !match.scoring.canScore;
 
   // The server owns the rules: it decides what is legal right now and the UI just renders it.
   // Deriving these client-side is what produced the "scores are level" prompt at the kick-off of
@@ -470,6 +488,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted }) {
       </button>
 
       <ErrorBanner message={error} />
+      <ScoringBanner sport="football" matchId={matchId} scoring={match.scoring} onChange={(scoring) => setMatch((m) => ({ ...m, scoring }))} />
 
       {timeIsUp && (
         <div className="drop-in" style={{ background: "rgba(242,169,59,0.15)", border: "1px solid #F2A93B", color: "#F7F5EF", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
@@ -573,6 +592,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted }) {
         )}
       </div>
 
+      <ScoringControls locked={locked}>
       {isPenaltyShootout && (
         <PenaltyShootout matchId={matchId} match={match} onDecided={refresh} />
       )}
@@ -706,6 +726,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted }) {
           </div>
         </>
       )}
+      </ScoringControls>
 
       {showAbandon && (
         <Modal labelledBy="abandon-title" onClose={() => setShowAbandon(false)} panelStyle={modalPanel}>

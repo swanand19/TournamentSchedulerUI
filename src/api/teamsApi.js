@@ -1,6 +1,11 @@
 import { api } from "./client";
 
 // Teams and players. Every call goes through the secure gateway (see client.js).
+//
+// A player may carry `email`: with an account it links the place to that person now, otherwise when
+// they sign up. On an update, leaving `email` out keeps it; "" clears it (and unlinks). Owners see
+// players' `email` and each team's `joinCode`; a linked player (`isLinked`) keeps their own name and
+// cricket profile, so the server ignores those fields for them.
 
 export const getTeams = (tournamentId) => api.call("TEAM_LIST", { routeParams: { id: tournamentId } });
 
@@ -29,3 +34,17 @@ export const updatePlayer = (tournamentId, teamId, playerId, player) =>
 
 export const deletePlayer = (tournamentId, teamId, playerId) =>
   api.call("PLAYER_DELETE", { routeParams: { id: tournamentId, teamId, playerId } });
+
+/** Owners only: a new join code for the team; the old one stops working at once. Answers with the team. */
+export const resetJoinCode = (tournamentId, teamId) =>
+  api.call("TEAM_JOIN_CODE_RESET", { routeParams: { id: tournamentId, teamId }, body: {} });
+
+/** Takes a squad place off its account (the name stays). Owners for anyone; a player for their own place ("Leave team"). */
+export const unlinkPlayer = (tournamentId, teamId, playerId) =>
+  api.call("PLAYER_UNLINK", { routeParams: { id: tournamentId, teamId, playerId }, body: {} });
+
+/** What a team code opens: { tournamentId, tournamentName, sport, teamId, teamName, places: [{ playerId, name, detail }] }. */
+export const previewJoin = (code) => api.call("TEAM_JOIN_PREVIEW", { body: { code } });
+
+/** Claims a place (`playerId`), or joins as a new player (null). Answers { tournamentId, sport, teamId, playerId, … }. */
+export const joinTeam = (code, playerId) => api.call("TEAM_JOIN", { body: { code, playerId: playerId ?? null } });

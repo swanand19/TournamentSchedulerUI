@@ -10,8 +10,9 @@ export const setManualGroups = (groups) => api.call("TOURNAMENT_GROUPS_MANUAL", 
 export const generateSchedule = (groups, matchesPerTeam, allowRepeatFixtures = false) =>
   api.call("TOURNAMENT_SCHEDULE_GENERATE", { body: { groups, matchesPerTeam, allowRepeatFixtures } });
 
-export const approveSchedule = (tournamentId, scheduleData) =>
-  api.call("TOURNAMENT_SCHEDULE_APPROVE", { body: { tournamentId, schedule: scheduleData } });
+/** The tournament's dates ("YYYY-MM-DD") are settled with its fixtures; required unless it already has them. */
+export const approveSchedule = (tournamentId, scheduleData, { startDate, endDate } = {}) =>
+  api.call("TOURNAMENT_SCHEDULE_APPROVE", { body: { tournamentId, schedule: scheduleData, startDate, endDate } });
 
 export const getTournament = (id) => api.call("TOURNAMENT_GET", { routeParams: { id } });
 

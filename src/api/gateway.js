@@ -1,5 +1,6 @@
 import { bytesToUtf8, utf8ToBytes } from "@noble/ciphers/utils.js";
 
+import { getSession } from "../auth/session";
 import { base64UrlDecode, decryptResponse, encryptRequest } from "./gatewayCrypto";
 
 // The website's half of the secure gateway: builds the { requestHeader, requestBody } envelope,
@@ -65,6 +66,10 @@ const deviceId = (() => {
 })();
 
 /**
+ * The signed-in session's token is sealed into the payload as `session` — never put in the clear
+ * header, where anyone on the network could copy it. The header carries only the session's id, for
+ * the server's logs.
+ *
  * @param {string} serviceRequestId
  * @param {{ routeParams?: object, query?: object, body?: unknown }} payload
  * @returns {{ envelope: object, contentKey: Uint8Array, requestUUID: string }}
@@ -73,12 +78,13 @@ export function sealRequest(serviceRequestId, payload) {
   const { keyId, key } = serverPublicKey();
   const requestUUID = uuid();
   const timestamp = new Date().toISOString();
+  const session = getSession();
 
   const { token, contentKey } = encryptRequest({
     serverPublicKey: key,
     keyId,
     claims: { serviceRequestId, requestUUID, timestamp },
-    plaintext: utf8ToBytes(JSON.stringify(payload)),
+    plaintext: utf8ToBytes(JSON.stringify(session ? { ...payload, session: session.token } : payload)),
     randomBytes,
   });
 
@@ -89,7 +95,7 @@ export function sealRequest(serviceRequestId, payload) {
         requestUUID,
         timestamp,
         journeyId,
-        sessionId: null,
+        sessionId: session?.sessionId ?? null,
         channel: "WEB",
         appVersion: __APP_VERSION__,
         deviceId,

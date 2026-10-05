@@ -1,3 +1,4 @@
+import { clearSession } from "../auth/session";
 import { ApiError, apiError, unreachable, unreadableAnswer } from "./errors";
 import { openResponse, sealRequest } from "./gateway";
 import { SERVICES } from "./services";
@@ -64,7 +65,11 @@ async function call(serviceRequestId, { routeParams, query, body } = {}) {
   if (envelope === undefined) throw apiError(res.status, text);
 
   if (!res.ok || (isEnvelope(envelope) && !envelope.status.isSuccess)) {
-    throw apiError(res.status, JSON.stringify(envelope));
+    const error = apiError(res.status, JSON.stringify(envelope));
+    // Signed out on the server (signed out elsewhere, expired, blocked): back to the sign-in
+    // screen, which shows why.
+    if (res.status === 401) clearSession(error.message);
+    throw error;
   }
   return isEnvelope(envelope) ? envelope.data : envelope;
 }

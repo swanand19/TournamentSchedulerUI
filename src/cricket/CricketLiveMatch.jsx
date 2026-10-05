@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { font, cricketTheme as theme } from "../theme";
 import {
   getCricketMatch,
@@ -17,6 +17,7 @@ import CricketScorecard from "./CricketScorecard";
 import Bump from "../Bump";
 import Modal from "../Modal";
 import ErrorBanner from "../ErrorBanner";
+import ScoringBanner, { ScoringControls } from "../ScoringBanner";
 
 // The scoring console.
 //
@@ -475,24 +476,32 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
   const [showWicket, setShowWicket] = useState(false);
   const [showReduce, setShowReduce] = useState(false);
 
-  // The only fetch this screen makes: every scoring call answers with the state that replaces this.
+  const acting = useRef(false);
+
+  // Every scoring call answers with the state that replaces this. Besides that, the screen re-reads
+  // the match every 5 seconds while the tab is visible: another phone may be scoring it, or asking
+  // this one to hand scoring over.
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const load = async (first) => {
+      if (!first && (document.hidden || acting.current)) return;
       try {
         const data = await getCricketMatch(matchId);
-        if (!cancelled) setState(data);
+        if (!cancelled && !acting.current) setState(data);
       } catch (e) {
-        if (!cancelled) setError(e.message);
+        if (!cancelled && first) setError(e.message);
       }
-    })();
-    return () => { cancelled = true; };
+    };
+    load(true);
+    const timer = setInterval(() => load(false), 5000);
+    return () => { cancelled = true; clearInterval(timer); };
   }, [matchId]);
 
   /** Runs an engine call, keeps the returned state, and surfaces a refusal as it was worded. */
   const act = async (fn) => {
     setError("");
     setBusy(true);
+    acting.current = true;
     try {
       const next = await fn();
       if (next) setState(next);
@@ -502,6 +511,7 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
     } catch (e) {
       setError(e.message);
     } finally {
+      acting.current = false;
       setBusy(false);
     }
   };
@@ -534,6 +544,8 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
   const live = state.current;
   const actions = state.actions;
   const finished = state.status === "Completed" || state.status === "Abandoned";
+  // Someone else is scoring (or the tournament is closed): the console is for following, not scoring.
+  const locked = !finished && !!state.scoring && !state.scoring.canScore;
   // After a wicket, the batter still in — the one the new batter may or may not take strike from.
   const survivor = live?.striker ?? live?.nonStriker ?? null;
 
@@ -607,11 +619,12 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
       {state.dls && <DlsPanel dls={state.dls} chasing={live?.inningsNumber === 2} />}
 
       <ErrorBanner message={error} />
+      <ScoringBanner sport="cricket" matchId={matchId} scoring={state.scoring} onChange={(scoring) => setState((s) => ({ ...s, scoring }))} />
 
       {tab === "scorecard" ? (
         <CricketScorecard matchId={matchId} refreshKey={state.innings.reduce((n, i) => n + i.runs + i.wickets, 0)} />
       ) : (
-        <>
+        <ScoringControls locked={locked}>
           {/* --- Between innings ------------------------------------- */}
           {actions.canStartInnings && (
             <StartInningsForm
@@ -824,7 +837,7 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
               </button>
             )}
           </div>
-        </>
+        </ScoringControls>
       )}
 
       {showReduce && live && (

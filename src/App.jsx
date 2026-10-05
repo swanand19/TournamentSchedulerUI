@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { randomizeGroups, setManualGroups, generateSchedule, approveSchedule } from "./api/tournamentApi";
 import { getTeams } from "./api/teamsApi";
 import Home from "./Home";
+import Account from "./Account";
+import JoinTeam from "./JoinTeam";
+import TournamentPeople from "./TournamentPeople";
 import TeamManagement from "./TeamManagement";
-import { getTournamentSchedule, getScheduleHistory, activateSchedule, startTournament } from "./api/tournamentsApi";
+import { getTournamentSchedule, getScheduleHistory, activateSchedule, startTournament, getTournament, completeTournament } from "./api/tournamentsApi";
 import { getMatches } from "./api/matchesApi";
 import MatchList from "./MatchList";
 import MatchSetup from "./MatchSetup";
@@ -40,14 +43,32 @@ function toDisplayGroup(savedGroup) {
   };
 }
 
+/** "YYYY-MM-DD", `days` from today, in the browser's own time zone — a date input's value. */
+function isoDay(days) {
+  const d = new Date(Date.now() + days * 86400000);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
 export default function App() {
-  const [view, setView] = useState("home"); // home | tournament
+  const [view, setView] = useState("home"); // home | tournament | account
   const [tournamentId, setTournamentId] = useState(null);
   // Which sport the open tournament is played under. Everything up to and including the schedule
   // is identical for both; only the palette and the match screens differ.
   const [sport, setSport] = useState("Football");
   // Shown in the header, so every screen says which tournament it belongs to.
   const [tournamentName, setTournamentName] = useState("");
+  // The open tournament as the server sends it: status, dates, and `access` — what the signed-in
+  // person may do here (owner, scorer). Buttons show only from it.
+  const [tournamentInfo, setTournamentInfo] = useState(null);
+  const [prePeopleStage, setPrePeopleStage] = useState("setup");
+  const [completePromptDismissed, setCompletePromptDismissed] = useState(false);
+  const access = tournamentInfo?.access ?? {};
+  const closed = tournamentInfo?.status === "Completed" || tournamentInfo?.status === "Cancelled";
+  // The tournament's dates are chosen with its fixtures, on the schedule step: what's typed, or the
+  // dates it already has, or today and a week on.
+  const [dateDraft, setDateDraft] = useState({});
+  const scheduleStart = dateDraft.start ?? tournamentInfo?.startDate ?? isoDay(0);
+  const scheduleEnd = dateDraft.end ?? tournamentInfo?.endDate ?? isoDay(7);
 
   const [stage, setStage] = useState("setup"); // setup | groups | schedule | manageTeams | matches | matchSetup
   const [preManageTeamsStage, setPreManageTeamsStage] = useState("setup"); // where to return to after Manage Teams
@@ -145,6 +166,23 @@ export default function App() {
     setTournamentStarted(false);
     setActiveMatchId(null);
     setMatchesTab("matches");
+    setTournamentInfo(null);
+    setCompletePromptDismissed(false);
+    setDateDraft({});
+  };
+
+  /** Re-reads the tournament (status, dates, what I may do) — after anything that could change them. */
+  const refreshTournament = async (id = tournamentId) => {
+    if (!id) return null;
+    try {
+      const t = await getTournament(id);
+      setTournamentInfo(t);
+      setTournamentName(t.name);
+      return t;
+    } catch (e) {
+      setError(e.message);
+      return null;
+    }
   };
 
   const handleSelectTournament = async (id, hasSchedule, isStarted = false, tournamentSport = "Football", name = "") => {
@@ -156,7 +194,14 @@ export default function App() {
     setHadExistingSchedule(hasSchedule);
     setTournamentStarted(isStarted);
     setView("tournament");
-    
+
+    // Groups and the schedule are the owners' to build; a scorer waits for kick-off.
+    const info = await refreshTournament(id);
+    if (info && !info.access?.canEdit && !isStarted) {
+      setStage("waiting");
+      return;
+    }
+
     if (isStarted) {
       await loadMatches(id);
       setStage("matches");
@@ -185,6 +230,30 @@ export default function App() {
     }
   };
 
+  // Straight into the tournament just joined (its matches if started, otherwise "not started yet").
+  const openJoinedTournament = async (joined) => {
+    try {
+      const t = await getTournament(joined.tournamentId);
+      await handleSelectTournament(t.id, false, t.isStarted, t.sport, t.name);
+    } catch (e) {
+      setError(e.message);
+      setView("home");
+    }
+  };
+
+  // A player left their own team: if that was all they were here, the tournament is gone for them.
+  // Answers whether they can still see it.
+  const afterLeavingTeam = async () => {
+    try {
+      const t = await getTournament(tournamentId);
+      setTournamentInfo(t);
+      return true;
+    } catch {
+      goHome();
+      return false;
+    }
+  };
+
   const goHome = () => {
     setView("home");
     setTournamentId(null);
@@ -204,6 +273,21 @@ export default function App() {
   const closeManageTeams = () => {
     setStage(preManageTeamsStage || "setup");
     loadAvailableTeams(tournamentId);
+  };
+
+  const openPeople = () => {
+    setPrePeopleStage(stage);
+    setStage("people");
+  };
+
+  const markComplete = async () => {
+    if (!window.confirm(`Mark ${tournamentName} complete?\n\nNothing can be started or changed afterwards. This can't be undone.`)) return;
+    setError("");
+    try {
+      setTournamentInfo(await completeTournament(tournamentId));
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
   const toggleTeamSelection = (id) => {
@@ -339,9 +423,11 @@ export default function App() {
     setError("");
     setApproving(true);
     try {
-      const result = await approveSchedule(tournamentId, scheduleData);
+      const result = await approveSchedule(tournamentId, scheduleData, { startDate: scheduleStart, endDate: scheduleEnd });
       setApprovedId(result.savedScheduleId);
       setHadExistingSchedule(true);
+      setDateDraft({});
+      await refreshTournament();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -505,12 +591,21 @@ export default function App() {
   const closeLiveMatch = async () => {
     setLiveMatchId(null);
     await loadMatches();
+    await refreshTournament(); // the last match finishing is when "mark it complete?" appears
     setStatsRefreshKey((k) => k + 1);   // a finished match changes every board
     setStage("matches");
   };
 
   if (view === "home") {
-    return <Home onSelectTournament={handleSelectTournament} />;
+    return <Home onSelectTournament={handleSelectTournament} onOpenAccount={() => setView("account")} onJoinTeam={() => setView("join")} />;
+  }
+
+  if (view === "account") {
+    return <Account onBack={() => setView("home")} />;
+  }
+
+  if (view === "join") {
+    return <JoinTeam onBack={() => setView("home")} onJoined={openJoinedTournament} />;
   }
 
   return (
@@ -580,21 +675,52 @@ export default function App() {
               {tournamentName || "Tournament scheduler"}
             </h1>
           </div>
-          {!["manageTeams", "matchSetup"].includes(stage) && (
-            <button
-              onClick={openManageTeams}
-              style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.6rem 1.1rem", fontSize: 14, cursor: "pointer" }}
-            >
-              Manage teams
-            </button>
+          {!["manageTeams", "matchSetup", "people"].includes(stage) && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                onClick={openPeople}
+                style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.6rem 1.1rem", fontSize: 14, cursor: "pointer", minHeight: 44 }}
+              >
+                People & settings
+              </button>
+              {tournamentInfo && (
+                <button
+                  onClick={openManageTeams}
+                  style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.6rem 1.1rem", fontSize: 14, cursor: "pointer", minHeight: 44 }}
+                >
+                  {access.canEdit ? "Manage teams" : "Teams"}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </header>
 
       {stage === "manageTeams" ? (
         <div className="view-in">
-          <TeamManagement tournamentId={tournamentId} onBack={closeManageTeams} sport={sport} />
+          <TeamManagement tournamentId={tournamentId} onBack={closeManageTeams} sport={sport} canEdit={!!access.canEdit} onLeftTeam={afterLeavingTeam} />
         </div>
+      ) : stage === "people" && tournamentInfo ? (
+        <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>
+          <TournamentPeople
+            tournament={tournamentInfo}
+            sport={sport}
+            onBack={() => setStage(prePeopleStage || "setup")}
+            onChanged={(t) => { setTournamentInfo(t); setTournamentName(t.name); }}
+            onLeft={goHome}
+          />
+        </main>
+      ) : stage === "waiting" ? (
+        <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>
+          <ErrorBanner message={error} />
+          <div style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1.5rem" }}>
+            <h2 style={{ fontFamily: font.display, fontSize: 22, margin: "0 0 8px" }}>NOT STARTED YET</h2>
+            <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
+              The tournament's owners are still setting up its teams and fixtures. Once they start it, its
+              matches appear here{access.canScore ? " and you can score them" : " to follow"}.
+            </p>
+          </div>
+        </main>
       ) : !tournamentId ? (
         <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem 2rem", textAlign: "center" }}>
           <p style={{ color: "rgba(247,245,239,0.7)", marginBottom: 16 }}>
@@ -1092,6 +1218,28 @@ export default function App() {
                   </button>
                 </>
               ) : (
+                <>
+                <div style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1rem 1.2rem", marginBottom: 12 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>When is it played?</div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {[["schedule-start", "Starts", scheduleStart, "start"], ["schedule-end", "Ends", scheduleEnd, "end"]].map(([id, label, value, key]) => (
+                      <label key={id} htmlFor={id} style={{ flex: "1 1 150px", fontSize: 13, fontWeight: 600, color: theme.muted }}>
+                        {label}
+                        <input
+                          id={id}
+                          type="date"
+                          value={value}
+                          onChange={(e) => setDateDraft((d) => ({ ...d, [key]: e.target.value }))}
+                          disabled={approving}
+                          style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 4, padding: "0.55rem 0.7rem", borderRadius: 8, border: "1.5px solid #d8d4c8", fontSize: 14 }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 12, color: theme.muted, margin: "8px 0 0" }}>
+                    It completes by itself the day after it ends, if you haven't marked it complete.
+                  </p>
+                </div>
                 <button
                   onClick={handleApprove}
                   disabled={approving}
@@ -1111,12 +1259,32 @@ export default function App() {
                 >
                   {approving ? "SAVING…" : "✓ APPROVE SCHEDULE"}
                 </button>
+                </>
               )}
             </div>
           )}
 
           {stage === "matches" && (
             <>
+              {closed && (
+                <div style={{ background: "rgba(247,245,239,0.08)", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 10, padding: "0.8rem 1rem", marginBottom: 16, fontSize: 14 }}>
+                  {tournamentInfo.status === "Completed"
+                    ? "This tournament is completed. Its results and stats stay here; nothing more can be played or changed."
+                    : "This tournament was cancelled: it never started and its dates have passed."}
+                </div>
+              )}
+              {/* Asked once, when the last match finishes. */}
+              {access.allMatchesPlayed && access.canComplete && !completePromptDismissed && (
+                <div className="drop-in" role="status" style={{ background: "rgba(242,169,59,0.15)", border: "1px solid #F2A93B", borderRadius: 10, padding: "0.8rem 1rem", marginBottom: 16, fontSize: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ flex: "1 1 220px" }}>All matches played. Mark the tournament complete?</span>
+                  <button onClick={markComplete} style={{ minHeight: 44, background: theme.accent, color: theme.accentInk, border: "none", borderRadius: 8, padding: "0.5rem 1rem", fontWeight: 700, cursor: "pointer" }}>
+                    Mark complete
+                  </button>
+                  <button onClick={() => setCompletePromptDismissed(true)} style={{ minHeight: 44, background: "transparent", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.35)", borderRadius: 8, padding: "0.5rem 1rem", cursor: "pointer" }}>
+                    Not yet
+                  </button>
+                </div>
+              )}
               {/* Matches and Stats live side by side on the tournament's landing page. */}
               {tournamentStarted && (
                 <div style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: "1px solid rgba(247,245,239,0.15)" }}>
