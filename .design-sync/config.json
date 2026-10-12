@@ -1,0 +1,52 @@
+{
+  "projectId": "42e2e60e-5eeb-4c95-9521-97bb968c026f",
+  "shape": "package",
+  "pkg": "tournament-scheduler-ui",
+  "globalName": "TournamentScheduler",
+  "entry": "./.design-sync/entry.jsx",
+  "docsDir": ".design-sync/docs",
+  "componentSrcMap": {
+    "Bump": "src/Bump.jsx",
+    "ErrorBanner": "src/ErrorBanner.jsx",
+    "Modal": "src/Modal.jsx",
+    "ScoringControls": "src/ScoringControls.jsx",
+    "BallIcon": "src/icons.jsx",
+    "CardIcon": "src/icons.jsx",
+    "SwapIcon": "src/icons.jsx",
+    "PlayIcon": "src/icons.jsx",
+    "PauseIcon": "src/icons.jsx",
+    "StopIcon": "src/icons.jsx",
+    "TimerIcon": "src/icons.jsx",
+    "FlagIcon": "src/icons.jsx",
+    "TargetIcon": "src/icons.jsx",
+    "MissIcon": "src/icons.jsx",
+    "TrophyIcon": "src/icons.jsx",
+    "BanIcon": "src/icons.jsx"
+  },
+  "dtsPropsFor": {
+    "Bump": "  /** The number (or short text) to show. A change replays the drop-in; the first render never animates. */\n  value: number | string;\n  /** Optional custom content in place of `value` (still keyed on `value`). */\n  children?: React.ReactNode;\n  style?: React.CSSProperties;",
+    "ErrorBanner": "  /** The message to show, verbatim. Nothing renders when it is empty. Network failures (\"Failed to fetch\") are reworded into what to do. */\n  message?: string | null;\n  style?: React.CSSProperties;",
+    "Modal": "  /** id of the heading inside the dialog, for aria-labelledby. */\n  labelledBy: string;\n  /** Called on Escape and on a backdrop click. */\n  onClose: () => void;\n  /** Styles for the panel: the app passes a cream card, e.g. { background: '#F7F5EF', color: '#1B1B1B', borderRadius: 14, padding: '1.5rem' }. */\n  panelStyle?: React.CSSProperties;\n  children?: React.ReactNode;",
+    "ScoringControls": "  /** True while someone else holds the scorer lock: every control inside is disabled and dimmed. */\n  locked?: boolean;\n  children?: React.ReactNode;",
+    "BallIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;",
+    "CardIcon": "  /** The card's fill: yellow '#F4C430' or red '#e24b4a'. Required — the card keeps its colour whatever the text colour. */\n  color: string;\n  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  style?: React.CSSProperties;",
+    "SwapIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;",
+    "PlayIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;",
+    "PauseIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;",
+    "StopIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;",
+    "TimerIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;",
+    "FlagIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;",
+    "TargetIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;",
+    "MissIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;",
+    "TrophyIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;",
+    "BanIcon": "  /** Pixel size (square). Default 16. */\n  size?: number;\n  /** Accessible name; without it the icon is decorative (aria-hidden). */\n  title?: string;\n  /** Colour comes from `color` (currentColor). */\n  style?: React.CSSProperties;"
+  },
+  "overrides": {
+    "Modal": {
+      "cardMode": "single",
+      "viewport": "560x640",
+      "primaryStory": "RecordGoal"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

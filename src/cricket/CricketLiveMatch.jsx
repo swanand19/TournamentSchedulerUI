@@ -17,7 +17,8 @@ import CricketScorecard from "./CricketScorecard";
 import Bump from "../Bump";
 import Modal from "../Modal";
 import ErrorBanner from "../ErrorBanner";
-import ScoringBanner, { ScoringControls } from "../ScoringBanner";
+import ScoringBanner from "../ScoringBanner";
+import { ScoringControls } from "../ScoringControls";
 
 // The scoring console.
 //

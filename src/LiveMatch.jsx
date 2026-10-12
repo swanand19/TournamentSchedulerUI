@@ -8,7 +8,8 @@ import {
 import PenaltyShootout from "./PenaltyShootout";
 import Modal from "./Modal";
 import ErrorBanner from "./ErrorBanner";
-import ScoringBanner, { ScoringControls } from "./ScoringBanner";
+import ScoringBanner from "./ScoringBanner";
+import { ScoringControls } from "./ScoringControls";
 import {
   BallIcon, CardIcon, SwapIcon, PlayIcon, PauseIcon, StopIcon, TimerIcon, FlagIcon, TargetIcon,
   MissIcon, BanIcon,
