@@ -16,10 +16,14 @@ export const updateTournament = (id, { name, startDate, endDate }) =>
 /** Owners only; refused while a match is being played. */
 export const completeTournament = (id) => api.call("TOURNAMENT_COMPLETE", { routeParams: { id }, body: {} });
 
-// Owners and scorers. `role` is "Owner" or "Scorer"; adding someone already in changes their role.
+// Owners and scorers. `role` is "Owner" or "Scorer"; adding someone already in changes their role,
+// and adding an email or number with no account invites them. Each answers { members, invites,
+// notice } (invites for owners only; notice says what just happened).
 export const getMembers = (id) => api.call("TOURNAMENT_MEMBER_LIST", { routeParams: { id } });
-export const addMember = (id, email, role) => api.call("TOURNAMENT_MEMBER_ADD", { routeParams: { id }, body: { email, role } });
+export const addMember = (id, contact, role) => api.call("TOURNAMENT_MEMBER_ADD", { routeParams: { id }, body: { contact, role } });
 export const removeMember = (id, userId) => api.call("TOURNAMENT_MEMBER_REMOVE", { routeParams: { id, userId } });
+export const resendInvite = (id, inviteId) => api.call("TOURNAMENT_INVITE_RESEND", { routeParams: { id, inviteId }, body: {} });
+export const cancelInvite = (id, inviteId) => api.call("TOURNAMENT_INVITE_CANCEL", { routeParams: { id, inviteId } });
 export const leaveTournament = (id) => api.call("TOURNAMENT_LEAVE", { routeParams: { id }, body: {} });
 
 /** The active schedule, or null when none has been approved yet (the API answers 404). */

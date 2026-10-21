@@ -3,6 +3,8 @@ import { font, cricketTheme as theme } from "../theme";
 import { getCricketStats } from "../api/tournamentsApi";
 import ErrorBanner from "../ErrorBanner";
 import { TrophyIcon } from "../icons";
+import PlayerName from "../PlayerName";
+import { OpenPlayerContext } from "../playerContext";
 
 // The cricket stats page: points table with net run rate, batting, bowling and fielding
 // leaderboards, the fantasy-points MVP race, and the tournament's records.
@@ -122,7 +124,7 @@ function Board({ board }) {
               <tr key={`${r.playerId}-${i}`} style={{ borderBottom: "1px solid #EDEAE0" }}>
                 <RankCell rank={r.rank} />
                 <td style={{ ...cell, textAlign: "left", whiteSpace: "normal", minWidth: 140 }}>
-                  <span style={{ fontWeight: 600 }}>{r.playerName}</span>
+                  <span style={{ fontWeight: 600 }}><PlayerName playerId={r.playerId}>{r.playerName}</PlayerName></span>
                   <span style={{ display: "block", fontSize: 12, color: theme.muted }}>
                     {r.teamName}{r.note ? ` · ${r.note}` : ""}
                   </span>
@@ -309,7 +311,7 @@ function Mvp({ stats }) {
             <TrophyIcon size={22} style={{ color: theme.warnInk }} />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 12, color: theme.muted }}>M{p.matchNumber} · {p.fixture}</div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{p.playerName} <span style={{ fontWeight: 400, color: theme.muted }}>· {p.teamName}</span></div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}><PlayerName playerId={p.playerId}>{p.playerName}</PlayerName> <span style={{ fontWeight: 400, color: theme.muted }}>· {p.teamName}</span></div>
               <div className="num" style={{ fontSize: 13 }}>{p.summary || "—"} · <strong>{p.points} pts</strong></div>
             </div>
           </div>
@@ -350,7 +352,16 @@ function Notes({ notes }) {
   );
 }
 
-export default function CricketStats({ tournamentId, refreshKey }) {
+/** Player names on this page open their profile (`onOpenPlayer(playerId)`). */
+export default function CricketStats({ onOpenPlayer, ...props }) {
+  return (
+    <OpenPlayerContext.Provider value={onOpenPlayer ?? null}>
+      <CricketStatsBody {...props} />
+    </OpenPlayerContext.Provider>
+  );
+}
+
+function CricketStatsBody({ tournamentId, refreshKey }) {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("table");

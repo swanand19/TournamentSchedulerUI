@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  addMember, completeTournament, getMembers, leaveTournament, removeMember, updateTournament,
+  addMember, cancelInvite, completeTournament, getMembers, leaveTournament, removeMember, resendInvite, updateTournament,
 } from "./api/tournamentsApi";
 import ErrorBanner from "./ErrorBanner";
 import { font, themeFor } from "./theme";
+import { formatPhone, useAuthOptions } from "./useAuthOptions";
 
-// A tournament's people and settings: its name and dates, completing it, its owners and scorers,
-// and leaving. What each person may do comes from the tournament's `access` block — the server
-// decides; this screen only shows the buttons it allows.
+// A tournament's people and settings: its name and dates, completing it, its owners and scorers
+// (added by email or mobile number; someone with no account yet gets an invite, listed here for
+// owners to send again or cancel), and leaving. What each person may do comes from the
+// tournament's `access` block — the server decides; this screen only shows the buttons it allows.
 
 const card = (theme) => ({ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1.2rem", marginBottom: 16 });
 const heading = { fontFamily: font.display, fontSize: 18, margin: "0 0 10px", letterSpacing: "0.02em" };
@@ -16,6 +18,11 @@ const button = (bg, fg, extra = {}) => ({
   minHeight: 44, background: bg, color: fg, border: "none", borderRadius: 8, padding: "0.55rem 1.1rem",
   fontWeight: 700, fontSize: 14, cursor: "pointer", ...extra,
 });
+
+/** "16 Oct 2026" from a UTC timestamp the API may send without its Z. */
+const day = (value) =>
+  new Date(/Z$|[+-]\d\d:\d\d$/.test(value) ? value : `${value}Z`).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+const shown = (invite) => (invite.channel === "Sms" ? formatPhone(invite.contact) : invite.contact);
 
 const STATUS_TEXT = {
   Upcoming: "Not started yet.",
@@ -27,7 +34,9 @@ const STATUS_TEXT = {
 export default function TournamentPeople({ tournament, sport, onBack, onChanged, onLeft }) {
   const theme = themeFor(sport);
   const access = tournament.access ?? {};
-  const [members, setMembers] = useState(null);
+  const [people, setPeople] = useState(null); // { members, invites, notice }
+  const [notice, setNotice] = useState("");
+  const options = useAuthOptions();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const inFlight = useRef(false);
@@ -35,12 +44,12 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
   const [name, setName] = useState(tournament.name);
   const [startDate, setStartDate] = useState(tournament.startDate ?? "");
   const [endDate, setEndDate] = useState(tournament.endDate ?? "");
-  const [email, setEmail] = useState("");
+  const [contact, setContact] = useState("");
   const [role, setRole] = useState("Scorer");
 
   useEffect(() => {
     let live = true;
-    getMembers(tournament.id).then((m) => live && setMembers(m)).catch((e) => live && setError(e.message));
+    getMembers(tournament.id).then((p) => live && setPeople(p)).catch((e) => live && setError(e.message));
     return () => { live = false; };
   }, [tournament.id]);
 
@@ -69,17 +78,33 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
     run("complete", async () => onChanged(await completeTournament(tournament.id)));
   };
 
+  const show = (p) => {
+    setPeople(p);
+    setNotice(p.notice ?? "");
+  };
+
   const add = (e) => {
     e.preventDefault();
+    setNotice("");
     run("add", async () => {
-      setMembers(await addMember(tournament.id, email.trim(), role));
-      setEmail("");
+      show(await addMember(tournament.id, contact.trim(), role));
+      setContact("");
     });
   };
 
   const remove = (m) => {
     if (!window.confirm(`Remove ${m.name} from this tournament?`)) return;
-    run(`remove-${m.userId}`, async () => setMembers(await removeMember(tournament.id, m.userId)));
+    run(`remove-${m.userId}`, async () => show(await removeMember(tournament.id, m.userId)));
+  };
+
+  const resend = (i) => {
+    setNotice("");
+    run(`resend-${i.inviteId}`, async () => show(await resendInvite(tournament.id, i.inviteId)));
+  };
+
+  const cancel = (i) => {
+    if (!window.confirm(`Cancel the invite to ${shown(i)}? Signing up with it won't add them any more.`)) return;
+    run(`cancel-${i.inviteId}`, async () => show(await cancelInvite(tournament.id, i.inviteId)));
   };
 
   const leave = () => {
@@ -154,16 +179,18 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
           Owners run the tournament. Scorers can only set up and score matches.
         </p>
 
-        {!members && !error && <p style={{ fontSize: 14, color: theme.muted }}>Loading…</p>}
-        {members && (
+        {!people && !error && <p style={{ fontSize: 14, color: theme.muted }}>Loading…</p>}
+        {people && (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {members.map((m) => (
+            {people.members.map((m) => (
               <li key={m.userId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.6rem 0", borderTop: "1px solid #ece8dc" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 15, overflowWrap: "anywhere" }}>
                     {m.name}{m.isMe && <span style={{ color: theme.muted, fontWeight: 400 }}> (you)</span>}
                   </div>
-                  {m.email && <div style={{ fontSize: 12, color: theme.muted, overflowWrap: "anywhere" }}>{m.email}</div>}
+                  {(m.email || m.phone) && (
+                    <div style={{ fontSize: 12, color: theme.muted, overflowWrap: "anywhere" }}>{[m.email, formatPhone(m.phone)].filter(Boolean).join(" · ")}</div>
+                  )}
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, background: m.role === "Scorer" ? "#EDEAE0" : theme.tint, whiteSpace: "nowrap" }}>
                   {m.role === "Creator" ? "Creator · Owner" : m.role}
@@ -178,11 +205,50 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
           </ul>
         )}
 
+        {people?.invites.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: theme.muted, margin: "0 0 4px" }}>Invited, no account yet</h3>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {people.invites.map((i) => (
+                <li key={i.inviteId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.6rem 0", borderTop: "1px solid #ece8dc", flexWrap: "wrap" }}>
+                  <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, overflowWrap: "anywhere" }}>{shown(i)}</div>
+                    <div style={{ fontSize: 12, color: i.isExpired ? theme.warnInk : theme.muted }}>
+                      {i.role} · {i.isExpired ? `expired ${day(i.expiresAt)}` : `sent ${day(i.sentAt)}, works until ${day(i.expiresAt)}`}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => cancel(i)} disabled={!!busy} style={button("transparent", theme.muted, { border: "1.5px solid #d8d4c8", padding: "0.4rem 0.8rem" })}>
+                      Cancel
+                    </button>
+                    <button onClick={() => resend(i)} disabled={!!busy} style={button("transparent", theme.ink, { border: "1.5px solid #d8d4c8", padding: "0.4rem 0.8rem" })}>
+                      {busy === `resend-${i.inviteId}` ? "Sending…" : "Send again"}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {notice && (
+          <p role="status" style={{ fontSize: 14, lineHeight: 1.45, margin: "12px 0 0", padding: "0.6rem 0.8rem", borderRadius: 8, background: theme.tint }}>
+            {notice}
+          </p>
+        )}
+
         {access.canManageMembers && (
           <form onSubmit={add} style={{ borderTop: "1px solid #e4e0d4", marginTop: 12, paddingTop: 14, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
             <label style={{ flex: "2 1 220px", fontSize: 13, fontWeight: 600, color: theme.muted }}>
-              Add someone by the email they signed in with
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="friend@example.com" disabled={!!busy} style={{ ...input, marginTop: 4 }} />
+              {options.phone ? "Add someone by email or mobile number" : "Add someone by email"}
+              <input
+                type={options.phone ? "text" : "email"}
+                value={contact}
+                onChange={(e) => setContact(e.target.value)}
+                placeholder={options.phone ? "friend@example.com or 98765 43210" : "friend@example.com"}
+                disabled={!!busy}
+                style={{ ...input, marginTop: 4 }}
+              />
             </label>
             <label style={{ flex: "1 1 120px", fontSize: 13, fontWeight: 600, color: theme.muted }}>
               As
@@ -191,9 +257,12 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
                 <option value="Owner">Owner</option>
               </select>
             </label>
-            <button type="submit" disabled={!!busy || !email.trim()} style={button(theme.deep, theme.cream)}>
+            <button type="submit" disabled={!!busy || !contact.trim()} style={button(theme.deep, theme.cream)}>
               {busy === "add" ? "Adding…" : "Add"}
             </button>
+            <p style={{ flex: "1 1 100%", fontSize: 12, color: theme.muted, margin: 0 }}>
+              No account yet? We'll send them an invite, and they join as soon as they sign up.
+            </p>
           </form>
         )}
       </div>

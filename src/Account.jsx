@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { deleteAccount, getAccount, previewAccountDeletion, signOut, signOutEverywhere, updateAccount } from "./api/accountApi";
+import {
+  deleteAccount,
+  getAccount,
+  previewAccountDeletion,
+  removeContact,
+  sendContactCode,
+  signOut,
+  signOutEverywhere,
+  updateAccount,
+  verifyContact,
+} from "./api/accountApi";
 import { clearSession, updateSessionUser } from "./auth/session";
 import ErrorBanner from "./ErrorBanner";
 import { font, footballTheme as theme } from "./theme";
+import { formatPhone, useAuthOptions } from "./useAuthOptions";
 import {
   BATTING_STYLES,
   BOWLING_ARMS,
@@ -14,8 +25,9 @@ import {
 } from "./cricket/cricketLabels";
 
 // The signed-in person's account: their name and cricket profile (both copied to every team place
-// linked to them), email, signing out — of this browser, or of every device at once (for a lost
-// phone) — and deleting the account, confirmed with a code emailed to them.
+// linked to them), the email and mobile number they sign in with, signing out — of this browser, or
+// of every device at once (for a lost phone) — and deleting the account, confirmed with a code sent
+// to them.
 
 const button = {
   minHeight: 44,
@@ -33,7 +45,7 @@ const label = { display: "block", fontSize: 14, fontWeight: 600, color: theme.mu
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-export default function Account({ onBack }) {
+export default function Account({ onBack, backLabel = "Your tournaments" }) {
   const [account, setAccount] = useState(null);
   const [name, setName] = useState("");
   const [cricket, setCricket] = useState(cricketDraftFrom(null));
@@ -133,7 +145,7 @@ export default function Account({ onBack }) {
       <header style={{ padding: "2.5rem clamp(1rem, 4vw, 2rem) 2rem", borderBottom: `3px solid ${theme.borderOnDark}` }}>
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
           <button onClick={onBack} style={{ background: "none", border: "none", color: theme.onDarkMuted, cursor: "pointer", fontSize: 14, padding: 0, minHeight: 44 }}>
-            ← Your tournaments
+            ← {backLabel}
           </button>
           <h1 style={{ fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 3rem)", margin: "0.2rem 0 0", lineHeight: 1 }}>ACCOUNT</h1>
         </div>
@@ -209,12 +221,12 @@ export default function Account({ onBack }) {
               </div>
 
               <dl style={{ margin: "1.2rem 0 0", fontSize: 14, display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px" }}>
-                <dt style={{ color: theme.muted }}>Email</dt>
-                <dd style={{ margin: 0, overflowWrap: "anywhere" }}>{account.email}</dd>
                 <dt style={{ color: theme.muted }}>Member since</dt>
                 <dd style={{ margin: 0 }}>{new Date(account.memberSince.endsWith("Z") ? account.memberSince : `${account.memberSince}Z`).toLocaleDateString()}</dd>
               </dl>
             </form>
+
+            <SignInMethods account={account} onSaved={show} />
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 32 }}>
               <button onClick={leave} disabled={!!busy} style={{ ...button, background: theme.cream, color: theme.ink }}>
@@ -249,7 +261,7 @@ export default function Account({ onBack }) {
                   {deletion.squadPlaces > 0 && (
                     <li>unlinks you from {plural(deletion.squadPlaces, "team", "teams")} (your name stays on past scorecards)</li>
                   )}
-                  <li>removes your name, email and cricket profile, and signs you out everywhere</li>
+                  <li>removes your name, email, mobile number and cricket profile, and signs you out everywhere</li>
                 </ul>
                 <label htmlFor="delete-code" style={label}>
                   Code sent to {deletion.codeSentTo}
@@ -278,5 +290,164 @@ export default function Account({ onBack }) {
         )}
       </main>
     </div>
+  );
+}
+
+/**
+ * How they sign in: an email, a mobile number or both. Adding or changing one sends a code to the
+ * new address, and only the code saves it. Remove is offered only where the server allows it (an
+ * account keeps one way in; an admin keeps their email). The number row appears once the server
+ * can text codes, or when the account already has one.
+ */
+function SignInMethods({ account, onSaved }) {
+  const options = useAuthOptions();
+  const [editing, setEditing] = useState(null); // "Email" | "Phone"
+  const [value, setValue] = useState("");
+  const [sentTo, setSentTo] = useState(null);
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const inFlight = useRef(false);
+
+  const run = async (action) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await action();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  };
+
+  const open = (kind) => {
+    setEditing(kind);
+    setValue("");
+    setSentTo(null);
+    setCode("");
+    setError("");
+  };
+
+  const saved = (a) => {
+    onSaved(a);
+    updateSessionUser({ email: a.email, phone: a.phone });
+    setEditing(null);
+  };
+
+  const send = (e) => {
+    e.preventDefault();
+    run(async () => {
+      const sent = await sendContactCode(value.trim());
+      setSentTo(sent.sentTo);
+      setCode("");
+    });
+  };
+
+  const confirmCode = (e) => {
+    e.preventDefault();
+    run(async () => saved(await verifyContact(sentTo, code)));
+  };
+
+  const remove = (kind, shown) => {
+    if (!window.confirm(`Remove ${shown}? You won't be able to sign in with it any more.`)) return;
+    run(async () => saved(await removeContact(kind)));
+  };
+
+  const rows = [
+    { kind: "Email", label: "Email", value: account.email, canRemove: account.canRemoveEmail },
+    ...(options.phone || account.phone
+      ? [{ kind: "Phone", label: "Mobile number", value: account.phone ? formatPhone(account.phone) : null, canRemove: account.canRemovePhone }]
+      : []),
+  ];
+  const small = { ...button, minHeight: 36, padding: "0.4rem 0.9rem", fontSize: 13 };
+
+  return (
+    <section style={card} aria-labelledby="signin-methods">
+      <h2 id="signin-methods" style={{ ...label, fontSize: 15, color: theme.ink, margin: "0 0 2px" }}>How you sign in</h2>
+      <p style={{ fontSize: 12, color: theme.muted, margin: "0 0 10px" }}>
+        {rows.length > 1 ? "A code goes to either one. Only you see them." : "Your sign-in codes go here. Only you see it."}
+      </p>
+      {!editing && <ErrorBanner message={error} />}
+
+      {rows.map((row) => (
+        <div key={row.kind} style={{ borderTop: "1px solid #e4dfd2", padding: "10px 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: theme.muted, fontWeight: 600 }}>{row.label}</div>
+              <div style={{ fontSize: 14, overflowWrap: "anywhere", color: row.value ? theme.ink : theme.muted }}>{row.value ?? "Not added"}</div>
+            </div>
+            {editing !== row.kind && (
+              <div style={{ display: "flex", gap: 8 }}>
+                {row.canRemove && (
+                  <button type="button" onClick={() => remove(row.kind, row.value)} disabled={busy} style={{ ...small, background: "transparent", color: theme.muted, border: "1.5px solid #d8d4c8" }}>
+                    Remove
+                  </button>
+                )}
+                <button type="button" onClick={() => open(row.kind)} disabled={busy} style={{ ...small, background: theme.ink, color: theme.cream }}>
+                  {row.value ? "Change" : "Add"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {editing === row.kind && (
+            <form onSubmit={sentTo ? confirmCode : send} style={{ marginTop: 10 }}>
+              <ErrorBanner message={error} />
+              <label htmlFor={`contact-${row.kind}`} style={{ ...label, fontSize: 13 }}>
+                {sentTo ? `Code sent to ${row.kind === "Email" ? sentTo : formatPhone(sentTo)}` : row.kind === "Email" ? "New email" : "New mobile number"}
+              </label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {sentTo ? (
+                  <input
+                    id={`contact-${row.kind}`}
+                    key="code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="6-digit code"
+                    autoFocus
+                    disabled={busy}
+                    style={{ ...field, flex: "1 1 140px", letterSpacing: "0.2em" }}
+                  />
+                ) : (
+                  <input
+                    id={`contact-${row.kind}`}
+                    key="value"
+                    type={row.kind === "Email" ? "email" : "tel"}
+                    autoComplete={row.kind === "Email" ? "email" : "tel"}
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    placeholder={row.kind === "Email" ? "you@example.com" : "98765 43210"}
+                    autoFocus
+                    disabled={busy}
+                    style={{ ...field, flex: "1 1 200px" }}
+                  />
+                )}
+                <button
+                  type="submit"
+                  disabled={busy || (sentTo ? code.length !== 6 : !value.trim())}
+                  style={{ ...button, background: theme.accent, color: theme.accentInk, opacity: (sentTo ? code.length === 6 : value.trim()) ? 1 : 0.5 }}
+                >
+                  {busy ? "Working…" : sentTo ? (row.value ? "Change" : "Add") : "Send code"}
+                </button>
+              </div>
+              {!sentTo && (
+                <p style={{ fontSize: 12, color: theme.muted, margin: "6px 2px 0" }}>
+                  {row.kind === "Email" ? "We'll email it a code." : `We'll text it a code. Without a country code it's taken as ${options.defaultCountryCode}.`}
+                </p>
+              )}
+              <button type="button" onClick={() => setEditing(null)} disabled={busy} style={{ ...button, background: "transparent", color: theme.muted, padding: "0.4rem 0", minHeight: 36 }}>
+                Cancel
+              </button>
+            </form>
+          )}
+        </div>
+      ))}
+    </section>
   );
 }

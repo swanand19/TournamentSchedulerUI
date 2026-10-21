@@ -14,6 +14,7 @@ import {
   BallIcon, CardIcon, SwapIcon, PlayIcon, PauseIcon, StopIcon, TimerIcon, FlagIcon, TargetIcon,
   MissIcon, BanIcon,
 } from "./icons";
+import { formatStopwatch, parseUtc, periodMinutes, priorPeriodsMinutes } from "./footballClock";
 
 const YELLOW_CARD = "#F4C430";
 
@@ -79,36 +80,12 @@ const pickRow = {
 // Secondary text on the pitch: 5.9:1 (the 0.5–0.55 alphas it replaces were 3.8:1).
 const ON_DARK_SOFT = "rgba(247,245,239,0.7)";
 
-function parseUtc(dateString) {
-  if (!dateString) return null;
-  const hasTz = /Z$|[+-]\d{2}:\d{2}$/.test(dateString);
-  return new Date(hasTz ? dateString : dateString + "Z");
-}
-
-function formatStopwatch(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 function getHalfLabel(currentHalf) {
   if (currentHalf <= 2) return `HALF ${currentHalf}`;
   return `EXTRA TIME ${currentHalf - 2}`; // periods 3,4 → ET1, ET2
 }
 
-// Regulation length of a given period — extra-time halves are usually shorter than regulation ones.
-function periodMinutes(match, period) {
-  if (period <= 2) return match.minutesPerHalf || 0;
-  return match.extraTimeMinutesPerHalf || match.minutesPerHalf || 0;
-}
-
-function priorPeriodsMinutes(match) {
-  let total = 0;
-  for (let p = 1; p < match.currentHalf; p++) total += periodMinutes(match, p);
-  return total;
-}
-
-export default function LiveMatch({ matchId, onBack, onCompleted }) {
+export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
 
   const [match, setMatch] = useState(null);
   const [events, setEvents] = useState([]);
@@ -489,7 +466,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted }) {
       </button>
 
       <ErrorBanner message={error} />
-      <ScoringBanner sport="football" matchId={matchId} scoring={match.scoring} onChange={(scoring) => setMatch((m) => ({ ...m, scoring }))} />
+      <ScoringBanner sport="football" matchId={matchId} scoring={match.scoring} onChange={(scoring) => setMatch((m) => ({ ...m, scoring }))} onWatch={onWatch} />
 
       {timeIsUp && (
         <div className="drop-in" style={{ background: "rgba(242,169,59,0.15)", border: "1px solid #F2A93B", color: "#F7F5EF", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>

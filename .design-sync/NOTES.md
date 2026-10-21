@@ -45,3 +45,6 @@ Project: https://claude.ai/design/p/42e2e60e-5eeb-4c95-9521-97bb968c026f (first 
   designs render in fallbacks offline.
 - The server messages in the ErrorBanner previews are real (`FootballMatchService`, `TournamentAccessService`);
   if those sentences change, the previews only drift cosmetically.
+- 2026-10-19 re-sync: the design agent's design-system check flagged `--ease-out` / `--ease-in-out` in
+  `_ds_bundle.css` for having no kind; `src/styles.css` now marks both `/* @kind other */`. Keep the
+  marker on any new non-colour, non-size custom property added to `:root`.

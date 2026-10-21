@@ -7,6 +7,7 @@ import {
   undoBall,
   setBatter,
   setBowler,
+  replacePlayer,
   endInnings,
   reduceOvers,
   enforceFollowOn,
@@ -152,6 +153,75 @@ function ReduceOversDialog({ live, busy, isDls, onCancel, onConfirm }) {
       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
         <button onClick={() => onConfirm(overs)} disabled={busy || !valid} style={button(theme.deep, theme.cream)}>
           Reduce to {overs} over{overs === 1 ? "" : "s"}
+        </button>
+        <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid #ccc" }}>
+          Cancel
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * A player picked by mistake: who was recorded, then who it really was. A batter's whole stay in
+ * this innings moves across; for the bowler, only this over. The engine says who may be chosen.
+ */
+function ReplacePlayerDialog({ actions, busy, onCancel, onConfirm }) {
+  const wrongOnes = [
+    ...actions.replaceableBatters.map((p) => ({ ...p, bowler: false })),
+    ...(actions.replaceableBowler ? [{ ...actions.replaceableBowler, bowler: true }] : []),
+  ];
+  const [wrongId, setWrongId] = useState(wrongOnes.length === 1 ? String(wrongOnes[0].playerId) : "");
+  const [rightId, setRightId] = useState("");
+  const wrong = wrongOnes.find((p) => String(p.playerId) === wrongId);
+  const choices = !wrong ? [] : wrong.bowler ? actions.bowlerReplacements : actions.batterReplacements;
+  const right = choices.find((p) => String(p.playerId) === rightId);
+
+  return (
+    <Modal labelledBy="replace-title" onClose={onCancel} panelStyle={{ ...lightPanel, marginBottom: 0 }}>
+      <h4 id="replace-title" style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 6px" }}>CORRECT A PLAYER</h4>
+      <p style={{ fontSize: 14, color: theme.muted, margin: "0 0 12px", lineHeight: 1.5 }}>
+        Picked the wrong name? Nothing that happened changes — only who it's credited to.
+      </p>
+      <label style={{ fontSize: 13, color: theme.muted, display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
+        Recorded by mistake
+        <select
+          value={wrongId}
+          onChange={(e) => {
+            setWrongId(e.target.value);
+            setRightId("");
+          }}
+          style={{ ...select, minWidth: 0 }}
+        >
+          <option value="">Choose…</option>
+          {wrongOnes.map((p) => (
+            <option key={p.playerId} value={p.playerId}>
+              {p.playerName} ({p.bowler ? "bowling this over" : "batting"})
+            </option>
+          ))}
+        </select>
+      </label>
+      {wrong && (
+        <>
+          <label style={{ fontSize: 13, color: theme.muted, display: "flex", flexDirection: "column", gap: 4 }}>
+            It was really
+            <select value={rightId} onChange={(e) => setRightId(e.target.value)} disabled={choices.length === 0} style={{ ...select, minWidth: 0 }}>
+              <option value="">{choices.length === 0 ? (wrong.bowler ? "Nobody else may bowl this over" : "Everyone else has batted") : "Choose…"}</option>
+              {choices.map((p) => (
+                <option key={p.playerId} value={p.playerId}>{p.playerName}</option>
+              ))}
+            </select>
+          </label>
+          <p style={{ fontSize: 13, color: theme.muted, margin: "8px 0 0", lineHeight: 1.5 }}>
+            {wrong.bowler
+              ? "This over moves to the player you choose. Earlier overs stay with whoever bowled them."
+              : `${wrong.playerName}'s whole innings so far moves to the player you choose.`}
+          </p>
+        </>
+      )}
+      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        <button onClick={() => onConfirm(wrong.playerId, right.playerId)} disabled={busy || !wrong || !right} style={button(theme.deep, theme.cream)}>
+          {right ? `Make it ${right.playerName}` : "Correct"}
         </button>
         <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid #ccc" }}>
           Cancel
@@ -466,7 +536,7 @@ function WicketDialog({ state, onCancel, onConfirm, busy }) {
   );
 }
 
-export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
+export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch }) {
   const [state, setState] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -476,6 +546,7 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
   const [attribution, setAttribution] = useState("Bat"); // Bat | Byes | LegByes
   const [showWicket, setShowWicket] = useState(false);
   const [showReduce, setShowReduce] = useState(false);
+  const [showReplace, setShowReplace] = useState(false);
 
   const acting = useRef(false);
 
@@ -620,7 +691,7 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
       {state.dls && <DlsPanel dls={state.dls} chasing={live?.inningsNumber === 2} />}
 
       <ErrorBanner message={error} />
-      <ScoringBanner sport="cricket" matchId={matchId} scoring={state.scoring} onChange={(scoring) => setState((s) => ({ ...s, scoring }))} />
+      <ScoringBanner sport="cricket" matchId={matchId} scoring={state.scoring} onChange={(scoring) => setState((s) => ({ ...s, scoring }))} onWatch={onWatch} />
 
       {tab === "scorecard" ? (
         <CricketScorecard matchId={matchId} refreshKey={state.innings.reduce((n, i) => n + i.runs + i.wickets, 0)} />
@@ -801,6 +872,11 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
                 Reduce overs (rain)
               </button>
             )}
+            {actions.canRecordBall && (actions.replaceableBatters?.length > 0 || actions.replaceableBowler) && (
+              <button onClick={() => setShowReplace(true)} disabled={busy} style={ghostButton}>
+                Correct a player
+              </button>
+            )}
             {actions.canEndInnings && (
               <button
                 onClick={() => confirm(
@@ -850,6 +926,18 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted }) {
           onConfirm={(overs) => {
             setShowReduce(false);
             return act(() => reduceOvers(matchId, overs));
+          }}
+        />
+      )}
+
+      {showReplace && live && !locked && (
+        <ReplacePlayerDialog
+          actions={actions}
+          busy={busy}
+          onCancel={() => setShowReplace(false)}
+          onConfirm={(playerId, replacementId) => {
+            setShowReplace(false);
+            return act(() => replacePlayer(matchId, playerId, replacementId));
           }}
         />
       )}

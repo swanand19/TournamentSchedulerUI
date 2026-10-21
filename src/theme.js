@@ -28,6 +28,13 @@ const shared = {
   /** Warm brown for "needs attention" text on cream: live status, warnings, the second group. */
   warnInk: "#8a4b1b",
   tintAlt: "#F5E4CE",
+  /** The ground under pages that belong to no sport (the profile's side column on a phone). */
+  night: "#101B17",
+  /** Booking colours on a stat tile — distinct from the amber accent. */
+  yellowCard: "#F4C430",
+  redCard: "#E24B4A",
+  /** A live tournament, on dark. */
+  liveOnDark: "#9FD36B",
 };
 
 /** Football: a floodlit pitch — dark green stripes, amber accents. */
@@ -49,6 +56,10 @@ export const footballTheme = {
   surfaceOnDark: "rgba(247,245,239,0.06)",
   borderOnDark: "rgba(247,245,239,0.15)",
   placeholder: "e.g. Summer Cup 2026",
+  /** The scoreboard panel floating above the pitch, and the stripes as two colours (the profile's sport cards). */
+  deck: "#0F291E",
+  deckRaised: "#1D3A2D",
+  stripes: ["#1B4532", "#173F2D"],
 };
 
 /** Cricket: a dusk-blue ground under lights, with a gold accent (red is kept for wickets). */
@@ -69,6 +80,9 @@ export const cricketTheme = {
   surfaceOnDark: "rgba(247,245,239,0.06)",
   borderOnDark: "rgba(247,245,239,0.15)",
   placeholder: "e.g. Premier League T20",
+  deck: "#0A1627",
+  deckRaised: "#1A2C45",
+  stripes: ["#132640", "#0F1F35"],
 };
 
 export const SPORTS = [footballTheme, cricketTheme];

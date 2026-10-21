@@ -8,11 +8,20 @@ const target = (text) => <><TargetIcon size={12} /> {text}</>;
 // their in-play states differently, so the set is the union of both.
 const LIVE_STATUSES = ["InProgress", "Paused", "PenaltyShootout", "InningsBreak", "SuperOver"];
 
-export default function MatchList({ matches, loading, tournamentStarted, starting, onStartTournament, onStartMatch, onEnterMatch, onBack, sport = "Football" }) {
+// Someone who can't score here (a player, say) watches instead: "Match preview", "Watch live",
+// "View result" all open the watcher's screen (onWatchMatch).
+export default function MatchList({ matches, loading, tournamentStarted, starting, onStartTournament, onStartMatch, onEnterMatch, onWatchMatch, canScore = true, onBack, sport = "Football" }) {
   const isCricket = sport === "Cricket";
   const theme = themeFor(sport);
 
-  const hasActiveMatch = matches.some((m) => LIVE_STATUSES.includes(m.status));
+  // Several matches can be played at once, but a team only in one: a match waits while either side is
+  // playing elsewhere. (The server has the last word when the match is set up.)
+  const playing = new Map();
+  for (const m of matches.filter((x) => LIVE_STATUSES.includes(x.status))) {
+    if (m.homeTeamId != null) playing.set(m.homeTeamId, m.homeTeamName);
+    if (m.awayTeamId != null) playing.set(m.awayTeamId, m.awayTeamName);
+  }
+  const busyTeam = (m) => playing.get(m.homeTeamId) ?? playing.get(m.awayTeamId) ?? null;
 
   const statusStyle = (status) => {
     if (status === "Completed") return { background: "rgba(99,153,34,0.15)", color: "#3b6d11" };
@@ -82,19 +91,14 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
 
       {tournamentStarted && loading && <p style={{ color: "rgba(247,245,239,0.6)" }}>Loading matches…</p>}
 
-      {tournamentStarted && !loading && hasActiveMatch && (
-        <div className="drop-in" style={{ background: theme.accentSoft, border: `1px solid ${theme.accent}`, color: theme.onDark, padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
-          A match is currently in progress. Finish it before starting another.
-        </div>
-      )}
-
       {tournamentStarted && !loading && Object.entries(grouped).map(([groupName, groupMatches]) => (
         <div key={groupName} style={{ marginBottom: 24 }}>
           <h3 style={{ fontFamily: font.display, fontSize: 18, color: theme.accent, marginBottom: 10 }}>GROUP {groupName}</h3>
           <div className="stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
             {groupMatches.map((m, i) => {
               const st = statusStyle(m.status);
-              const canStart = m.status === "NotStarted" && !hasActiveMatch;
+              const busy = m.status === "NotStarted" ? busyTeam(m) : null;
+              const canStart = m.status === "NotStarted" && !busy;
               const isLive = LIVE_STATUSES.includes(m.status);
               return (
                 // The live match is ringed in the accent so it can be found in a long list at a glance.
@@ -157,7 +161,26 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
                     </div>
                   )}
 
-                  {m.status === "NotStarted" && (
+                  {!canScore && (
+                    <button
+                      onClick={() => onWatchMatch(m.id)}
+                      style={{
+                        width: "100%",
+                        background: isLive ? theme.accent : "transparent",
+                        color: isLive ? theme.accentInk : theme.deep,
+                        border: isLive ? "none" : `1.5px solid ${theme.deep}`,
+                        borderRadius: 8,
+                        padding: "0.6rem",
+                        fontWeight: 700,
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {isLive ? <><span className="live-dot" />Watch live</> : m.status === "NotStarted" ? "Match preview" : "View result"}
+                    </button>
+                  )}
+
+                  {canScore && m.status === "NotStarted" && (
                     <button
                       onClick={() => onStartMatch(m.id)}
                       disabled={!canStart}
@@ -173,11 +196,11 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
                         cursor: canStart ? "pointer" : "not-allowed",
                       }}
                     >
-                      <PlayIcon size={14} /> Start match
+                      {busy ? `${busy} is playing now` : <><PlayIcon size={14} /> Start match</>}
                     </button>
                   )}
 
-                  {isLive && (
+                  {canScore && isLive && (
                     <button
                       onClick={() => onEnterMatch(m.id)}
                       style={{ width: "100%", background: theme.accent, color: theme.accentInk, border: "none", borderRadius: 8, padding: "0.6rem", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
@@ -185,7 +208,7 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
                       <span className="live-dot" />Enter live match
                     </button>
                   )}
-                  {(m.status === "Completed" || m.status === "Abandoned") && (
+                  {canScore && (m.status === "Completed" || m.status === "Abandoned") && (
                     <button
                       onClick={() => onEnterMatch(m.id)}
                       style={{ width: "100%", background: "transparent", color: theme.deep, border: `1.5px solid ${theme.deep}`, borderRadius: 8, padding: "0.6rem", fontWeight: 700, fontSize: 14, cursor: "pointer" }}

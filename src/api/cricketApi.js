@@ -9,6 +9,7 @@ const at = (matchId) => ({ matchId });
 export const getCricketMatch = (matchId) => api.call("CRICKET_MATCH_GET", { routeParams: at(matchId) });
 export const getSetupOptions = (matchId) => api.call("CRICKET_SETUP_OPTIONS", { routeParams: at(matchId) });
 export const getCricketScorecard = (matchId) => api.call("CRICKET_SCORECARD", { routeParams: at(matchId) });
+export const getCricketAwards = (matchId) => api.call("CRICKET_AWARDS", { routeParams: at(matchId) });
 export const getCricketBalls = (matchId) => api.call("CRICKET_BALLS", { routeParams: at(matchId) });
 export const getCricketEvents = (matchId) => api.call("CRICKET_EVENTS", { routeParams: at(matchId) });
 
@@ -20,6 +21,9 @@ export const undoBall = (matchId) => api.call("CRICKET_BALL_UNDO", { routeParams
 export const setBatter = (matchId, playerId, onStrike) =>
   api.call("CRICKET_BATTER_SET", { routeParams: at(matchId), body: { playerId, onStrike } });
 export const setBowler = (matchId, playerId) => api.call("CRICKET_BOWLER_SET", { routeParams: at(matchId), body: { playerId } });
+// A player picked by mistake: a batter at the crease (their whole stay moves) or this over's bowler.
+export const replacePlayer = (matchId, playerId, replacementId) =>
+  api.call("CRICKET_PLAYER_REPLACE", { routeParams: at(matchId), body: { playerId, replacementId } });
 export const endInnings = (matchId, reason) => api.call("CRICKET_INNINGS_END", { routeParams: at(matchId), body: { reason } });
 // Rain: take overs off the innings in play. Under DLS the chase target is revised on the spot.
 export const reduceOvers = (matchId, newOversLimit) =>

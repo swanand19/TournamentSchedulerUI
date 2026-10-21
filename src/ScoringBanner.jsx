@@ -7,6 +7,8 @@ import ErrorBanner from "./ErrorBanner";
 // to take over (the active scorer gets Allow / Decline), and an owner can take over outright.
 //
 // `onChange(scoring)` hands the new block back so the screen can enable or disable its controls.
+// While someone else scores, `onWatch` adds "Watch" (the watcher's screen); there the banner is
+// shown with `watching`, so it doesn't talk about switched-off buttons.
 
 const box = (tone) => ({
   background: tone === "ask" ? "rgba(242,169,59,0.15)" : "rgba(247,245,239,0.08)",
@@ -34,7 +36,7 @@ const button = (primary) => ({
   color: primary ? "#1B1B1B" : "#F7F5EF",
 });
 
-export default function ScoringBanner({ sport, matchId, scoring, onChange }) {
+export default function ScoringBanner({ sport, matchId, scoring, onChange, onWatch, watching }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const inFlight = useRef(false);
@@ -79,9 +81,15 @@ export default function ScoringBanner({ sport, matchId, scoring, onChange }) {
     content = (
       <div style={box()}>
         <span style={{ flex: "1 1 200px" }}>
-          <strong>{active.name}</strong> is scoring this match. You can follow it here; the scoring buttons are off.
+          <strong>{active.name}</strong> is scoring this match.{" "}
+          {watching ? "You are watching. Ask to score if you need to take over." : "The scoring buttons are off while they score."}
           {waiting && <> Waiting for {active.name} to answer {pending.by.name}'s request…</>}
         </span>
+        {onWatch && (
+          <button style={button(false)} disabled={busy} onClick={onWatch}>
+            Watch
+          </button>
+        )}
         {scoring.canRequestScoring && (
           <button style={button(true)} disabled={busy} onClick={() => run(() => requestScoring(sport, matchId))}>
             Ask to score

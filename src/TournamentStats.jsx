@@ -2,6 +2,8 @@ import { font, footballTheme as theme } from "./theme";
 import { useState, useEffect } from "react";
 import { getTournamentStats } from "./api/tournamentsApi";
 import ErrorBanner from "./ErrorBanner";
+import PlayerName from "./PlayerName";
+import { OpenPlayerContext } from "./playerContext";
 
 
 const CREAM = "#F7F5EF";
@@ -84,7 +86,7 @@ function PlayerBoard({ board }) {
                 <td style={cell}>
                   <span style={{ fontWeight: 600 }}>
                     {r.jerseyNumber != null && <span style={{ color: theme.muted }}>#{r.jerseyNumber} </span>}
-                    {r.playerName}
+                    <PlayerName playerId={r.playerId}>{r.playerName}</PlayerName>
                   </span>
                   {r.position && (
                     <span style={{ fontSize: 11, color: theme.muted, display: "block" }}>{r.position}</span>
@@ -246,7 +248,7 @@ function Overview({ stats }) {
               {b.rows.slice(0, 3).map((r) => (
                 <div key={r.playerId} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 14, padding: "3px 0" }}>
                   <span style={{ color: CREAM, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {medal(r.rank) || `${r.rank}.`} {r.playerName}
+                    {medal(r.rank) || `${r.rank}.`} <PlayerName playerId={r.playerId}>{r.playerName}</PlayerName>
                     <span style={{ color: MUTED, fontSize: 11 }}> · {r.teamName}</span>
                   </span>
                   <strong style={{ color: "#F2A93B" }}>{r.value}</strong>
@@ -260,7 +262,16 @@ function Overview({ stats }) {
   );
 }
 
-export default function TournamentStats({ tournamentId, refreshKey }) {
+/** Player names on this page open their profile (`onOpenPlayer(playerId)`). */
+export default function TournamentStats({ onOpenPlayer, ...props }) {
+  return (
+    <OpenPlayerContext.Provider value={onOpenPlayer ?? null}>
+      <TournamentStatsBody {...props} />
+    </OpenPlayerContext.Provider>
+  );
+}
+
+function TournamentStatsBody({ tournamentId, refreshKey }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

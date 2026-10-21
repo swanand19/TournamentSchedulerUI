@@ -2,6 +2,9 @@ import { font, themeFor } from "./theme";
 import { useState, useEffect } from "react";
 import { getTeams, createTeam, updateTeam, deleteTeam, addPlayer, updatePlayer, deletePlayer, resetJoinCode, unlinkPlayer } from "./api/teamsApi";
 import ErrorBanner from "./ErrorBanner";
+import PlayerName from "./PlayerName";
+import { OpenPlayerContext } from "./playerContext";
+import { formatPhone, useAuthOptions } from "./useAuthOptions";
 import {
   CRICKET_ROLES,
   BATTING_STYLES,
@@ -28,6 +31,7 @@ const emptyDraft = () => ({
   position: "",
   jerseyNumber: "",
   email: "",
+  phone: "",
   cricket: { ...EMPTY_CRICKET_DRAFT },
 });
 
@@ -36,10 +40,11 @@ const emptyDraft = () => ({
  * keeps its free-text position; cricket replaces it with a role and the batting and bowling
  * styles, which are structured because leaderboards will need to filter on them later.
  *
- * The email links the place to the player's account (now, or when they sign up). A linked
- * player's name and cricket profile are their own, so those fields are shown but locked.
+ * The email (and, once the server can text codes, mobile number) links the place to the player's
+ * account, now or when they sign up with it. A linked player's name and cricket profile are their
+ * own, so those fields are shown but locked.
  */
-function PlayerFields({ draft, onChange, isCricket, linked = false }) {
+function PlayerFields({ draft, onChange, isCricket, linked = false, showPhone = false }) {
   const setCricket = (field, value) =>
     onChange("cricket", { ...draft.cricket, [field]: value });
 
@@ -74,6 +79,18 @@ function PlayerFields({ draft, onChange, isCricket, linked = false }) {
         title="Links this place to their account, now or when they sign up"
         style={{ ...inputStyle, width: 210 }}
       />
+      {showPhone && (
+        <input
+          value={draft.phone}
+          onChange={(e) => onChange("phone", e.target.value)}
+          placeholder="Mobile number (optional)"
+          aria-label="Player's mobile number"
+          type="tel"
+          autoComplete="off"
+          title="Links this place to their account when they sign in with this number"
+          style={{ ...inputStyle, width: 170 }}
+        />
+      )}
 
       {!isCricket && (
         <input
@@ -166,9 +183,19 @@ function PlayerFields({ draft, onChange, isCricket, linked = false }) {
  * teams read-only, and a player can leave their own team (`onLeftTeam` then re-checks what they
  * can still see).
  */
-export default function TeamManagement({ tournamentId, onBack, sport = "Football", canEdit = true, onLeftTeam }) {
+/** Player names on this page open their profile (`onOpenPlayer(playerId)`). */
+export default function TeamManagement({ onOpenPlayer, ...props }) {
+  return (
+    <OpenPlayerContext.Provider value={onOpenPlayer ?? null}>
+      <TeamManagementBody {...props} />
+    </OpenPlayerContext.Provider>
+  );
+}
+
+function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit = true, onLeftTeam }) {
   const theme = themeFor(sport);
   const isCricket = sport === "Cricket";
+  const options = useAuthOptions();
   const [busyId, setBusyId] = useState(null);
   const [copiedTeamId, setCopiedTeamId] = useState(null);
 
@@ -273,12 +300,14 @@ export default function TeamManagement({ tournamentId, onBack, sport = "Football
 
   // Football sends a position and no cricket block; cricket sends the reverse. Never both — a
   // tournament is played under one sport.
-  // The email is always sent: "" clears it (and unlinks the place).
+  // The email is always sent: "" clears it (and unlinks the place unless its number still matches).
+  // The number only while its field is shown; otherwise it's left as it is.
   const playerPayload = (draft) => ({
     name: draft.name.trim(),
     position: isCricket ? null : draft.position.trim() || null,
     jerseyNumber: draft.jerseyNumber ? Number(draft.jerseyNumber) : null,
     email: draft.email.trim(),
+    phone: options.phone || draft.phone ? draft.phone.trim() : undefined,
     cricket: isCricket ? cricketPayload(draft.cricket) : null,
   });
 
@@ -318,7 +347,7 @@ export default function TeamManagement({ tournamentId, onBack, sport = "Football
   const handleUnlink = (team, player) => {
     const question = player.isMe
       ? `Leave ${team.name}?\n\nYour name stays on the team sheet, but it won't be linked to you any more.`
-      : `Unlink ${player.name}${player.email ? ` (${player.email})` : ""}?\n\nTheir name stays on the team; it just won't be linked to their account.`;
+      : `Unlink ${player.name}${player.email || player.phone ? ` (${player.email ?? formatPhone(player.phone)})` : ""}?\n\nTheir name stays on the team; it just won't be linked to their account.`;
     if (!confirm(question)) return;
     runFor(`unlink-${player.id}`, async () => {
       await unlinkPlayer(tournamentId, team.id, player.id);
@@ -347,6 +376,7 @@ export default function TeamManagement({ tournamentId, onBack, sport = "Football
       position: player.position || "",
       jerseyNumber: player.jerseyNumber ?? "",
       email: player.email || "",
+      phone: formatPhone(player.phone),
       cricket: cricketDraftFrom(player.cricket),
       linked: player.isLinked,
     });
@@ -528,6 +558,7 @@ export default function TeamManagement({ tournamentId, onBack, sport = "Football
                         onChange={(field, value) => setEditingPlayerDraft((d) => ({ ...d, [field]: value }))}
                         isCricket={isCricket}
                         linked={editingPlayerDraft.linked}
+                        showPhone={options.phone || !!editingPlayerDraft.phone}
                       />
                       <button onClick={saveEditPlayer} style={{ background: theme.successSolid, color: "#fff", border: "none", borderRadius: 6, padding: "0.4rem 0.7rem", fontSize: 12, cursor: "pointer" }}>
                         Save
@@ -540,7 +571,7 @@ export default function TeamManagement({ tournamentId, onBack, sport = "Football
                     <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#EDEAE0", padding: "0.4rem 0.7rem", borderRadius: 6, fontSize: 14, marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
                       <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>
                         {p.jerseyNumber != null && <strong>#{p.jerseyNumber} </strong>}
-                        {p.name}
+                        {p.isLinked ? <PlayerName playerId={p.id}>{p.name}</PlayerName> : p.name}
                         {isCricket && team.defaultCaptainPlayerId === p.id && (
                           <strong title="Usual captain" style={{ color: theme.successInk }}> (c)</strong>
                         )}
@@ -551,9 +582,9 @@ export default function TeamManagement({ tournamentId, onBack, sport = "Football
                           : p.position && <span style={{ color: theme.muted }}> · {p.position}</span>}
                         {p.isMe && <span style={chip(theme.accentSoft, theme.warnInk)}>YOU</span>}
                         {p.isLinked && !p.isMe && <span style={chip(theme.tint, theme.successInk)} title="Signed in to the app">LINKED</span>}
-                        {canEdit && p.email && (
+                        {canEdit && (p.email || p.phone) && (
                           <span style={{ color: theme.muted, fontSize: 12 }}>
-                            {" "}{p.isLinked ? p.email : `· waiting for ${p.email} to sign up`}
+                            {" "}{p.isLinked ? p.email ?? formatPhone(p.phone) : `· waiting for ${p.email ?? formatPhone(p.phone)} to sign up`}
                           </span>
                         )}
                       </span>
@@ -563,7 +594,7 @@ export default function TeamManagement({ tournamentId, onBack, sport = "Football
                             Edit
                           </button>
                         )}
-                        {(canEdit ? p.isLinked || p.email : p.isMe) && (
+                        {(canEdit ? p.isLinked || p.email || p.phone : p.isMe) && (
                           <button onClick={() => handleUnlink(team, p)} disabled={busyId === `unlink-${p.id}`} style={smallButton}>
                             {p.isMe && !canEdit ? "Leave team" : "Unlink"}
                           </button>
@@ -585,6 +616,7 @@ export default function TeamManagement({ tournamentId, onBack, sport = "Football
                       draft={draftFor(team.id)}
                       onChange={(field, value) => updateDraft(team.id, field, value)}
                       isCricket={isCricket}
+                      showPhone={options.phone}
                     />
                     <button
                       onClick={() => handleAddPlayer(team.id)}

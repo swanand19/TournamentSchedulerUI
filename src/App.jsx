@@ -4,6 +4,7 @@ import { getTeams } from "./api/teamsApi";
 import Home from "./Home";
 import Account from "./Account";
 import JoinTeam from "./JoinTeam";
+import Notifications from "./Notifications";
 import TournamentPeople from "./TournamentPeople";
 import TeamManagement from "./TeamManagement";
 import { getTournamentSchedule, getScheduleHistory, activateSchedule, startTournament, getTournament, completeTournament } from "./api/tournamentsApi";
@@ -13,10 +14,12 @@ import MatchSetup from "./MatchSetup";
 import LiveMatch from "./LiveMatch";
 import CricketMatchSetup from "./cricket/CricketMatchSetup";
 import CricketLiveMatch from "./cricket/CricketLiveMatch";
+import MatchWatch from "./watch/MatchWatch";
 import TournamentStats from "./TournamentStats";
 import CricketStats from "./cricket/CricketStats";
 import { font, themeFor, syncDocumentSport } from "./theme";
 import ErrorBanner from "./ErrorBanner";
+import Profile from "./Profile";
 
 // A stored schedule keeps only the fixtures, so the per-team totals shown for a freshly generated
 // schedule are recomputed here rather than lost on reload.
@@ -50,7 +53,11 @@ function isoDay(days) {
 }
 
 export default function App() {
-  const [view, setView] = useState("home"); // home | tournament | account
+  const [view, setView] = useState("home"); // home | tournament | account | join | profile
+  // Whose profile is open ({} = mine, or { playerId } from a name tapped), and where Back goes.
+  const [profileWho, setProfileWho] = useState({});
+  const [profileReturn, setProfileReturn] = useState("home");
+  const [accountReturn, setAccountReturn] = useState("home");
   const [tournamentId, setTournamentId] = useState(null);
   // Which sport the open tournament is played under. Everything up to and including the schedule
   // is identical for both; only the palette and the match screens differ.
@@ -89,7 +96,7 @@ export default function App() {
   const [dragOverGroup, setDragOverGroup] = useState(null);
   const theme = themeFor(sport);
   const isCricket = sport === "Cricket";
-  const compactHeader = stage === "matchSetup" || stage === "liveMatch";
+  const compactHeader = stage === "matchSetup" || stage === "liveMatch" || stage === "watchMatch";
   const [hadExistingSchedule, setHadExistingSchedule] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
@@ -103,6 +110,7 @@ export default function App() {
   const [startingTournament, setStartingTournament] = useState(false);
   const [activeMatchId, setActiveMatchId] = useState(null);
   const [liveMatchId, setLiveMatchId] = useState(null);
+  const [watchMatchId, setWatchMatchId] = useState(null);
   const [matchesTab, setMatchesTab] = useState("matches"); // matches | stats
   // Bumped whenever a match finishes, so the stats tab refetches instead of showing stale numbers.
   const [statsRefreshKey, setStatsRefreshKey] = useState(0);
@@ -231,14 +239,22 @@ export default function App() {
   };
 
   // Straight into the tournament just joined (its matches if started, otherwise "not started yet").
+  // Answers whether it opened.
   const openJoinedTournament = async (joined) => {
     try {
       const t = await getTournament(joined.tournamentId);
       await handleSelectTournament(t.id, false, t.isStarted, t.sport, t.name);
+      return true;
     } catch (e) {
       setError(e.message);
       setView("home");
+      return false;
     }
+  };
+
+  // A notification: its tournament, and the match itself for a scoring handover.
+  const openFromNotification = async ({ tournamentId, matchId }) => {
+    if ((await openJoinedTournament({ tournamentId })) && matchId != null) openLiveMatch(matchId);
   };
 
   // A player left their own team: if that was all they were here, the tournament is gone for them.
@@ -588,6 +604,19 @@ export default function App() {
     setStage("liveMatch");
   };
 
+  // Watching (Round 2): everyone who can't score, and owners or scorers who chose "Watch".
+  const openWatch = (matchId) => {
+    setLiveMatchId(null);
+    setWatchMatchId(matchId);
+    setStage("watchMatch");
+  };
+
+  const closeWatch = async () => {
+    setWatchMatchId(null);
+    await loadMatches();
+    setStage("matches");
+  };
+
   const closeLiveMatch = async () => {
     setLiveMatchId(null);
     await loadMatches();
@@ -596,16 +625,55 @@ export default function App() {
     setStage("matches");
   };
 
+  const openProfile = (who) => {
+    setProfileWho(who);
+    setProfileReturn(view);
+    setView("profile");
+  };
+
   if (view === "home") {
-    return <Home onSelectTournament={handleSelectTournament} onOpenAccount={() => setView("account")} onJoinTeam={() => setView("join")} />;
+    return (
+      <Home
+        onSelectTournament={handleSelectTournament}
+        onOpenAccount={() => openProfile({})}
+        onJoinTeam={() => setView("join")}
+        onOpenNotifications={() => setView("notifications")}
+      />
+    );
+  }
+
+  if (view === "profile") {
+    return (
+      <Profile
+        who={profileWho}
+        onBack={() => setView(profileReturn)}
+        onEditAccount={() => {
+          setAccountReturn("profile");
+          setView("account");
+        }}
+        onOpenTournament={(tournamentId) => openJoinedTournament({ tournamentId })}
+      />
+    );
   }
 
   if (view === "account") {
-    return <Account onBack={() => setView("home")} />;
+    return (
+      <Account
+        backLabel={accountReturn === "profile" ? "Your profile" : "Your tournaments"}
+        onBack={() => {
+          setView(accountReturn);
+          setAccountReturn("home");
+        }}
+      />
+    );
   }
 
   if (view === "join") {
     return <JoinTeam onBack={() => setView("home")} onJoined={openJoinedTournament} />;
+  }
+
+  if (view === "notifications") {
+    return <Notifications onBack={() => setView("home")} onOpen={openFromNotification} />;
   }
 
   return (
@@ -698,7 +766,7 @@ export default function App() {
 
       {stage === "manageTeams" ? (
         <div className="view-in">
-          <TeamManagement tournamentId={tournamentId} onBack={closeManageTeams} sport={sport} canEdit={!!access.canEdit} onLeftTeam={afterLeavingTeam} />
+          <TeamManagement tournamentId={tournamentId} onBack={closeManageTeams} sport={sport} canEdit={!!access.canEdit} onLeftTeam={afterLeavingTeam} onOpenPlayer={(playerId) => openProfile({ playerId })} />
         </div>
       ) : stage === "people" && tournamentInfo ? (
         <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>
@@ -1327,6 +1395,8 @@ export default function App() {
                   onStartTournament={handleStartTournament}
                   onStartMatch={openMatchSetup}
                   onEnterMatch={openLiveMatch}
+                  onWatchMatch={openWatch}
+                  canScore={!!access.canScore}
                   onBack={tournamentStarted ? null : () => setStage("schedule")}
                   sport={sport}
                 />
@@ -1336,9 +1406,9 @@ export default function App() {
               {tournamentStarted && matchesTab === "stats" && (
                 <div className="view-in">
                 {isCricket ? (
-                  <CricketStats tournamentId={tournamentId} refreshKey={statsRefreshKey} />
+                  <CricketStats tournamentId={tournamentId} refreshKey={statsRefreshKey} onOpenPlayer={(playerId) => openProfile({ playerId })} />
                 ) : (
-                  <TournamentStats tournamentId={tournamentId} refreshKey={statsRefreshKey} />
+                  <TournamentStats tournamentId={tournamentId} refreshKey={statsRefreshKey} onOpenPlayer={(playerId) => openProfile({ playerId })} />
                 )}
                 </div>
               )}
@@ -1372,14 +1442,34 @@ export default function App() {
                 matchId={liveMatchId}
                 onBack={closeLiveMatch}
                 onCompleted={closeLiveMatch}
+                onWatch={() => openWatch(liveMatchId)}
               />
             ) : (
               <LiveMatch
                 matchId={liveMatchId}
                 onBack={closeLiveMatch}
                 onCompleted={closeLiveMatch}
+                onWatch={() => openWatch(liveMatchId)}
               />
             )}
+            </div>
+          )}
+
+          {stage === "watchMatch" && watchMatchId && (
+            <div className="view-in">
+              <MatchWatch
+                key={watchMatchId}
+                sport={sport}
+                matchId={watchMatchId}
+                canScore={!!access.canScore}
+                onBack={closeWatch}
+                onOpenScoring={() => {
+                  const id = watchMatchId;
+                  setWatchMatchId(null);
+                  openLiveMatch(id);
+                }}
+                onOpenPlayer={(playerId) => openProfile({ playerId })}
+              />
             </div>
           )}
         </main>

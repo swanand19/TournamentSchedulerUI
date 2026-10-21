@@ -3,6 +3,7 @@ import { getTournaments, createTournament } from "./api/tournamentsApi";
 import { font, SPORTS, themeFor, syncDocumentSport } from "./theme";
 import ErrorBanner from "./ErrorBanner";
 import { useSession } from "./auth/useSession";
+import NotificationBell from "./NotificationBell";
 
 // The tab survives a reload, so someone running a cricket tournament isn't dropped back into
 // football every time the page refreshes.
@@ -58,7 +59,7 @@ const SECTIONS = [
   { key: "past", title: "PAST", match: (t) => t.status === "Completed" || t.status === "Cancelled" },
 ];
 
-export default function Home({ onSelectTournament, onOpenAccount, onJoinTeam }) {
+export default function Home({ onSelectTournament, onOpenAccount, onJoinTeam, onOpenNotifications }) {
   const session = useSession();
   const [sport, setSport] = useState(loadStoredSport);
   const [tournaments, setTournaments] = useState([]);
@@ -147,28 +148,30 @@ export default function Home({ onSelectTournament, onOpenAccount, onJoinTeam }) 
             <p style={{ fontFamily: font.condensed, fontSize: 18, letterSpacing: "0.35em", color: theme.accent, margin: 0, fontWeight: 600 }}>
               MATCHDAY SCHEDULER
             </p>
-            <button
-              onClick={onOpenAccount}
-              aria-label="Account"
-              style={{
-                background: theme.surfaceOnDark,
-                border: `1px solid ${theme.borderOnDark}`,
-                color: theme.onDark,
-                borderRadius: 999,
-                padding: "0.4rem 0.9rem",
-                minHeight: 44,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                flexShrink: 0,
-                maxWidth: "45%",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {session?.user?.name?.split(" ")[0] || "Account"}
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+              <NotificationBell theme={theme} onOpen={onOpenNotifications} />
+              <button
+                onClick={onOpenAccount}
+                aria-label="Your profile"
+                style={{
+                  background: theme.surfaceOnDark,
+                  border: `1px solid ${theme.borderOnDark}`,
+                  color: theme.onDark,
+                  borderRadius: 999,
+                  padding: "0.4rem 0.9rem",
+                  minHeight: 44,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  maxWidth: 120,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {session?.user?.name?.split(" ")[0] || "Account"}
+              </button>
+            </div>
           </div>
           <h1 style={{ fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 3rem)", margin: "0.2rem 0 0", lineHeight: 1 }}>
             YOUR TOURNAMENTS

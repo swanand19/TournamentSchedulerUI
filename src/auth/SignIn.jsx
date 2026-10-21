@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { sendCode, verifyCode } from "../api/accountApi";
 import ErrorBanner from "../ErrorBanner";
 import { font, footballTheme as theme } from "../theme";
+import { formatPhone, useAuthOptions } from "../useAuthOptions";
 import { getSignedOutReason, setSession } from "./session";
 
-// Sign in and sign up are one flow: email → the 6-digit code we email → (new emails only) a name.
-// There is no password. The server decides everything — whether the email is new, how many tries
-// are left, how long to wait before another code — and its messages are shown as they come.
+// Sign in and sign up are one flow: email or mobile number → the 6-digit code we send → (new ones
+// only) a name. There is no password. The server decides everything — whether it's an email or a
+// number, whether it's new, how many tries are left, how long to wait before another code — and its
+// messages are shown as they come. Mobile numbers are offered only once the server can text codes.
 
 const CODE_LENGTH = 6;
 
@@ -45,9 +47,15 @@ const linkButton = {
   minHeight: 44,
 };
 
+const labelStyle = { display: "block", fontSize: 14, fontWeight: 600, color: theme.muted, marginBottom: 8 };
+const hintStyle = { fontSize: 13, color: theme.muted, margin: "10px 2px 0", lineHeight: 1.5 };
+
 export default function SignIn() {
-  const [step, setStep] = useState("email"); // email | code | name
-  const [email, setEmail] = useState("");
+  const options = useAuthOptions();
+  const [step, setStep] = useState("contact"); // contact | code | name
+  // What was typed; once a code is sent, the email or number as the server stored it.
+  const [contact, setContact] = useState("");
+  const [channel, setChannel] = useState("Email");
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -81,8 +89,9 @@ export default function SignIn() {
 
   const requestCode = () =>
     run(async () => {
-      const sent = await sendCode(email.trim());
-      setEmail(sent.email);
+      const sent = await sendCode(contact.trim());
+      setContact(sent.sentTo);
+      setChannel(sent.channel);
       setCode("");
       setResendAt(Date.now() + sent.resendAfterSeconds * 1000);
       setNow(Date.now());
@@ -100,23 +109,25 @@ export default function SignIn() {
 
   const submitCode = () =>
     run(async () => {
-      const result = await verifyCode(email, code.replace(/\s/g, ""));
+      const result = await verifyCode(contact, code.replace(/\s/g, ""));
       if (result.outcome === "NeedsName") setStep("name");
       else finish(result);
     });
 
   const submitName = () =>
     run(async () => {
-      finish(await verifyCode(email, code.replace(/\s/g, ""), name.trim()));
+      finish(await verifyCode(contact, code.replace(/\s/g, ""), name.trim()));
     });
 
   const onSubmit = (e) => {
     e.preventDefault();
-    if (step === "email") requestCode();
+    if (step === "contact") requestCode();
     else if (step === "code") submitCode();
     else submitName();
   };
 
+  const texted = channel === "Sms";
+  const shown = texted ? formatPhone(contact) : contact;
   const waitSeconds = Math.max(0, Math.ceil((resendAt - now) / 1000));
 
   return (
@@ -132,24 +143,26 @@ export default function SignIn() {
         <ErrorBanner message={error} />
 
         <form onSubmit={onSubmit} noValidate style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1.4rem" }}>
-          {step === "email" && (
+          {step === "contact" && (
             <>
-              <label htmlFor="signin-email" style={{ display: "block", fontSize: 14, fontWeight: 600, color: theme.muted, marginBottom: 8 }}>
-                Your email
+              <label htmlFor="signin-contact" style={labelStyle}>
+                {options.phone ? "Email or mobile number" : "Your email"}
               </label>
               <input
-                id="signin-email"
-                type="email"
-                autoComplete="email"
+                id="signin-contact"
+                type={options.phone ? "text" : "email"}
+                autoComplete={options.phone ? "username" : "email"}
                 autoFocus
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                value={contact}
+                onChange={(e) => setContact(e.target.value)}
+                placeholder={options.phone ? "you@example.com or 98765 43210" : "you@example.com"}
                 disabled={busy}
                 style={inputStyle}
               />
-              <p style={{ fontSize: 13, color: theme.muted, margin: "10px 2px 0", lineHeight: 1.5 }}>
-                We'll email you a {CODE_LENGTH}-digit code. New here? The same code creates your account.
+              <p style={hintStyle}>
+                {options.phone
+                  ? `We'll send a ${CODE_LENGTH}-digit code by email or text message. New here? The same code creates your account.`
+                  : `We'll email you a ${CODE_LENGTH}-digit code. New here? The same code creates your account.`}
               </p>
               <button type="submit" disabled={busy} style={primaryButton(busy)}>
                 {busy ? "Sending…" : "Send code"}
@@ -159,8 +172,8 @@ export default function SignIn() {
 
           {step === "code" && (
             <>
-              <label htmlFor="signin-code" style={{ display: "block", fontSize: 14, fontWeight: 600, color: theme.muted, marginBottom: 8 }}>
-                Code sent to {email}
+              <label htmlFor="signin-code" style={labelStyle}>
+                Code sent to {shown}
               </label>
               <input
                 id="signin-code"
@@ -174,15 +187,15 @@ export default function SignIn() {
                 disabled={busy}
                 style={{ ...inputStyle, fontSize: 24, letterSpacing: "0.3em", textAlign: "center", fontFamily: font.condensed }}
               />
-              <p style={{ fontSize: 13, color: theme.muted, margin: "10px 2px 0", lineHeight: 1.5 }}>
-                It works for 5 minutes. Check your spam folder if it hasn't arrived.
+              <p style={hintStyle}>
+                {texted ? "It works for 5 minutes. A text can take a minute to arrive." : "It works for 5 minutes. Check your spam folder if it hasn't arrived."}
               </p>
               <button type="submit" disabled={busy} style={primaryButton(busy)}>
                 {busy ? "Checking…" : "Sign in"}
               </button>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 6, flexWrap: "wrap" }}>
-                <button type="button" style={linkButton} disabled={busy} onClick={() => { setStep("email"); setError(""); }}>
-                  Use a different email
+                <button type="button" style={linkButton} disabled={busy} onClick={() => { setStep("contact"); setError(""); }}>
+                  {texted ? "Use a different number" : "Use a different email"}
                 </button>
                 <button
                   type="button"
@@ -198,7 +211,7 @@ export default function SignIn() {
 
           {step === "name" && (
             <>
-              <label htmlFor="signin-name" style={{ display: "block", fontSize: 14, fontWeight: 600, color: theme.muted, marginBottom: 8 }}>
+              <label htmlFor="signin-name" style={labelStyle}>
                 Your name
               </label>
               <input
@@ -212,9 +225,7 @@ export default function SignIn() {
                 disabled={busy}
                 style={inputStyle}
               />
-              <p style={{ fontSize: 13, color: theme.muted, margin: "10px 2px 0", lineHeight: 1.5 }}>
-                {email} is new here — this creates your account.
-              </p>
+              <p style={hintStyle}>{shown} is new here — this creates your account.</p>
               <button type="submit" disabled={busy} style={primaryButton(busy)}>
                 {busy ? "Creating…" : "Create account"}
               </button>
