@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { font, cricketTheme as theme } from "../theme";
 import { getCricketStats } from "../api/tournamentsApi";
 import ErrorBanner from "../ErrorBanner";
+import ChampionBanner from "../ChampionBanner";
 import { TrophyIcon } from "../icons";
 import PlayerName from "../PlayerName";
 import { OpenPlayerContext } from "../playerContext";
@@ -389,6 +390,8 @@ function CricketStatsBody({ tournamentId, refreshKey }) {
         <h3 style={{ fontFamily: font.display, fontSize: 22, margin: 0 }}>TOURNAMENT STATS</h3>
         <span style={{ fontSize: 12, color: ON_DARK_SOFT }}>{stats.basis}</span>
       </div>
+
+      <ChampionBanner name={stats.championName} theme={theme} />
 
       <Pills items={TABS} active={tab} onPick={setTab} label="Stats sections" />
 

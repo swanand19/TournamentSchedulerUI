@@ -26,6 +26,10 @@ export function updateTeam(tournamentId, teamId, name, options = {}) {
 
 export const deleteTeam = (tournamentId, teamId) => api.call("TEAM_DELETE", { routeParams: { id: tournamentId, teamId } });
 
+/** Owners only: who an email or number belongs to (`{ kind, contact, display, found, name, playsFor, waitingIn }`). */
+export const lookupPlayer = (tournamentId, teamId, contact) =>
+  api.call("PLAYER_CONTACT_LOOKUP", { routeParams: { id: tournamentId, teamId }, body: { contact } });
+
 export const addPlayer = (tournamentId, teamId, player) =>
   api.call("PLAYER_CREATE", { routeParams: { id: tournamentId, teamId }, body: player });
 

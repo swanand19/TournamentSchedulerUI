@@ -15,6 +15,7 @@ import LiveMatch from "./LiveMatch";
 import CricketMatchSetup from "./cricket/CricketMatchSetup";
 import CricketLiveMatch from "./cricket/CricketLiveMatch";
 import MatchWatch from "./watch/MatchWatch";
+import Knockouts from "./Knockouts";
 import TournamentStats from "./TournamentStats";
 import CricketStats from "./cricket/CricketStats";
 import { font, themeFor, syncDocumentSport } from "./theme";
@@ -68,6 +69,7 @@ export default function App() {
   // person may do here (owner, scorer). Buttons show only from it.
   const [tournamentInfo, setTournamentInfo] = useState(null);
   const [prePeopleStage, setPrePeopleStage] = useState("setup");
+  const [preKnockoutStage, setPreKnockoutStage] = useState("setup");
   const [completePromptDismissed, setCompletePromptDismissed] = useState(false);
   const access = tournamentInfo?.access ?? {};
   const closed = tournamentInfo?.status === "Completed" || tournamentInfo?.status === "Cancelled";
@@ -294,6 +296,28 @@ export default function App() {
   const openPeople = () => {
     setPrePeopleStage(stage);
     setStage("people");
+  };
+
+  // The knockout stage: everyone may look; owners set it up from here, before or after the start.
+  const openKnockouts = () => {
+    setPreKnockoutStage(stage);
+    setStage("knockout");
+  };
+
+  const closeKnockouts = async () => {
+    if (tournamentStarted) {
+      await loadMatches();
+      setStage("matches");
+    } else {
+      setStage(preKnockoutStage || "setup");
+    }
+  };
+
+  // A knockout match from the bracket: the scorer's screens for those who can score, the viewer for everyone else.
+  const openKnockoutMatch = (fixture) => {
+    if (!access.canScore) return openWatch(fixture.matchId);
+    if (fixture.status === "NotStarted") return openMatchSetup(fixture.matchId);
+    openLiveMatch(fixture.matchId);
   };
 
   const markComplete = async () => {
@@ -743,7 +767,7 @@ export default function App() {
               {tournamentName || "Tournament scheduler"}
             </h1>
           </div>
-          {!["manageTeams", "matchSetup", "people"].includes(stage) && (
+          {!["manageTeams", "matchSetup", "people", "knockout"].includes(stage) && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
                 onClick={openPeople}
@@ -751,6 +775,14 @@ export default function App() {
               >
                 People & settings
               </button>
+              {tournamentInfo && (access.canEdit || tournamentStarted) && stage !== "waiting" && (
+                <button
+                  onClick={openKnockouts}
+                  style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.6rem 1.1rem", fontSize: 14, cursor: "pointer", minHeight: 44 }}
+                >
+                  Knockouts
+                </button>
+              )}
               {tournamentInfo && (
                 <button
                   onClick={openManageTeams}
@@ -776,6 +808,27 @@ export default function App() {
             onBack={() => setStage(prePeopleStage || "setup")}
             onChanged={(t) => { setTournamentInfo(t); setTournamentName(t.name); }}
             onLeft={goHome}
+          />
+        </main>
+      ) : stage === "knockout" && tournamentInfo ? (
+        <main className="view-in" style={{ maxWidth: 1040, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>
+          <ErrorBanner message={error} />
+          <Knockouts
+            key={String(tournamentStarted)}
+            tournamentId={tournamentId}
+            sport={sport}
+            tournament={tournamentInfo}
+            started={tournamentStarted}
+            canEdit={!!access.canEdit}
+            canScore={!!access.canScore}
+            teams={availableTeams}
+            onBack={closeKnockouts}
+            onOpenMatch={openKnockoutMatch}
+            onStartTournament={async () => {
+              await handleStartTournament();
+              await refreshTournament();
+            }}
+            starting={startingTournament}
           />
         </main>
       ) : stage === "waiting" ? (
@@ -848,6 +901,14 @@ export default function App() {
 
           {stage === "setup" && (
             <div className="view-in">
+              {access.canEdit && (
+                <p style={{ color: theme.onDarkMuted, fontSize: 14, margin: "0 0 12px" }}>
+                  Knockouts only, with no groups?{" "}
+                  <button onClick={openKnockouts} style={{ background: "none", border: "none", color: theme.accent, textDecoration: "underline", fontSize: 14, cursor: "pointer", padding: 0 }}>
+                    Set up a knockout of all the teams
+                  </button>
+                </p>
+              )}
               <div style={{ background: "#F7F5EF", color: "#1B1B1B", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: 10 }}>
                   <h2 style={{ fontFamily: font.display, fontSize: 22, margin: 0 }}>SELECT TEAMS</h2>
@@ -1396,6 +1457,7 @@ export default function App() {
                   onStartMatch={openMatchSetup}
                   onEnterMatch={openLiveMatch}
                   onWatchMatch={openWatch}
+                  onOpenKnockouts={openKnockouts}
                   canScore={!!access.canScore}
                   onBack={tournamentStarted ? null : () => setStage("schedule")}
                   sport={sport}

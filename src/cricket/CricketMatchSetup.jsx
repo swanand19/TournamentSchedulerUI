@@ -427,9 +427,9 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
             <input type="number" min="0" style={input} value={rules.noBallPenaltyRuns} onChange={numberRule("noBallPenaltyRuns")} />
           </Field>
           <Field label="Tie resolution" width={150}>
-            <select style={input} value={rules.tieResolution} onChange={(e) => setRule("tieResolution", e.target.value)}>
+            <select style={input} value={options.isKnockout && rules.tieResolution === "AllowTie" ? "SuperOver" : rules.tieResolution} onChange={(e) => setRule("tieResolution", e.target.value)}>
               <option value="SuperOver">Super over</option>
-              <option value="AllowTie">Allow a tie</option>
+              {!options.isKnockout && <option value="AllowTie">Allow a tie</option>}
               <option value="BoundaryCount">Boundary count</option>
               <option value="Bowlout">Bowl-out</option>
             </select>
@@ -466,7 +466,7 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
           <Toggle label="Free hit after a no-ball" checked={rules.freeHitAfterNoBall} onChange={(v) => setRule("freeHitAfterNoBall", v)} />
           <Toggle label="Free hit after a wide" checked={rules.freeHitAfterWide} onChange={(v) => setRule("freeHitAfterWide", v)} />
           <Toggle label="Last man stands" checked={rules.lastManStanding} onChange={(v) => setRule("lastManStanding", v)} />
-          <Toggle label="Draw allowed" checked={rules.drawAllowed} onChange={(v) => setRule("drawAllowed", v)} />
+          {!options.isKnockout && <Toggle label="Draw allowed" checked={rules.drawAllowed} onChange={(v) => setRule("drawAllowed", v)} />}
           <Toggle label="DLS for rain (up to 50 overs, one innings each)" checked={rules.dlsEnabled} onChange={(v) => setRule("dlsEnabled", v)} />
         </div>
       </div>

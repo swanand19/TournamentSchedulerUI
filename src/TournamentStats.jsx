@@ -2,6 +2,7 @@ import { font, footballTheme as theme } from "./theme";
 import { useState, useEffect } from "react";
 import { getTournamentStats } from "./api/tournamentsApi";
 import ErrorBanner from "./ErrorBanner";
+import ChampionBanner from "./ChampionBanner";
 import PlayerName from "./PlayerName";
 import { OpenPlayerContext } from "./playerContext";
 
@@ -314,6 +315,8 @@ function TournamentStatsBody({ tournamentId, refreshKey }) {
         <h3 style={{ fontFamily: font.display, fontSize: 22, margin: 0 }}>TOURNAMENT STATS</h3>
         <span style={{ fontSize: 12, color: MUTED }}>{stats.basis}</span>
       </div>
+
+      <ChampionBanner name={stats.championName} theme={theme} />
 
       {/* Category tabs */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>

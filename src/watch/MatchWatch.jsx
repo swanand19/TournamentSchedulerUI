@@ -47,7 +47,7 @@ function Preview({ t, w, sport }) {
       <Board t={t}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
           <span style={{ flex: 1, color: t.accent, fontSize: 13, fontWeight: 500 }}>
-            {w.tournamentName} · Group {w.groupName} · Match {w.matchNumber}
+            {w.tournamentName} · {w.roundLabel ?? `Group ${w.groupName}`} · Match {w.matchNumber}
           </span>
           <span style={pill(t.accentSoft, t.accent)}>Not started</span>
         </div>

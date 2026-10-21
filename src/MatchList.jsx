@@ -10,7 +10,7 @@ const LIVE_STATUSES = ["InProgress", "Paused", "PenaltyShootout", "InningsBreak"
 
 // Someone who can't score here (a player, say) watches instead: "Match preview", "Watch live",
 // "View result" all open the watcher's screen (onWatchMatch).
-export default function MatchList({ matches, loading, tournamentStarted, starting, onStartTournament, onStartMatch, onEnterMatch, onWatchMatch, canScore = true, onBack, sport = "Football" }) {
+export default function MatchList({ matches, loading, tournamentStarted, starting, onStartTournament, onStartMatch, onEnterMatch, onWatchMatch, onOpenKnockouts, canScore = true, onBack, sport = "Football" }) {
   const isCricket = sport === "Cricket";
   const theme = themeFor(sport);
 
@@ -56,10 +56,14 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
 
   const statusLabel = isCricket ? cricketStatusLabel : footballStatusLabel;
 
+  // The groups, then the knockout matches in their own section (they have no group).
+  const KNOCKOUT = "knockout:";
   const grouped = matches.reduce((acc, m) => {
-    (acc[m.groupName] = acc[m.groupName] || []).push(m);
+    const key = m.stage === "Knockout" ? KNOCKOUT : m.groupName;
+    (acc[key] = acc[key] || []).push(m);
     return acc;
   }, {});
+  const sections = Object.entries(grouped).sort(([a], [b]) => (a === KNOCKOUT) - (b === KNOCKOUT));
 
   return (
     <div>
@@ -91,21 +95,34 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
 
       {tournamentStarted && loading && <p style={{ color: "rgba(247,245,239,0.6)" }}>Loading matches…</p>}
 
-      {tournamentStarted && !loading && Object.entries(grouped).map(([groupName, groupMatches]) => (
+      {tournamentStarted && !loading && sections.map(([groupName, groupMatches]) => (
         <div key={groupName} style={{ marginBottom: 24 }}>
-          <h3 style={{ fontFamily: font.display, fontSize: 18, color: theme.accent, marginBottom: 10 }}>GROUP {groupName}</h3>
+          {groupName === KNOCKOUT ? (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <h3 style={{ fontFamily: font.display, fontSize: 18, color: theme.accent, margin: 0 }}>KNOCKOUTS</h3>
+              {onOpenKnockouts && (
+                <button onClick={onOpenKnockouts} style={{ background: "none", border: "none", color: theme.accent, textDecoration: "underline", fontSize: 14, cursor: "pointer", minHeight: 44 }}>
+                  See the bracket
+                </button>
+              )}
+            </div>
+          ) : (
+            <h3 style={{ fontFamily: font.display, fontSize: 18, color: theme.accent, marginBottom: 10 }}>GROUP {groupName}</h3>
+          )}
           <div className="stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
             {groupMatches.map((m, i) => {
               const st = statusStyle(m.status);
               const busy = m.status === "NotStarted" ? busyTeam(m) : null;
-              const canStart = m.status === "NotStarted" && !busy;
+              // A knockout match whose sides aren't known yet shows where they come from ("Group A winner").
+              const waiting = m.status === "NotStarted" && (m.homeTeamId == null || m.awayTeamId == null);
+              const canStart = m.status === "NotStarted" && !busy && !waiting;
               const isLive = LIVE_STATUSES.includes(m.status);
               return (
                 // The live match is ringed in the accent so it can be found in a long list at a glance.
                 <div key={m.id} style={{ "--i": i, background: theme.cream, color: theme.ink, borderRadius: 10, padding: "1rem", boxShadow: isLive ? `0 0 0 2px ${theme.accent}` : "none" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                     <span style={{ fontFamily: "'Teko', sans-serif", fontSize: 12, color: theme.muted, fontWeight: 600 }}>
-                      M{String(m.matchNumber).padStart(2, "0")}
+                      M{String(m.matchNumber).padStart(2, "0")}{m.roundLabel ? ` · ${m.roundLabel.toUpperCase()}` : ""}
                     </span>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, ...st }}>
                       {m.status === "InProgress" ? <><span className="live-dot" />LIVE</> : statusLabel(m)}
@@ -121,7 +138,7 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
                       ].map((side) => (
                         <div key={side.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "2px 0" }}>
                           <span style={{ opacity: m.winnerTeamId && m.winnerTeamId !== side.id ? 0.55 : 1 }}>
-                            {m.winnerTeamId === side.id && <TrophyIcon size={14} title="Winner" style={{ color: theme.warnInk, marginInlineEnd: 4 }} />}
+                            {m.winnerTeamId != null && m.winnerTeamId === side.id && <TrophyIcon size={14} title="Winner" style={{ color: theme.warnInk, marginInlineEnd: 4 }} />}
                             {side.name}
                           </span>
                           <span style={{ fontFamily: font.display, fontSize: 16, color: theme.deep, whiteSpace: "nowrap" }}>
@@ -136,7 +153,7 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
                   ) : (
                     <div className="num" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 16, fontWeight: 600, marginBottom: 12 }}>
                       <span style={{ flex: 1 }}>{m.homeTeamName}</span>
-                      {m.penaltyWinnerTeamId === m.homeTeamId && <TrophyIcon size={14} title="Won on penalties" style={{ color: theme.warnInk, marginInlineStart: 4 }} />}{m.status !== "NotStarted" ? (
+                      {m.penaltyWinnerTeamId != null && m.penaltyWinnerTeamId === m.homeTeamId && <TrophyIcon size={14} title="Won on penalties" style={{ color: theme.warnInk, marginInlineStart: 4 }} />}{m.status !== "NotStarted" ? (
                         <span style={{ fontFamily: font.display, fontSize: 18, color: theme.deep, margin: "0 10px" }}>
                           {m.homeScore} - {m.awayScore}
                         </span>
@@ -144,7 +161,7 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
                         <span style={{ fontFamily: font.display, fontSize: 14, color: theme.warnInk, margin: "0 10px" }}>VS</span>
                       )}
                       <span style={{ flex: 1, textAlign: "right" }}>
-                        {m.penaltyWinnerTeamId === m.awayTeamId && <TrophyIcon size={14} title="Won on penalties" style={{ color: theme.warnInk, marginInlineEnd: 4 }} />}
+                        {m.penaltyWinnerTeamId != null && m.penaltyWinnerTeamId === m.awayTeamId && <TrophyIcon size={14} title="Won on penalties" style={{ color: theme.warnInk, marginInlineEnd: 4 }} />}
                         {m.awayTeamName}
                       </span>
                     </div>
@@ -196,7 +213,7 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
                         cursor: canStart ? "pointer" : "not-allowed",
                       }}
                     >
-                      {busy ? `${busy} is playing now` : <><PlayIcon size={14} /> Start match</>}
+                      {waiting ? "Waiting for its teams" : busy ? `${busy} is playing now` : <><PlayIcon size={14} /> Start match</>}
                     </button>
                   )}
 

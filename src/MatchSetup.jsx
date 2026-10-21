@@ -31,6 +31,8 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
       try {
         const data = await getMatch(matchId);
         setMatch(data);
+        // A knockout match must have a winner: the server refuses a draw, so the option isn't offered.
+        if (data.isKnockout) setDrawAllowed(false);
         const initial = {};
         [...(data.homeTeam?.players || []), ...(data.awayTeam?.players || [])].forEach((p) => {
           initial[p.id] = "Bench";
@@ -234,15 +236,21 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
               />
             </label>
           )}
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(247,245,239,0.85)", cursor: "pointer" }}>
-            <input type="checkbox" checked={drawAllowed} 
-              onChange={(e) => {
-                setDrawAllowed(e.target.checked);
-                if (e.target.checked) setExtraTimeAllowed(false);
-              }} 
-            />
-            Draw allowed — uncheck to require penalties on a tie
-          </label>
+          {match?.isKnockout ? (
+            <span style={{ fontSize: 14, color: "rgba(247,245,239,0.85)" }}>
+              {match.roundLabel ?? "A knockout match"} needs a winner: level scores go to extra time (if allowed), then penalties.
+            </span>
+          ) : (
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(247,245,239,0.85)", cursor: "pointer" }}>
+              <input type="checkbox" checked={drawAllowed}
+                onChange={(e) => {
+                  setDrawAllowed(e.target.checked);
+                  if (e.target.checked) setExtraTimeAllowed(false);
+                }}
+              />
+              Draw allowed — uncheck to require penalties on a tie
+            </label>
+          )}
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(247,245,239,0.85)", cursor: "pointer" }}>
             <input type="checkbox" checked={rollingSubsAllowed} onChange={(e) => setRollingSubsAllowed(e.target.checked)} />
             Rolling substitutions allowed

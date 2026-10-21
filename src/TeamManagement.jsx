@@ -1,6 +1,6 @@
 import { font, themeFor } from "./theme";
 import { useState, useEffect } from "react";
-import { getTeams, createTeam, updateTeam, deleteTeam, addPlayer, updatePlayer, deletePlayer, resetJoinCode, unlinkPlayer } from "./api/teamsApi";
+import { getTeams, createTeam, updateTeam, deleteTeam, addPlayer, lookupPlayer, updatePlayer, deletePlayer, resetJoinCode, unlinkPlayer } from "./api/teamsApi";
 import ErrorBanner from "./ErrorBanner";
 import PlayerName from "./PlayerName";
 import { OpenPlayerContext } from "./playerContext";
@@ -35,6 +35,175 @@ const emptyDraft = () => ({
   cricket: { ...EMPTY_CRICKET_DRAFT },
 });
 
+/** The shirt number, and who else on the team wears it (team-mates may share one). */
+function ShirtField({ team, playerId, value, onChange }) {
+  const number = value === "" || value == null ? null : Number(value);
+  const others = number == null || !team ? [] : team.players.filter((p) => p.jerseyNumber === number && p.id !== playerId);
+  return (
+    <>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="#"
+        aria-label="Shirt number"
+        type="number"
+        style={{ ...inputStyle, width: 60 }}
+      />
+      {others.length > 0 && (
+        <span style={{ fontSize: 12, color: "#58625A" }}>Also worn by {others.map((p) => p.name).join(", ")}</span>
+      )}
+    </>
+  );
+}
+
+/**
+ * Adding a player starts from their email or number. If an account uses it the row shows the
+ * person and adds them without a name (their account's name is used); if not, it's the full form
+ * with the address already filled in. "Add without an email or number" goes straight to the form.
+ */
+function AddPlayerRow({ tournamentId, team, isCricket, showPhone, theme, playerPayload, onAdded }) {
+  const [step, setStep] = useState("find"); // find | account | form
+  const [contact, setContact] = useState("");
+  const [found, setFound] = useState(null);
+  const [note, setNote] = useState("");
+  const [draft, setDraft] = useState(emptyDraft());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const change = (field, value) => setDraft((d) => ({ ...d, [field]: value }));
+
+  const reset = () => {
+    setStep("find");
+    setContact("");
+    setFound(null);
+    setNote("");
+    setDraft(emptyDraft());
+    setError("");
+  };
+
+  const run = async (fn) => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await fn();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const find = () =>
+    contact.trim() &&
+    run(async () => {
+      const result = await lookupPlayer(tournamentId, team.id, contact.trim());
+      if (result.found) {
+        setFound(result);
+        setStep("account");
+        return;
+      }
+      setDraft({ ...emptyDraft(), [result.kind === "Email" ? "email" : "phone"]: result.kind === "Email" ? result.contact : formatPhone(result.contact) });
+      setNote(
+        `No account uses ${result.display} yet. Add their name; they'll be linked when they sign up.` +
+          (result.waitingIn ? ` (A place in ${result.waitingIn} is already waiting on it.)` : ""),
+      );
+      setStep("form");
+    });
+
+  const addFound = () =>
+    run(async () => {
+      await addPlayer(tournamentId, team.id, {
+        [found.kind === "Email" ? "email" : "phone"]: found.contact,
+        jerseyNumber: draft.jerseyNumber ? Number(draft.jerseyNumber) : null,
+        position: isCricket ? null : draft.position.trim() || null,
+      });
+      reset();
+      onAdded();
+    });
+
+  const addTyped = () =>
+    draft.name.trim() &&
+    run(async () => {
+      await addPlayer(tournamentId, team.id, playerPayload(draft));
+      reset();
+      onAdded();
+    });
+
+  const primary = { background: theme.accent, color: theme.accentInk, border: "none", borderRadius: 6, padding: "0.4rem 0.9rem", fontWeight: 600, fontSize: 14, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 };
+  const quiet = { background: "none", border: "none", color: theme.muted, textDecoration: "underline", fontSize: 13, cursor: "pointer", padding: "0.4rem 0.2rem" };
+  const row = { display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap", alignItems: "center" };
+
+  return (
+    <div>
+      {error && <p role="alert" style={{ color: "#a33", fontSize: 13, margin: "10px 0 0" }}>{error}</p>}
+      {step === "find" && (
+        <div style={row}>
+          <input
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && find()}
+            placeholder={showPhone ? "Their email or mobile number" : "Their sign-in email"}
+            aria-label={showPhone ? "Player's email or mobile number" : "Player's sign-in email"}
+            autoComplete="off"
+            style={{ ...inputStyle, flex: 1, minWidth: 220 }}
+          />
+          <button onClick={find} disabled={busy || !contact.trim()} style={primary}>
+            {busy ? "Finding…" : "Find"}
+          </button>
+          <button onClick={() => setStep("form")} style={quiet}>
+            Add someone without an email or number
+          </button>
+        </div>
+      )}
+
+      {step === "account" && found && (
+        <div style={{ marginTop: 10, background: theme.tint, borderRadius: 8, padding: "0.7rem 0.9rem", fontSize: 14 }}>
+          <strong>{found.name}</strong>
+          <span style={{ color: theme.muted }}>
+            {found.playsFor
+              ? ` already plays for ${found.playsFor} in this tournament, so they can't join another team.`
+              : ` has an account (${found.display}). Their own name${isCricket ? " and cricket profile are" : " is"} used.`}
+          </span>
+          <div style={{ ...row, marginTop: 8 }}>
+            {!found.playsFor && (
+              <>
+                <ShirtField team={team} value={draft.jerseyNumber} onChange={(v) => change("jerseyNumber", v)} />
+                {!isCricket && (
+                  <input
+                    value={draft.position}
+                    onChange={(e) => change("position", e.target.value)}
+                    placeholder="Position"
+                    aria-label="Position"
+                    style={{ ...inputStyle, width: 110 }}
+                  />
+                )}
+                <button onClick={addFound} disabled={busy} style={primary}>
+                  {busy ? "Adding…" : `Add to ${team.name}`}
+                </button>
+              </>
+            )}
+            <button onClick={reset} style={quiet}>Use another email or number</button>
+          </div>
+        </div>
+      )}
+
+      {step === "form" && (
+        <>
+          {note && <p style={{ fontSize: 13, color: theme.muted, margin: "10px 0 0" }}>{note}</p>}
+          <div style={row}>
+            <PlayerFields draft={draft} onChange={change} isCricket={isCricket} showPhone={showPhone} team={team} />
+            <button onClick={addTyped} disabled={busy || !draft.name.trim()} style={primary}>
+              {busy ? "Adding…" : "Add player"}
+            </button>
+            <button onClick={reset} style={quiet}>Back</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /**
  * The add and edit forms differ only in where they sit, so the fields live here once. Football
  * keeps its free-text position; cricket replaces it with a role and the batting and bowling
@@ -44,7 +213,7 @@ const emptyDraft = () => ({
  * account, now or when they sign up with it. A linked player's name and cricket profile are their
  * own, so those fields are shown but locked.
  */
-function PlayerFields({ draft, onChange, isCricket, linked = false, showPhone = false }) {
+function PlayerFields({ draft, onChange, isCricket, linked = false, showPhone = false, team = null, playerId = null }) {
   const setCricket = (field, value) =>
     onChange("cricket", { ...draft.cricket, [field]: value });
 
@@ -61,14 +230,7 @@ function PlayerFields({ draft, onChange, isCricket, linked = false, showPhone = 
         {...ownFields}
         style={{ ...inputStyle, flex: 1, minWidth: 120 }}
       />
-      <input
-        value={draft.jerseyNumber}
-        onChange={(e) => onChange("jerseyNumber", e.target.value)}
-        placeholder="#"
-        aria-label="Shirt number"
-        type="number"
-        style={{ ...inputStyle, width: 60 }}
-      />
+      <ShirtField team={team} playerId={playerId} value={draft.jerseyNumber} onChange={(v) => onChange("jerseyNumber", v)} />
       <input
         value={draft.email}
         onChange={(e) => onChange("email", e.target.value)}
@@ -204,7 +366,6 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
   const [editingTeamId, setEditingTeamId] = useState(null);
   const [editingTeamName, setEditingTeamName] = useState("");
   const [expandedTeamId, setExpandedTeamId] = useState(null);
-  const [playerDrafts, setPlayerDrafts] = useState({}); // teamId -> draft
   const [editingPlayer, setEditingPlayer] = useState(null); // { teamId, playerId }
   const [editingPlayerDraft, setEditingPlayerDraft] = useState(emptyDraft());
   const [loading, setLoading] = useState(false);
@@ -289,15 +450,6 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
     }
   };
 
-  const draftFor = (teamId) => playerDrafts[teamId] || emptyDraft();
-
-  const updateDraft = (teamId, field, value) => {
-    setPlayerDrafts((prev) => ({
-      ...prev,
-      [teamId]: { ...draftFor(teamId), [field]: value },
-    }));
-  };
-
   // Football sends a position and no cricket block; cricket sends the reverse. Never both — a
   // tournament is played under one sport.
   // The email is always sent: "" clears it (and unlinks the place unless its number still matches).
@@ -354,19 +506,6 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
       if (player.isMe && !canEdit && (await onLeftTeam?.()) === false) return; // gone home
       await loadTeams();
     });
-  };
-
-  const handleAddPlayer = async (teamId) => {
-    const draft = draftFor(teamId);
-    if (!draft.name.trim()) return;
-    setError("");
-    try {
-      await addPlayer(tournamentId, teamId, playerPayload(draft));
-      setPlayerDrafts((prev) => ({ ...prev, [teamId]: emptyDraft() }));
-      loadTeams();
-    } catch (e) {
-      setError(e.message);
-    }
   };
 
   const startEditPlayer = (teamId, player) => {
@@ -559,6 +698,8 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                         isCricket={isCricket}
                         linked={editingPlayerDraft.linked}
                         showPhone={options.phone || !!editingPlayerDraft.phone}
+                        team={team}
+                        playerId={p.id}
                       />
                       <button onClick={saveEditPlayer} style={{ background: theme.successSolid, color: "#fff", border: "none", borderRadius: 6, padding: "0.4rem 0.7rem", fontSize: 12, cursor: "pointer" }}>
                         Save
@@ -611,20 +752,15 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                 {team.players.length === 0 && <p style={{ fontSize: 14, color: theme.muted }}>No players yet.</p>}
 
                 {canEdit && (
-                  <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
-                    <PlayerFields
-                      draft={draftFor(team.id)}
-                      onChange={(field, value) => updateDraft(team.id, field, value)}
-                      isCricket={isCricket}
-                      showPhone={options.phone}
-                    />
-                    <button
-                      onClick={() => handleAddPlayer(team.id)}
-                      style={{ background: theme.accent, color: theme.accentInk, border: "none", borderRadius: 6, padding: "0.4rem 0.9rem", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
-                    >
-                      Add player
-                    </button>
-                  </div>
+                  <AddPlayerRow
+                    tournamentId={tournamentId}
+                    team={team}
+                    isCricket={isCricket}
+                    showPhone={options.phone}
+                    theme={theme}
+                    playerPayload={playerPayload}
+                    onAdded={loadTeams}
+                  />
                 )}
               </div>
             )}

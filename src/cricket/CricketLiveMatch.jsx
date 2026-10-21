@@ -588,6 +588,11 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
     }
   };
 
+  // A knockout match can't end without a side going through: one that can't be finished is awarded.
+  const awardTo = (teamId, name) =>
+    confirm(`Award ${state.roundLabel ?? "this match"} to ${name}? They go through.`) &&
+    act(() => completeCricketMatch(matchId, { awardWinnerTeamId: teamId }));
+
   // The delivery the toggles describe, with the runs attributed where the scorer said.
   const buildBall = (runs, extra = {}) => {
     const base = {
@@ -899,13 +904,24 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
                 >
                   Sign off
                 </button>
-                <button
-                  onClick={() => confirm("Record this match as abandoned with no result?") && act(() => completeCricketMatch(matchId, { noResult: true }))}
-                  disabled={busy}
-                  style={ghostButton}
-                >
-                  No result
-                </button>
+                {actions.canRecordNoResult !== false ? (
+                  <button
+                    onClick={() => confirm("Record this match as abandoned with no result?") && act(() => completeCricketMatch(matchId, { noResult: true }))}
+                    disabled={busy}
+                    style={ghostButton}
+                  >
+                    No result
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => awardTo(state.homeTeamId, state.homeTeamName)} disabled={busy} style={ghostButton}>
+                      Award to {state.homeTeamName}
+                    </button>
+                    <button onClick={() => awardTo(state.awayTeamId, state.awayTeamName)} disabled={busy} style={ghostButton}>
+                      Award to {state.awayTeamName}
+                    </button>
+                  </>
+                )}
               </>
             )}
             {finished && (
