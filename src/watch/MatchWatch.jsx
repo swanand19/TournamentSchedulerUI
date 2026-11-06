@@ -5,9 +5,7 @@ import ErrorBanner from "../ErrorBanner";
 import ScoringBanner from "../ScoringBanner";
 import { OpenPlayerContext } from "../playerContext";
 import { TargetIcon, TrophyIcon } from "../icons";
-import { getWatchMatch } from "../api/watchApi";
-import { getCricketAwards, getCricketMatch } from "../api/cricketApi";
-import { getMatch, getMatchEvents } from "../api/matchesApi";
+import { useSource } from "../api/source";
 import CricketScorecard from "../cricket/CricketScorecard";
 import { formatStopwatch, periodSeconds, priorPeriodsMinutes } from "../footballClock";
 import ActivityFeed from "./ActivityFeed";
@@ -18,8 +16,8 @@ import { usePoll } from "./usePoll";
 // Watching a match (Round 2) — for everyone who can't score it, and for owners and scorers who
 // chose "Watch" while someone else scores. Before the start: a preview with both squads (the XIs
 // and the toss once a cricket match is set up). Once under way: Live (the scoreboard beside the
-// match activity on a wide screen, one above the other on a phone) and the Scorecard (cricket) or
-// Line-ups (football). Nothing here changes the match; it all polls, following the scorer.
+// match activity on a wide screen, one above the other on a phone), the Scorecard and Playing XI
+// (cricket) or the Line-ups (football). Nothing here changes the match; it all polls, following the scorer.
 
 const pill = (background, color) => ({
   display: "inline-flex",
@@ -229,7 +227,8 @@ function OverStrip({ t, live, ballsPerOver }) {
 }
 
 function PlayerOfMatch({ t, matchId }) {
-  const load = useCallback(() => getCricketAwards(matchId), [matchId]);
+  const src = useSource();
+  const load = useCallback(() => src.cricketAwards(matchId), [src, matchId]);
   const { data } = usePoll(load, 0);
   const potm = data?.playerOfMatch;
   if (!potm) return null;
@@ -264,8 +263,9 @@ function Activity({ t, sport, matchId }) {
 }
 
 function CricketLive({ t, matchId, finished, canScore, onOpenScoring }) {
-  const load = useCallback(() => getCricketMatch(matchId), [matchId]);
-  const { data: state, error, reload } = usePoll(load, 5000);
+  const src = useSource();
+  const load = useCallback(() => src.cricketMatch(matchId), [src, matchId]);
+  const { data: state, error, reload } = usePoll(load, 5000, true, src.live ? { kind: "match", sport: "cricket", matchId } : null);
   const live = state?.current;
   return (
     <div className="watch-grid">
@@ -348,11 +348,12 @@ function FootballBoard({ t, match, events }) {
 }
 
 function FootballLive({ t, matchId, finished, canScore, onOpenScoring }) {
+  const src = useSource();
   const load = useCallback(async () => {
-    const [match, events] = await Promise.all([getMatch(matchId), getMatchEvents(matchId)]);
+    const [match, events] = await Promise.all([src.footballMatch(matchId), src.footballEvents(matchId)]);
     return { match, events };
-  }, [matchId]);
-  const { data, error, reload } = usePoll(load, 5000);
+  }, [src, matchId]);
+  const { data, error, reload } = usePoll(load, 5000, true, src.live ? { kind: "match", sport: "football", matchId } : null);
   return (
     <div className="watch-grid">
       <div className="watch-board">
@@ -368,15 +369,17 @@ function FootballLive({ t, matchId, finished, canScore, onOpenScoring }) {
 export default function MatchWatch({ sport, matchId, canScore, onBack, onOpenScoring, onOpenPlayer }) {
   const key = sport === "Cricket" ? "cricket" : "football";
   const t = themeFor(sport);
-  const loadSides = useCallback(() => getWatchMatch(key, matchId), [key, matchId]);
+  const src = useSource();
+  const loadSides = useCallback(() => src.watchMatch(key, matchId), [src, key, matchId]);
   // Slow poll: the sides rarely change, but a preview has to notice when play starts.
-  const { data: w, error } = usePoll(loadSides, 10000);
+  const { data: w, error } = usePoll(loadSides, 10000, true, src.live ? { kind: "match", sport: key, matchId } : null);
   const [tab, setTab] = useState("live");
 
-  const tabs = [
-    { key: "live", label: w?.phase === "Finished" ? "Match" : "Live" },
-    { key: "more", label: key === "cricket" ? "Scorecard" : "Line-ups" },
-  ];
+  const live = { key: "live", label: w?.phase === "Finished" ? "Match" : "Live" };
+  const tabs =
+    key === "cricket"
+      ? [live, { key: "scorecard", label: "Scorecard" }, { key: "sides", label: "Playing XI" }]
+      : [live, { key: "sides", label: "Line-ups" }];
 
   return (
     <OpenPlayerContext.Provider value={onOpenPlayer ?? null}>
@@ -418,7 +421,7 @@ export default function MatchWatch({ sport, matchId, canScore, onBack, onOpenSco
               ) : (
                 <FootballLive t={t} matchId={matchId} finished={w.phase === "Finished"} canScore={canScore} onOpenScoring={onOpenScoring} />
               )
-            ) : key === "cricket" ? (
+            ) : tab === "scorecard" ? (
               <CricketScorecard matchId={matchId} />
             ) : (
               <div className="watch-sides">

@@ -11,6 +11,7 @@
     "verify:gateway": "node scripts/verify-gateway-vectors.mjs"
   },
   "dependencies": {
+    "@microsoft/signalr": "^10.0.11",
     "@noble/ciphers": "^2.4.0",
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",

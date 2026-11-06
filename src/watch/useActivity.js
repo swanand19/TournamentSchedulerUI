@@ -1,14 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
-import { getActivity } from "../api/watchApi";
+import { useSource } from "../api/source";
 import { usePoll } from "./usePoll";
 
-// A match's activity, newest first. The newest page is polled every 5 s (that's how a ball or a
-// goal arrives); older pages are fetched on demand with `before` and kept. Ids count up through the
+// A match's activity, newest first. The newest page is fetched when the live line says the match
+// changed, and polled every 5 s without it (that's how a ball or a goal arrives); older pages are fetched on demand with `before` and kept. Ids count up through the
 // match, so the two join without a gap.
 
 export function useActivity(sport, matchId) {
-  const loadLatest = useCallback(() => getActivity(sport, matchId), [sport, matchId]);
-  const latest = usePoll(loadLatest, 5000);
+  const src = useSource();
+  const loadLatest = useCallback(() => src.activity(sport, matchId), [src, sport, matchId]);
+  const latest = usePoll(loadLatest, 5000, true, src.live ? { kind: "match", sport, matchId } : null);
   const [older, setOlder] = useState({ items: [], hasMore: true });
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState("");
@@ -26,7 +27,7 @@ export function useActivity(sport, matchId) {
     setLoadingMore(true);
     setMoreError("");
     try {
-      const page = await getActivity(sport, matchId, items[items.length - 1].id);
+      const page = await src.activity(sport, matchId, items[items.length - 1].id);
       setOlder((o) => ({ items: [...o.items, ...page.items], hasMore: page.hasMore }));
     } catch (e) {
       setMoreError(e.message);

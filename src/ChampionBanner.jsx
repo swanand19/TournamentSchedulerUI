@@ -1,7 +1,7 @@
 import { TrophyIcon } from "./icons";
 import { font } from "./theme";
 
-// The tournament's champions, once its final is won: the one line at the top of the stats page.
+// The tournament's champions, once its final is won: the one line at the top of the stats and matches pages.
 export default function ChampionBanner({ name, theme }) {
   if (!name) return null;
   return (

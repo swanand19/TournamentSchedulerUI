@@ -1,5 +1,8 @@
 import { font, themeFor } from "./theme";
+import { useEffect, useState } from "react";
 import { TargetIcon, PauseIcon, FlagIcon, PlayIcon, TrophyIcon } from "./icons";
+import { getKnockout } from "./api/knockoutApi";
+import ChampionBanner from "./ChampionBanner";
 
 // Status pill text with its icon; the icon never carries the meaning on its own.
 const paused = (text) => <><PauseIcon size={12} /> {text}</>;
@@ -10,9 +13,24 @@ const LIVE_STATUSES = ["InProgress", "Paused", "PenaltyShootout", "InningsBreak"
 
 // Someone who can't score here (a player, say) watches instead: "Match preview", "Watch live",
 // "View result" all open the watcher's screen (onWatchMatch).
-export default function MatchList({ matches, loading, tournamentStarted, starting, onStartTournament, onStartMatch, onEnterMatch, onWatchMatch, onOpenKnockouts, canScore = true, onBack, sport = "Football" }) {
+export default function MatchList({ tournamentId, matches, loading, tournamentStarted, starting, onStartTournament, onStartMatch, onEnterMatch, onWatchMatch, onOpenKnockouts, canScore = true, onBack, sport = "Football" }) {
   const isCricket = sport === "Cricket";
   const theme = themeFor(sport);
+
+  // The champion is the server's word (the knockout stage's), asked for only once a knockout match is
+  // over — and again whenever the list changes, so it appears as the final ends.
+  const knockoutsOver = matches.filter((m) => m.stage === "Knockout" && m.status === "Completed").length;
+  const [champion, setChampion] = useState(null);
+  useEffect(() => {
+    if (!tournamentId || knockoutsOver === 0) return undefined;
+    let current = true;
+    getKnockout(tournamentId)
+      .then((stage) => current && setChampion(stage?.championName ?? null))
+      .catch(() => {}); // the banner is extra: the list stands without it
+    return () => {
+      current = false;
+    };
+  }, [tournamentId, knockoutsOver]);
 
   // Several matches can be played at once, but a team only in one: a match waits while either side is
   // playing elsewhere. (The server has the last word when the match is set up.)
@@ -77,6 +95,7 @@ export default function MatchList({ matches, loading, tournamentStarted, startin
       )}
 
       <h2 style={{ fontFamily: font.display, fontSize: 26, margin: "0 0 1rem" }}>MATCHES</h2>
+      {knockoutsOver > 0 && <ChampionBanner name={champion} theme={theme} />}
 
       {!tournamentStarted && (
         <div style={{ background: "rgba(247,245,239,0.06)", border: "1px solid rgba(247,245,239,0.15)", borderRadius: 12, padding: "1.5rem", textAlign: "center", marginBottom: 20 }}>

@@ -33,6 +33,10 @@ export const SERVICES = [
   // Your inbox (phase 6D)
   "NOTIFICATION_LIST", // query: before, take
   "NOTIFICATION_UNREAD",
+  "LIVE_TICKET", // live updates (realtime/live.js): opens the line once
+  "LIVE_WATCH_TOURNAMENT", // connectionId, id
+  "LIVE_WATCH_MATCH", // connectionId, sport, matchId
+  "LIVE_UNWATCH", // connectionId; { tournamentId } | { sport, matchId }
   "NOTIFICATION_READ", // notificationId
   "NOTIFICATION_READ_ALL",
 
@@ -47,6 +51,23 @@ export const SERVICES = [
   "KNOCKOUT_FIXTURE_UPDATE", // id, fixtureId
   "KNOCKOUT_FIXTURE_DELETE", // id, fixtureId
   "KNOCKOUT_TEAM_SET", // id, fixtureId; { side, teamId }
+
+  // Public live scores (6E). PUBLIC_* work signed out (routeParams: code, matchId, playerId).
+  "PUBLIC_TOURNAMENT",
+  "PUBLIC_MATCHES",
+  "PUBLIC_MATCH", // the sport's own match answer, people and permissions taken out
+  "PUBLIC_MATCH_EVENTS",
+  "PUBLIC_WATCH",
+  "PUBLIC_ACTIVITY", // query: before, take
+  "PUBLIC_SCORECARD",
+  "PUBLIC_AWARDS",
+  "PUBLIC_STATS",
+  "PUBLIC_KNOCKOUT",
+  "PUBLIC_PLAYER", // name and sport cards only
+  "TOURNAMENT_PUBLIC_SET", // id; { isPublic } — owners
+  "FOLLOW_SEARCH", // query: q — public tournaments by name, code or link
+  "FOLLOW_ADD", // { code } (or the whole link)
+  "FOLLOW_REMOVE", // tournamentId
 
   // Tournaments
   "TOURNAMENT_LIST", // query: sport

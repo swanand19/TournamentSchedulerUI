@@ -9,4 +9,8 @@ export default defineConfig({
   plugins: [react()],
   // Sent as appVersion in every secure-gateway request header (src/api/gateway.js).
   define: { __APP_VERSION__: JSON.stringify(version) },
+  // Reachable from other computers and phones on the same network (public links, testers), not
+  // only from this laptop. `npm run dev` prints the Network address to use.
+  server: { host: true },
+  preview: { host: true },
 })

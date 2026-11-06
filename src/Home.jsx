@@ -53,13 +53,17 @@ function roleLabel(myRoles = []) {
   return parts.length ? parts.join(" · ") : null;
 }
 
+// Public tournaments I only follow (6E) have their own section; one I also run or play in stays with mine.
+const onlyFollowing = (t) => (t.myRoles ?? []).every((r) => r === "follower") && (t.myRoles ?? []).length > 0;
+
 const SECTIONS = [
-  { key: "live", title: "LIVE", match: (t) => t.status === "Live" },
-  { key: "upcoming", title: "UPCOMING", match: (t) => t.status === "Upcoming" || !t.status },
-  { key: "past", title: "PAST", match: (t) => t.status === "Completed" || t.status === "Cancelled" },
+  { key: "live", title: "LIVE", match: (t) => !onlyFollowing(t) && t.status === "Live" },
+  { key: "upcoming", title: "UPCOMING", match: (t) => !onlyFollowing(t) && (t.status === "Upcoming" || !t.status) },
+  { key: "past", title: "PAST", match: (t) => !onlyFollowing(t) && (t.status === "Completed" || t.status === "Cancelled") },
+  { key: "following", title: "FOLLOWING", match: onlyFollowing },
 ];
 
-export default function Home({ onSelectTournament, onOpenAccount, onJoinTeam, onOpenNotifications }) {
+export default function Home({ notice = "", onSelectTournament, onOpenAccount, onJoinTeam, onFindTournament, onOpenNotifications }) {
   const session = useSession();
   const [sport, setSport] = useState(loadStoredSport);
   const [tournaments, setTournaments] = useState([]);
@@ -207,7 +211,7 @@ export default function Home({ onSelectTournament, onOpenAccount, onJoinTeam, on
       </header>
 
       <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>
-        <ErrorBanner message={error} />
+        <ErrorBanner message={error || notice} />
 
         <div style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1.2rem", marginBottom: nameError ? 8 : 12 }}>
           <label htmlFor="new-tournament-name" style={{ display: "block", fontSize: 14, fontWeight: 600, color: theme.muted, marginBottom: 8 }}>
@@ -254,6 +258,16 @@ export default function Home({ onSelectTournament, onOpenAccount, onJoinTeam, on
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", minHeight: 48, background: theme.surfaceOnDark, color: theme.onDark, border: `1px solid ${theme.borderOnDark}`, borderRadius: 10, padding: "0.7rem 1.1rem", fontSize: 14, cursor: "pointer", marginBottom: 24, textAlign: "left" }}
         >
           <span><strong>Join a team</strong> <span style={{ color: theme.onDarkMuted }}>· got a code from an organiser?</span></span>
+          <span aria-hidden="true">→</span>
+        </button>
+
+        {/* Watching someone else's: public tournaments by name or code (6E). */}
+        <button
+          onClick={onFindTournament}
+          className="pressable"
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", minHeight: 48, background: theme.surfaceOnDark, color: theme.onDark, border: `1px solid ${theme.borderOnDark}`, borderRadius: 10, padding: "0.7rem 1.1rem", fontSize: 14, cursor: "pointer", marginTop: -14, marginBottom: 24, textAlign: "left" }}
+        >
+          <span><strong>Find a tournament</strong> <span style={{ color: theme.onDarkMuted }}>· follow a public one by its name or code</span></span>
           <span aria-hidden="true">→</span>
         </button>
 

@@ -127,6 +127,8 @@ export default function SignIn() {
   };
 
   const texted = channel === "Sms";
+  // A code to a number travels by WhatsApp or text (AUTH_OPTIONS.phoneVia); the words say where to look.
+  const onWhatsApp = options.phoneVia === "WhatsApp";
   const shown = texted ? formatPhone(contact) : contact;
   const waitSeconds = Math.max(0, Math.ceil((resendAt - now) / 1000));
 
@@ -161,7 +163,7 @@ export default function SignIn() {
               />
               <p style={hintStyle}>
                 {options.phone
-                  ? `We'll send a ${CODE_LENGTH}-digit code by email or text message. New here? The same code creates your account.`
+                  ? `We'll send a ${CODE_LENGTH}-digit code by email, or on ${onWhatsApp ? "WhatsApp" : "a text message"} to a number. New here? The same code creates your account.`
                   : `We'll email you a ${CODE_LENGTH}-digit code. New here? The same code creates your account.`}
               </p>
               <button type="submit" disabled={busy} style={primaryButton(busy)}>
@@ -188,7 +190,11 @@ export default function SignIn() {
                 style={{ ...inputStyle, fontSize: 24, letterSpacing: "0.3em", textAlign: "center", fontFamily: font.condensed }}
               />
               <p style={hintStyle}>
-                {texted ? "It works for 5 minutes. A text can take a minute to arrive." : "It works for 5 minutes. Check your spam folder if it hasn't arrived."}
+                {!texted
+                  ? "It works for 5 minutes. Check your spam folder if it hasn't arrived."
+                  : onWhatsApp
+                    ? "It works for 5 minutes. Look for it in WhatsApp — it needs WhatsApp on this number."
+                    : "It works for 5 minutes. A text can take a minute to arrive."}
               </p>
               <button type="submit" disabled={busy} style={primaryButton(busy)}>
                 {busy ? "Checking…" : "Sign in"}

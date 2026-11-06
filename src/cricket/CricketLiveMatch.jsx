@@ -20,6 +20,7 @@ import Modal from "../Modal";
 import ErrorBanner from "../ErrorBanner";
 import ScoringBanner from "../ScoringBanner";
 import { ScoringControls } from "../ScoringControls";
+import { LIVE_POLL_MS, useLive } from "../realtime/useLive";
 
 // The scoring console.
 //
@@ -551,8 +552,11 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
   const acting = useRef(false);
 
   // Every scoring call answers with the state that replaces this. Besides that, the screen re-reads
-  // the match every 5 seconds while the tab is visible: another phone may be scoring it, or asking
-  // this one to hand scoring over.
+  // the match when the live line says it changed, and every 5 seconds without the line (every
+  // minute with it) while the tab is visible: another phone may be scoring it, or asking this one
+  // to hand scoring over.
+  const reread = useRef(null);
+  const lineOpen = useLive({ kind: "match", sport: "cricket", matchId }, () => reread.current?.());
   useEffect(() => {
     let cancelled = false;
     const load = async (first) => {
@@ -565,9 +569,13 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
       }
     };
     load(true);
-    const timer = setInterval(() => load(false), 5000);
-    return () => { cancelled = true; clearInterval(timer); };
+    reread.current = () => load(false);
+    return () => { cancelled = true; reread.current = null; };
   }, [matchId]);
+  useEffect(() => {
+    const timer = setInterval(() => reread.current?.(), lineOpen ? LIVE_POLL_MS : 5000);
+    return () => clearInterval(timer);
+  }, [lineOpen]);
 
   /** Runs an engine call, keeps the returned state, and surfaces a refusal as it was worded. */
   const act = async (fn) => {

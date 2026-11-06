@@ -213,6 +213,12 @@ function AddPlayerRow({ tournamentId, team, isCricket, showPhone, theme, playerP
  * account, now or when they sign up with it. A linked player's name and cricket profile are their
  * own, so those fields are shown but locked.
  */
+/** "mumbai indians" → "Mumbai Indians" as it's typed, like a person's name. Only first letters are
+ *  raised, so "FC" or "McLaren" stay as written. Same rule as the phone app's `capitalizeWords`. */
+function capitalizeWords(value) {
+  return value.replace(/(^|\s)(\p{Ll})/gu, (_m, gap, letter) => gap + letter.toUpperCase());
+}
+
 function PlayerFields({ draft, onChange, isCricket, linked = false, showPhone = false, team = null, playerId = null }) {
   const setCricket = (field, value) =>
     onChange("cricket", { ...draft.cricket, [field]: value });
@@ -224,7 +230,8 @@ function PlayerFields({ draft, onChange, isCricket, linked = false, showPhone = 
     <>
       <input
         value={draft.name}
-        onChange={(e) => onChange("name", e.target.value)}
+        onChange={(e) => onChange("name", capitalizeWords(e.target.value))}
+        autoCapitalize="words"
         placeholder="Player name"
         aria-label="Player name"
         {...ownFields}
@@ -578,7 +585,8 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
         <div style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1.2rem", marginBottom: 20, display: "flex", gap: 10 }}>
           <input
             value={newTeamName}
-            onChange={(e) => setNewTeamName(e.target.value)}
+            onChange={(e) => setNewTeamName(capitalizeWords(e.target.value))}
+            autoCapitalize="words"
             onKeyDown={(e) => e.key === "Enter" && handleCreateTeam()}
             placeholder="New team name"
             aria-label="New team name"
@@ -608,7 +616,8 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                 <div style={{ display: "flex", gap: 8, flex: 1 }}>
                   <input
                     value={editingTeamName}
-                    onChange={(e) => setEditingTeamName(e.target.value)}
+                    onChange={(e) => setEditingTeamName(capitalizeWords(e.target.value))}
+                    autoCapitalize="words"
                     onKeyDown={(e) => e.key === "Enter" && saveEditTeam(team.id)}
                     style={{ ...inputStyle, flex: 1, fontSize: 14 }}
                   />

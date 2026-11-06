@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { randomizeGroups, setManualGroups, generateSchedule, approveSchedule } from "./api/tournamentApi";
 import { getTeams } from "./api/teamsApi";
 import Home from "./Home";
 import Account from "./Account";
 import JoinTeam from "./JoinTeam";
+import FindTournament from "./FindTournament";
 import Notifications from "./Notifications";
 import TournamentPeople from "./TournamentPeople";
 import TeamManagement from "./TeamManagement";
@@ -21,6 +22,9 @@ import CricketStats from "./cricket/CricketStats";
 import { font, themeFor, syncDocumentSport } from "./theme";
 import ErrorBanner from "./ErrorBanner";
 import Profile from "./Profile";
+import { pathFor, parsePath } from "./routing/routes";
+import { startHistory, showPath, onHistoryMove } from "./routing/history";
+import { followTournament } from "./api/publicApi";
 
 // A stored schedule keeps only the fixtures, so the per-team totals shown for a freshly generated
 // schedule are recomputed here rather than lost on reload.
@@ -54,7 +58,7 @@ function isoDay(days) {
 }
 
 export default function App() {
-  const [view, setView] = useState("home"); // home | tournament | account | join | profile
+  const [view, setView] = useState("home"); // home | tournament | account | join | find | profile
   // Whose profile is open ({} = mine, or { playerId } from a name tapped), and where Back goes.
   const [profileWho, setProfileWho] = useState({});
   const [profileReturn, setProfileReturn] = useState("home");
@@ -116,6 +120,17 @@ export default function App() {
   const [matchesTab, setMatchesTab] = useState("matches"); // matches | stats
   // Bumped whenever a match finishes, so the stats tab refetches instead of showing stale numbers.
   const [statsRefreshKey, setStatsRefreshKey] = useState(0);
+
+  // --- Addresses: see "Addresses" below ---
+  const [homeNotice, setHomeNotice] = useState(""); // why a link couldn't open, shown on Home
+  const [routeRound, setRouteRound] = useState(0); // bumped when a path has finished opening
+  const openingRound = useRef(0);
+  const replacingPath = useRef(true);
+  const replaceNextPath = useRef(false);
+  const shownPath = useRef(null);
+  const openPathRef = useRef(null);
+  const historyStarted = useRef(false);
+  const baseStage = useRef("setup"); // the tournament's own page (setup / groups / schedule / matches / waiting)
 
   // Home syncs its own tab, so only the tournament view owns <html data-sport>.
   useEffect(() => {
@@ -195,9 +210,11 @@ export default function App() {
     }
   };
 
+  // Answers where it landed ({ stage, info, matches }), for a link that goes further in.
   const handleSelectTournament = async (id, hasSchedule, isStarted = false, tournamentSport = "Football", name = "") => {
     setTournamentName(name);
     setError("");
+    setHomeNotice("");
     resetTournamentState();
     setTournamentId(id);
     setSport(tournamentSport);
@@ -207,36 +224,31 @@ export default function App() {
 
     // Groups and the schedule are the owners' to build; a scorer waits for kick-off.
     const info = await refreshTournament(id);
-    if (info && !info.access?.canEdit && !isStarted) {
-      setStage("waiting");
-      return;
-    }
+    const landed = (stage, matches = []) => {
+      setStage(stage);
+      return { stage, info, matches };
+    };
+    if (info && !info.access?.canEdit && !isStarted) return landed("waiting");
 
-    if (isStarted) {
-      await loadMatches(id);
-      setStage("matches");
-      return;
-    }
-  
-    if (hasSchedule) {
-      setLoading(true);
-      try {
-        const saved = await getTournamentSchedule(id);
-        if (saved) {
-          setScheduleData({ groups: saved.groups.map(toDisplayGroup) });
-          setApprovedId(saved.id);
-          setStage("schedule");
-        } else {
-          setStage("setup");
-        }
-      } catch (e) {
-        setError(e.message);
-        setStage("setup");
-      } finally {
-        setLoading(false);
+    if (isStarted) return landed("matches", await loadMatches(id));
+
+    if (!hasSchedule) return landed("setup");
+    setLoading(true);
+    try {
+      const saved = await getTournamentSchedule(id);
+      if (!saved) {
+        setHadExistingSchedule(false); // a link doesn't know, so it asks; there's none
+        return landed("setup");
       }
-    } else {
-      setStage("setup");
+      setScheduleData({ groups: saved.groups.map(toDisplayGroup) });
+      setApprovedId(saved.id);
+      setHadExistingSchedule(true);
+      return landed("schedule");
+    } catch (e) {
+      setError(e.message);
+      return landed("setup");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -273,6 +285,7 @@ export default function App() {
   };
 
   const goHome = () => {
+    setHomeNotice("");
     setView("home");
     setTournamentId(null);
     setSport("Football");
@@ -573,13 +586,15 @@ export default function App() {
   // --- Matches module handlers ---
 
   const loadMatches = async (id = tournamentId) => {
-    if (!id) return;
+    if (!id) return [];
     setLoadingMatches(true);
     try {
       const data = await getMatches(id);
       setMatches(data);
+      return data;
     } catch (e) {
       setError(e.message);
+      return [];
     } finally {
       setLoadingMatches(false);
     }
@@ -618,6 +633,7 @@ export default function App() {
   };
 
   const handleMatchStarted = () => {
+    replaceNextPath.current = true; // the setup screen is done with; Back from the live match skips it
     setLiveMatchId(activeMatchId);
     setActiveMatchId(null);
     setStage("liveMatch");
@@ -655,12 +671,156 @@ export default function App() {
     setView("profile");
   };
 
+  // --- Addresses (src/routing) ---
+  // The address bar follows the screen state below; a link, a refresh, or the browser's Back and Forward
+  // open a path through the same functions the buttons use.
+
+  // Opens a tournament from a link: its own landing page first, exactly as from Home. Answers
+  // where it landed, or null when it can't be seen (back Home with the server's reason).
+  const openTournamentFromLink = async (id) => {
+    try {
+      const t = await getTournament(id);
+      return await handleSelectTournament(t.id, !t.isStarted, t.isStarted, t.sport, t.name);
+    } catch (e) {
+      goHome();
+      setHomeNotice(e.message);
+      return null;
+    }
+  };
+
+  const openPath = async (pathname) => {
+    const route = parsePath(pathname);
+    if (route.name === "home") {
+      if (view !== "home") goHome();
+      return;
+    }
+    if (route.name === "profile") {
+      setProfileWho(route.who);
+      setView("profile");
+      return;
+    }
+    if (route.name === "follow") {
+      try {
+        const followed = await followTournament(route.code);
+        await openTournamentFromLink(followed.tournamentId);
+      } catch (e) {
+        goHome();
+        setHomeNotice(e.message);
+      }
+      return;
+    }
+    if (route.name !== "tournament") {
+      setView(route.name);
+      return;
+    }
+
+    // Already open: only the screen within it changes. Otherwise it opens on its landing page first.
+    let here = { stage: baseStage.current, info: tournamentInfo, matches, started: tournamentStarted };
+    if (view !== "tournament" || tournamentId !== route.id || !tournamentInfo) {
+      const opened = await openTournamentFromLink(route.id);
+      if (!opened || route.screen === "landing") return;
+      here = { ...opened, started: opened.stage === "matches" };
+    }
+    const { stage: landing, info, started } = here;
+    const backToLanding = async () => {
+      setActiveMatchId(null);
+      setLiveMatchId(null);
+      setWatchMatchId(null);
+      setMatchesTab("matches");
+      if (started && stage !== "matches") {
+        await loadMatches();
+        setStatsRefreshKey((k) => k + 1);
+      }
+      setStage(landing);
+    };
+
+    switch (route.screen) {
+      case "teams":
+        setPreManageTeamsStage(landing);
+        setStage("manageTeams");
+        return;
+      case "people":
+        setPrePeopleStage(landing);
+        setStage("people");
+        return;
+      case "knockout":
+        if (!info?.access?.canEdit && !started) return backToLanding();
+        setPreKnockoutStage(landing);
+        setStage("knockout");
+        return;
+      case "stats":
+        if (!started) return backToLanding();
+        setMatchesTab("stats");
+        setStage("matches");
+        return;
+      case "match":
+      case "setup":
+      case "watch": {
+        const card = started ? here.matches.find((m) => m.id === route.matchId) : null;
+        if (!card) {
+          await backToLanding();
+          if (started) setError("That match isn't in this tournament.");
+          return;
+        }
+        // The same choice the match list makes: who can score gets the scorer's screens (a finished
+        // match's summary too), everyone else watches.
+        if (route.screen === "watch" || !info?.access?.canScore) return openWatch(card.id);
+        if (card.status === "NotStarted") return openMatchSetup(card.id);
+        return openLiveMatch(card.id);
+      }
+      default:
+        return backToLanding();
+    }
+  };
+
+  const path = pathFor({ view, stage, tournamentId, activeMatchId, liveMatchId, watchMatchId, matchesTab, profileWho });
+
+  // While a path is being opened, the screens it passes through replace the address instead of adding
+  // entries; the round it finishes with (routeRound) ends that.
+  useEffect(() => {
+    if (routeRound === 0) return; // the first address is still being opened
+    const replace = replacingPath.current || replaceNextPath.current;
+    replaceNextPath.current = false;
+    if (routeRound === openingRound.current) replacingPath.current = false;
+    showPath(path, { replace });
+    shownPath.current = path;
+    document.title = view === "tournament" && tournamentName ? `${tournamentName} · Tournament Scheduler` : "Tournament Scheduler";
+  }, [path, routeRound, view, tournamentName]);
+
+  useEffect(() => {
+    openPathRef.current = openPath;
+    if (["setup", "groups", "schedule", "matches", "waiting"].includes(stage)) baseStage.current = stage;
+  });
+
+  useEffect(() => {
+    const open = async (pathname) => {
+      replacingPath.current = true;
+      const round = ++openingRound.current;
+      try {
+        await openPathRef.current(pathname);
+      } finally {
+        setRouteRound(round);
+      }
+    };
+    if (!historyStarted.current) {
+      historyStarted.current = true;
+      startHistory();
+      open(window.location.pathname);
+    }
+    // Our own in-app Back has already moved the screen; only a real Back or Forward needs opening.
+    return onHistoryMove((pathname) => {
+      if (pathname !== shownPath.current) open(pathname);
+    });
+  }, []);
+
   if (view === "home") {
     return (
       <Home
+        notice={homeNotice}
         onSelectTournament={handleSelectTournament}
         onOpenAccount={() => openProfile({})}
         onJoinTeam={() => setView("join")}
+        onFindTournament={() => setView("find")}
         onOpenNotifications={() => setView("notifications")}
       />
     );
@@ -694,6 +854,10 @@ export default function App() {
 
   if (view === "join") {
     return <JoinTeam onBack={() => setView("home")} onJoined={openJoinedTournament} />;
+  }
+
+  if (view === "find") {
+    return <FindTournament onBack={() => setView("home")} onOpen={(tournamentId) => openJoinedTournament({ tournamentId })} />;
   }
 
   if (view === "notifications") {
@@ -1449,6 +1613,7 @@ export default function App() {
               {(!tournamentStarted || matchesTab === "matches") && (
                 <div className="view-in">
                 <MatchList
+                  tournamentId={tournamentId}
                   matches={matches}
                   loading={loadingMatches}
                   tournamentStarted={tournamentStarted}

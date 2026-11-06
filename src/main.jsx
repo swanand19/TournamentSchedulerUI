@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import AuthGate from "./auth/AuthGate.jsx";
+import LiveTournament from "./live/LiveTournament.jsx";
 import "./styles.css";
 
 // Browsers step a focused number field when the mouse wheel turns over it. On a long form that
@@ -17,10 +18,18 @@ document.addEventListener(
   { passive: true }
 );
 
+// A public tournament's page (/live/<code>, phase 6E) is for anyone with the link, signed in or not;
+// everything else is the app, behind sign-in.
+const isPublicPage = window.location.pathname.startsWith("/live/");
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <AuthGate>
-      <App />
-    </AuthGate>
+    {isPublicPage ? (
+      <LiveTournament />
+    ) : (
+      <AuthGate>
+        <App />
+      </AuthGate>
+    )}
   </StrictMode>
 );

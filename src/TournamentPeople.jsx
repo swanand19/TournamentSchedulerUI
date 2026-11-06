@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  addMember, cancelInvite, completeTournament, getMembers, leaveTournament, removeMember, resendInvite, updateTournament,
+  addMember, cancelInvite, completeTournament, getMembers, getTournament, leaveTournament, removeMember, resendInvite, updateTournament,
 } from "./api/tournamentsApi";
+import { publicLinkFor, setTournamentPublic, unfollowTournament } from "./api/publicApi";
 import ErrorBanner from "./ErrorBanner";
 import { font, themeFor } from "./theme";
 import { formatPhone, useAuthOptions } from "./useAuthOptions";
@@ -115,6 +116,30 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
     });
   };
 
+  // Public live scores (6E): the owners' switch and the one link it has for good; everyone may copy it.
+  const link = publicLinkFor(tournament.share);
+  const [copied, setCopied] = useState(false);
+
+  const switchPublic = (on) => run("public", async () => onChanged(await setTournamentPublic(tournament.id, on)));
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Couldn't copy here. Select the link and copy it yourself.");
+    }
+  };
+
+  // A follower who is nothing more is gone from it afterwards; a player who also follows stays.
+  const unfollow = () =>
+    run("unfollow", async () => {
+      await unfollowTournament(tournament.id);
+      if (access.canLeave) onChanged(await getTournament(tournament.id));
+      else onLeft();
+    });
+
   const detailsChanged = name.trim() !== tournament.name || startDate !== (tournament.startDate ?? "") || endDate !== (tournament.endDate ?? "");
 
   return (
@@ -171,6 +196,42 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
           </p>
         )}
       </form>
+
+      {/* --- Public live scores (6E) ----------------------------------- */}
+      {(access.canManageMembers || link) && (
+        <div style={card(theme)}>
+          <h2 style={heading}>PUBLIC LIVE SCORES</h2>
+          {access.canManageMembers && (
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, cursor: "pointer", minHeight: 44 }}>
+              <input type="checkbox" checked={!!tournament.isPublic} onChange={(e) => switchPublic(e.target.checked)} disabled={!!busy} style={{ width: 20, height: 20, marginTop: 1 }} />
+              <span>
+                <strong>Anyone can find and watch this tournament</strong>
+                <span style={{ display: "block", fontSize: 13, color: theme.muted, marginTop: 2 }}>
+                  Scores, tables, stats and knockouts, no account needed. People find it by its name or this link, and
+                  can follow it. No emails or numbers are shown. Switch it off to make it private again.
+                </span>
+              </span>
+            </label>
+          )}
+          {link && (
+            <div style={{ marginTop: access.canManageMembers ? 12 : 0 }}>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.muted }}>
+                Link
+                <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...input, marginTop: 4 }} />
+              </label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                <button type="button" onClick={copyLink} style={button(theme.deep, theme.cream)}>
+                  {copied ? "Copied" : "Copy link"}
+                </button>
+                <a href={link} target="_blank" rel="noreferrer" style={{ ...button("transparent", theme.deep, { border: `1.5px solid ${theme.deep}` }), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                  Open
+                </a>
+              </div>
+              <p style={{ fontSize: 12, color: theme.muted, margin: "8px 0 0" }}>Code {tournament.share.code}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* --- People ----------------------------------------------------- */}
       <div style={card(theme)}>
@@ -267,11 +328,18 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
         )}
       </div>
 
-      {access.canLeave && (
-        <button onClick={leave} disabled={!!busy} style={button("transparent", "#F7F5EF", { border: "1px solid rgba(247,245,239,0.35)" })}>
-          {busy === "leave" ? "Leaving…" : "Leave this tournament"}
-        </button>
-      )}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {access.canLeave && (
+          <button onClick={leave} disabled={!!busy} style={button("transparent", "#F7F5EF", { border: "1px solid rgba(247,245,239,0.35)" })}>
+            {busy === "leave" ? "Leaving…" : "Leave this tournament"}
+          </button>
+        )}
+        {access.isFollowing && (
+          <button onClick={unfollow} disabled={!!busy} style={button("transparent", "#F7F5EF", { border: "1px solid rgba(247,245,239,0.35)" })}>
+            {busy === "unfollow" ? "Stopping…" : "Stop following"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

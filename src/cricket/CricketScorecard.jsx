@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { font, cricketTheme as theme } from "../theme";
-import { getCricketScorecard } from "../api/cricketApi";
+import { useSource } from "../api/source";
 import ErrorBanner from "../ErrorBanner";
 
 // The card as it would be printed: one block per innings, batting above bowling, with the extras
@@ -129,6 +129,7 @@ function InningsBlock({ innings }) {
 }
 
 export default function CricketScorecard({ matchId, refreshKey }) {
+  const src = useSource();
   const [card, setCard] = useState(null);
   const [error, setError] = useState("");
 
@@ -136,14 +137,14 @@ export default function CricketScorecard({ matchId, refreshKey }) {
     let cancelled = false;
     (async () => {
       try {
-        const data = await getCricketScorecard(matchId);
+        const data = await src.cricketScorecard(matchId);
         if (!cancelled) setCard(data);
       } catch (e) {
         if (!cancelled) setError(e.message);
       }
     })();
     return () => { cancelled = true; };
-  }, [matchId, refreshKey]);
+  }, [src, matchId, refreshKey]);
 
   if (error) return <ErrorBanner message={error} />;
   if (!card) return <p style={{ color: theme.onDarkMuted, fontSize: 14 }}>Loading scorecard…</p>;

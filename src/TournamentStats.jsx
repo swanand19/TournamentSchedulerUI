@@ -1,6 +1,6 @@
 import { font, footballTheme as theme } from "./theme";
 import { useState, useEffect } from "react";
-import { getTournamentStats } from "./api/tournamentsApi";
+import { useSource } from "./api/source";
 import ErrorBanner from "./ErrorBanner";
 import ChampionBanner from "./ChampionBanner";
 import PlayerName from "./PlayerName";
@@ -277,6 +277,7 @@ function TournamentStatsBody({ tournamentId, refreshKey }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const src = useSource();
 
   useEffect(() => {
     let cancelled = false;
@@ -284,7 +285,7 @@ function TournamentStatsBody({ tournamentId, refreshKey }) {
       setLoading(true);
       setError("");
       try {
-        const data = await getTournamentStats(tournamentId);
+        const data = await src.stats(tournamentId);
         if (!cancelled) setStats(data);
       } catch (e) {
         if (!cancelled) setError(e.message);
@@ -293,7 +294,7 @@ function TournamentStatsBody({ tournamentId, refreshKey }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [tournamentId, refreshKey]);
+  }, [src, tournamentId, refreshKey]);
 
   if (loading) return <p style={{ color: MUTED }}>Loading stats…</p>;
   if (error) {

@@ -1,5 +1,6 @@
 import { clearSession } from "../auth/session";
 import { ApiError, apiError, unreachable, unreadableAnswer } from "./errors";
+import { API_BASE } from "./apiBase";
 import { openResponse, sealRequest } from "./gateway";
 import { SERVICES } from "./services";
 
@@ -12,7 +13,7 @@ import { SERVICES } from "./services";
 // alone (see gateway.js). Inside, the answer is the usual { status: { isSuccess, message,
 // statusCode }, data }; callers get `data`, and a failure throws an ApiError carrying `status.message`.
 
-const GATEWAY_URL = `${(import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "")}/gateway`;
+const GATEWAY_URL = `${API_BASE}/gateway`;
 const KNOWN = new Set(SERVICES);
 
 function isEnvelope(body) {

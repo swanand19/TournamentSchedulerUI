@@ -1,31 +1,43 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getUnreadCount } from "./api/notificationsApi";
+import { LIVE_POLL_MS, useLive } from "./realtime/useLive";
 
-// The bell on Home: how many notifications are unread, asked for every 30 seconds while the tab is
-// visible (and at once when it becomes visible again). Opens the inbox.
+// The bell on Home: how many notifications are unread — asked for at once when the live line says
+// the inbox changed, and every 30 seconds while the tab is visible (every minute while the line is
+// open, in case a nudge went missing; at once when the tab becomes visible again). Opens the inbox.
 
 const POLL_MS = 30_000;
+const INBOX = { kind: "inbox" };
 
 export default function NotificationBell({ theme, onOpen }) {
   const [count, setCount] = useState(0);
+  const alive = useRef(true);
+
+  const check = useCallback(() => {
+    if (document.visibilityState !== "visible") return;
+    getUnreadCount()
+      .then((r) => alive.current && setCount(r?.unreadCount ?? 0))
+      .catch(() => {}); // the bell just keeps its last count; Home shows real errors
+  }, []);
+
+  const live = useLive(INBOX, check);
 
   useEffect(() => {
-    let alive = true;
-    const check = () => {
-      if (document.visibilityState !== "visible") return;
-      getUnreadCount()
-        .then((r) => alive && setCount(r?.unreadCount ?? 0))
-        .catch(() => {}); // the bell just keeps its last count; Home shows real errors
+    alive.current = true;
+    return () => {
+      alive.current = false;
     };
+  }, []);
+
+  useEffect(() => {
     check();
-    const timer = setInterval(check, POLL_MS);
+    const timer = setInterval(check, live ? LIVE_POLL_MS : POLL_MS);
     document.addEventListener("visibilitychange", check);
     return () => {
-      alive = false;
       clearInterval(timer);
       document.removeEventListener("visibilitychange", check);
     };
-  }, []);
+  }, [check, live]);
 
   return (
     <button

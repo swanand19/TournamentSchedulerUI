@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { font, cricketTheme as theme } from "../theme";
-import { getCricketStats } from "../api/tournamentsApi";
+import { useSource } from "../api/source";
 import ErrorBanner from "../ErrorBanner";
 import ChampionBanner from "../ChampionBanner";
 import { TrophyIcon } from "../icons";
@@ -366,20 +366,21 @@ function CricketStatsBody({ tournamentId, refreshKey }) {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("table");
+  const src = useSource();
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setError("");
       try {
-        const data = await getCricketStats(tournamentId);
+        const data = await src.cricketStats(tournamentId);
         if (!cancelled) setStats(data);
       } catch (e) {
         if (!cancelled) setError(e.message);
       }
     })();
     return () => { cancelled = true; };
-  }, [tournamentId, refreshKey]);
+  }, [src, tournamentId, refreshKey]);
 
   if (error) return <ErrorBanner message={error} />;
   if (!stats) return <p style={{ color: ON_DARK_SOFT }}>Loading stats…</p>;

@@ -15,6 +15,7 @@ import {
   MissIcon, BanIcon,
 } from "./icons";
 import { formatStopwatch, parseUtc, periodMinutes, priorPeriodsMinutes } from "./footballClock";
+import { LIVE_POLL_MS, useLive } from "./realtime/useLive";
 
 const YELLOW_CARD = "#F4C430";
 
@@ -128,20 +129,24 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
     })();
   }, [matchId]);
 
-  // Re-read the match every 5 seconds while the tab is visible and nothing is being sent: another
-  // phone may be scoring it, or asking this one to hand scoring over.
+  // Re-read the match when the live line says it changed, and every 5 seconds without the line
+  // (every minute with it), while the tab is visible and nothing is being sent: another phone may
+  // be scoring it, or asking this one to hand scoring over.
   const busyRef = useRef(false);
   useEffect(() => {
     busyRef.current = busy;
   }, [busy]);
+  const lineOpen = useLive({ kind: "match", sport: "football", matchId }, () => {
+    if (!busyRef.current) refresh();
+  });
   useEffect(() => {
     const timer = setInterval(() => {
       if (!document.hidden && !busyRef.current) refresh();
-    }, 5000);
+    }, lineOpen ? LIVE_POLL_MS : 5000);
     return () => clearInterval(timer);
     // refresh only reads matchId, which restarts this effect when it changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matchId]);
+  }, [matchId, lineOpen]);
 
   const startingPlayers = (team) =>
     (match?.matchPlayers || [])

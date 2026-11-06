@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  addKnockoutMatch, applyKnockoutPreset, clearKnockout, deleteKnockoutMatch, getKnockout, getKnockoutPresets,
+  addKnockoutMatch, applyKnockoutPreset, clearKnockout, deleteKnockoutMatch, getKnockoutPresets,
   setKnockoutTeam, updateKnockoutMatch,
 } from "./api/knockoutApi";
 import ErrorBanner from "./ErrorBanner";
+import { useSource } from "./api/source";
 import { TrophyIcon } from "./icons";
 import { font, themeFor } from "./theme";
 
@@ -82,16 +83,17 @@ export default function Knockouts({ tournamentId, sport, tournament, started, ca
   const [endDate, setEndDate] = useState(tournament?.endDate ?? "");
   const [editor, setEditor] = useState(null); // { fixtureId|null, round, label, home, away }
   const [picking, setPicking] = useState(null); // { fixtureId, side }
+  const src = useSource();
 
   const load = useCallback(async () => {
     try {
-      const s = await getKnockout(tournamentId);
+      const s = await src.knockout(tournamentId);
       setStage(s);
       if (canEdit && !s.started) setPresets(await getKnockoutPresets(tournamentId));
     } catch (e) {
       setError(e.message);
     }
-  }, [tournamentId, canEdit]);
+  }, [src, tournamentId, canEdit]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -183,12 +185,14 @@ export default function Knockouts({ tournamentId, sport, tournament, started, ca
 
   return (
     <div>
-      <button
-        onClick={onBack}
-        style={{ background: theme.surfaceOnDark, color: theme.onDark, border: `1px solid ${theme.borderOnDark}`, borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 20 }}
-      >
-        ← Back
-      </button>
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{ background: theme.surfaceOnDark, color: theme.onDark, border: `1px solid ${theme.borderOnDark}`, borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 20 }}
+        >
+          ← Back
+        </button>
+      )}
       <h2 style={{ fontFamily: font.display, fontSize: 26, margin: "0 0 1rem" }}>KNOCKOUT STAGE</h2>
 
       <ErrorBanner message={error} />
