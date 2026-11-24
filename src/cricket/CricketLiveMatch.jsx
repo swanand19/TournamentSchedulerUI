@@ -20,6 +20,7 @@ import Modal from "../Modal";
 import ErrorBanner from "../ErrorBanner";
 import ScoringBanner from "../ScoringBanner";
 import { ScoringControls } from "../ScoringControls";
+import { claimScoring } from "../api/scoringApi";
 import { LIVE_POLL_MS, useLive } from "../realtime/useLive";
 
 // The scoring console.
@@ -562,6 +563,8 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
     const load = async (first) => {
       if (!first && (document.hidden || acting.current)) return;
       try {
+        // Opening the scoring screen takes the match if nobody is scoring it, before the first read.
+        if (first) await claimScoring("cricket", matchId);
         const data = await getCricketMatch(matchId);
         if (!cancelled && !acting.current) setState(data);
       } catch (e) {

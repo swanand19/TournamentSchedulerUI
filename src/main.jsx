@@ -4,6 +4,9 @@ import App from "./App.jsx";
 import AuthGate from "./auth/AuthGate.jsx";
 import LiveTournament from "./live/LiveTournament.jsx";
 import LegalPage from "./legal/LegalPage.jsx";
+import TvBoard from "./pool/TvBoard.jsx";
+import PublicTeam from "./clubs/PublicTeam.jsx";
+import PublicLeague from "./leagues/PublicLeague.jsx";
 import "./styles.css";
 
 // Browsers step a focused number field when the mouse wheel turns over it. On a long form that
@@ -24,12 +27,24 @@ document.addEventListener(
 // else is the app, behind sign-in.
 const path = window.location.pathname;
 const isPublicPage = path.startsWith("/live/");
+// /live/<code>/tv: the auction or team draw for a big screen in the hall (plan 4.7), the same public read.
+const tvCode = /^\/live\/([^/]+)\/tv\/?$/.exec(path)?.[1];
 const isLegalPage = ["/privacy", "/delete-account"].includes(path.replace(/\/+$/, ""));
+// /team/<code>: a lasting team's public page (C-15), names and results only.
+const teamCode = /^\/team\/([^/]+)\/?$/.exec(path)?.[1];
+// /leagues/<code>: a league's public page (2026-11-24), every season and its all-time stats.
+const leagueCode = /^\/leagues\/([^/]+)\/?$/.exec(path)?.[1];
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     {isLegalPage ? (
       <LegalPage />
+    ) : teamCode ? (
+      <PublicTeam code={teamCode} />
+    ) : leagueCode ? (
+      <PublicLeague code={leagueCode} />
+    ) : tvCode ? (
+      <TvBoard code={tvCode} />
     ) : isPublicPage ? (
       <LiveTournament />
     ) : (

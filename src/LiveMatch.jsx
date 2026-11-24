@@ -10,6 +10,7 @@ import Modal from "./Modal";
 import ErrorBanner from "./ErrorBanner";
 import ScoringBanner from "./ScoringBanner";
 import { ScoringControls } from "./ScoringControls";
+import { claimScoring } from "./api/scoringApi";
 import {
   BallIcon, CardIcon, SwapIcon, PlayIcon, PauseIcon, StopIcon, TimerIcon, FlagIcon, TargetIcon,
   MissIcon, BanIcon,
@@ -123,6 +124,9 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
   useEffect(() => {
     (async () => {
       setLoading(true);
+      // Opening the scoring screen takes the match if nobody is scoring it, before the first read, so
+      // that read already says who has it (api/scoringApi.js).
+      await claimScoring("football", matchId);
       const evts = await refresh();
       setInitialEventIds(new Set(evts.map((e) => e.id)));
       setLoading(false);

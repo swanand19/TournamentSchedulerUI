@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { joinTeam, previewJoin } from "./api/teamsApi";
+import { joinClub, previewClubJoin } from "./api/clubsApi";
 import ErrorBanner from "./ErrorBanner";
 import { font, themeFor } from "./theme";
 
@@ -17,7 +18,10 @@ const button = {
   cursor: "pointer",
 };
 
-export default function JoinTeam({ onBack, onJoined }) {
+// A lasting team's code is eight characters (step 2): the same field takes it, and joining opens the team's page. Nine
+// is a tournament's entry code, which is for a team's admin, so the screen says where it goes instead.
+
+export default function JoinTeam({ onBack, onJoined, onJoinedClub }) {
   const [code, setCode] = useState("");
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
@@ -44,11 +48,29 @@ export default function JoinTeam({ onBack, onJoined }) {
   const look = (e) => {
     e.preventDefault();
     if (!code.trim()) return;
+    const typed = code.replace(/[\s-]/g, "").length;
+    if (typed === 9) {
+      setError("That’s a tournament’s entry code, for a team’s admin: open your team from Home and choose Enter a tournament.");
+      return;
+    }
+    if (typed === 8) {
+      run("look", async () => {
+        const club = await previewClubJoin(code);
+        const where = [`${club.sport} team`, club.area].filter(Boolean).join(" · ");
+        setPreview({ club: true, clubId: club.clubId, sport: club.sport, teamName: club.name, tournamentName: where, places: club.places.map((p) => ({ playerId: p.clubPlayerId, name: p.name, detail: p.detail })) });
+      });
+      return;
+    }
     run("look", async () => setPreview(await previewJoin(code)));
   };
 
   const join = (playerId, label) =>
     run(label, async () => {
+      if (preview?.club) {
+        const joined = await joinClub(code, playerId);
+        onJoinedClub(joined.clubId);
+        return;
+      }
       const joined = await joinTeam(code, playerId);
       onJoined(joined);
     });
@@ -70,7 +92,7 @@ export default function JoinTeam({ onBack, onJoined }) {
         {!preview ? (
           <form onSubmit={look} style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1.2rem" }}>
             <label htmlFor="join-code" style={{ display: "block", fontSize: 14, fontWeight: 600, color: theme.muted, marginBottom: 8 }}>
-              Team code from the organiser
+              Code from the organiser or the team’s admin
             </label>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <input
@@ -81,7 +103,7 @@ export default function JoinTeam({ onBack, onJoined }) {
                 autoComplete="off"
                 autoCapitalize="characters"
                 spellCheck={false}
-                maxLength={8}
+                maxLength={10}
                 disabled={!!busy}
                 style={{ flex: "1 1 180px", padding: "0.6rem 0.8rem", borderRadius: 8, border: "1.5px solid #d8d4c8", fontSize: 20, fontFamily: font.condensed, letterSpacing: "0.2em" }}
               />

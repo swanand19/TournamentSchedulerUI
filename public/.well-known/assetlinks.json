@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.si.kickcricket.app",
+      "sha256_cert_fingerprints": ["23:FB:EC:6C:FD:39:D7:4E:47:4E:51:AA:20:B5:DC:F0:1B:ED:68:02:E4:94:0F:35:19:39:D4:29:99:45:DC:59"]
+    }
+  }
+]

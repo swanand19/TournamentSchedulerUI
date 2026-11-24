@@ -20,6 +20,8 @@ export const SERVICES = [
   "AUTH_LOGOUT_ALL",
   "ACCOUNT_GET",
   "ACCOUNT_UPDATE",
+  "ACCOUNT_PHOTO_SET",
+  "ACCOUNT_PHOTO_REMOVE",
   "ACCOUNT_CONTACT_SEND", // a code to an email or number being added
   "ACCOUNT_CONTACT_VERIFY",
   "ACCOUNT_CONTACT_REMOVE", // body: kind (Email | Phone)
@@ -39,6 +41,13 @@ export const SERVICES = [
   "LIVE_UNWATCH", // connectionId; { tournamentId } | { sport, matchId }
   "NOTIFICATION_READ", // notificationId
   "NOTIFICATION_READ_ALL",
+  // Following people (2026-11-23)
+  "PEOPLE_SEARCH",
+  "PERSON_FOLLOW",
+  "PERSON_UNFOLLOW",
+  "PERSON_FOLLOWER_REMOVE",
+  "PERSON_FOLLOWERS",
+  "PERSON_FOLLOWING",
 
   // Watching a match (Round 2; routeParams: sport = football | cricket, matchId)
   "WATCH_MATCH", // the sides: squads before the start, line-ups after
@@ -64,7 +73,51 @@ export const SERVICES = [
   "PUBLIC_STATS",
   "PUBLIC_KNOCKOUT",
   "PUBLIC_PLAYER", // name and sport cards only
-  "TOURNAMENT_PUBLIC_SET", // id; { isPublic } — owners
+  "PUBLIC_PLAYER_LINES", // a leaderboard row unfolded
+  "PUBLIC_AUCTION", // the player auction for the hall's TV (no buttons, nobody's part)
+  "PUBLIC_DRAW", // the team draw for the hall's TV
+
+  // Player pool, team draw and auction (2026-11-17, docs/player-pool-and-auction-plan.md) — all take id
+  "POOL_GET",
+  "POOL_PLAYER_ADD", // { email | phone | name, tierId }
+  "POOL_PLAYER_UPDATE", // poolPlayerId; { tierId + setTier, withdrawn }
+  "POOL_PLAYER_REMOVE", // poolPlayerId
+  "POOL_TIERS_SAVE", // { tiers } — the whole set, top first
+  "POOL_REGISTRATION", // { open }
+  "POOL_METHOD_SET", // { method: Draw | Auction } — until either way starts
+  "AUCTION_GET",
+  "AUCTION_SETTINGS",
+  "AUCTION_BIDDER_SET", // { teamId, playerId | contact | none }
+  "AUCTION_START",
+  "AUCTION_NEXT", // { lotId? }
+  "AUCTION_BID", // { teamId, amount }
+  "AUCTION_SELL",
+  "AUCTION_UNSOLD",
+  "AUCTION_UNDO_BID",
+  "AUCTION_UNDO_SALE", // { lotId }
+  "AUCTION_PAUSE",
+  "AUCTION_RESUME",
+  "AUCTION_TAKE_OVER",
+  "AUCTION_ROUND_START", // { prices: [{ tierId, price }] }
+  "AUCTION_FINISH",
+  "AUCTION_ASSIGN", // { poolPlayerId, teamId, price }
+  "AUCTION_CONFIRM",
+  "AUCTION_CANCEL",
+  "AUCTION_MOVE", // { lotId, teamId, price }
+  "AUCTION_SWAP", // { lotId, otherLotId }
+  "AUCTION_FILL_PREVIEW",
+  "AUCTION_FILL",
+  "DRAW_GET",
+  "DRAW_SETTINGS", // { kind?, setPace, autoSeconds? }
+  "DRAW_START",
+  "DRAW_NEXT",
+  "DRAW_REST", // { all }
+  "DRAW_QUICK",
+  "DRAW_RESTART",
+  "DRAW_TAKE_OVER",
+  "DRAW_MOVE", // { poolPlayerId, teamId }
+  "DRAW_SWAP", // { poolPlayerId, otherPoolPlayerId }
+  "DRAW_CONFIRM",
   "FOLLOW_SEARCH", // query: q — public tournaments by name, code or link
   "FOLLOW_ADD", // { code } (or the whole link)
   "FOLLOW_REMOVE", // tournamentId
@@ -78,7 +131,10 @@ export const SERVICES = [
   "TOURNAMENT_MATCHES", // id
   "TOURNAMENT_STATS", // id
   "TOURNAMENT_CRICKET_STATS", // id
+  "TOURNAMENT_PLAYER_LINES", // id, playerId — a leaderboard row unfolded
   "TOURNAMENT_UPDATE", // id
+  "TOURNAMENT_PICTURE_SET", // id, kind (logo | banner)
+  "TOURNAMENT_PICTURE_REMOVE", // id, kind
   "TOURNAMENT_COMPLETE", // id
 
   // Owners and scorers
@@ -90,6 +146,7 @@ export const SERVICES = [
   "TOURNAMENT_LEAVE", // id
 
   // Who is scoring a match — sport ("football" | "cricket"), matchId
+  "SCORING_CLAIM",
   "SCORING_REQUEST",
   "SCORING_RESPOND",
   "SCORING_TAKE_OVER",
@@ -114,10 +171,44 @@ export const SERVICES = [
   "PLAYER_DELETE", // id, teamId, playerId
   "PLAYER_UNLINK", // id, teamId, playerId — an owner, or the player themselves
   "TEAM_JOIN_CODE_RESET", // id, teamId
+  "PLAYER_RESTORE", // id, teamId, playerId — back into the squad after being left out
+  "TEAM_ADMIN_ADD", // id, teamId; { playerId } | { contact } — owners name who runs a team
+  "TEAM_ADMIN_REMOVE", // id, teamId, userId — an owner, or the admin stepping down
 
   // Joining a team with its code (the person isn't in the tournament yet)
   "TEAM_JOIN_PREVIEW",
   "TEAM_JOIN",
+
+  // Lasting teams (2026-11-20/21; people see "team", the API says club): the team, its players and admins, joining
+  // with its 8-character code, keeping a tournament's team, the live-squads question, entering tournaments.
+  "CLUB_LIST",
+  "CLUB_CREATE", // { name, sport, area, iPlay }
+  "CLUB_GET", // clubId
+  "CLUB_UPDATE", // clubId; { name, area, captainClubPlayerId, setCaptain }
+  "CLUB_DELETE",
+  "CLUB_LOGO_SET", // clubId; { image }
+  "CLUB_LOGO_REMOVE",
+  "CLUB_JOIN_CODE_RESET",
+  "CLUB_PLAYER_LOOKUP", // clubId; { contact }
+  "CLUB_PLAYER_ADD",
+  "CLUB_PLAYER_UPDATE", // clubId, clubPlayerId
+  "CLUB_PLAYER_REMOVE", // clubId, clubPlayerId — an admin, or the player leaving
+  "CLUB_ADMIN_ADD", // clubId; { clubPlayerId } | { contact }
+  "CLUB_ADMIN_REMOVE", // clubId, userId
+  "CLUB_JOIN_PREVIEW", // { code }
+  "CLUB_JOIN", // { code, clubPlayerId }
+  "CLUB_FROM_TEAM", // id, teamId — "Keep this team"
+  "CLUB_SQUADS_PREVIEW", // clubId, clubPlayerId
+  "CLUB_SQUADS_APPLY", // clubId; { clubPlayerId, teamIds } | { playerIds }
+  "ENTRY_PREVIEW", // { clubId, code } | { clubId, entryId }
+  "ENTRY_REQUEST", // { clubId, code, teamName, clubPlayerIds }
+  "ENTRY_UPDATE", // entryId; { teamName, clubPlayerIds }
+  "ENTRY_WITHDRAW", // entryId
+  "TOURNAMENT_ENTRY_LIST", // id (owners)
+  "TOURNAMENT_ENTRY_CODE", // id; { open }
+  "TOURNAMENT_ENTRY_ACCEPT", // id, entryId
+  "TOURNAMENT_ENTRY_DECLINE", // id, entryId
+  "PUBLIC_CLUB", // code — a lasting team's signed-out page
 
   // Football matches — all take matchId
   "MATCH_GET",
@@ -154,4 +245,24 @@ export const SERVICES = [
   "CRICKET_AWARDS",
   "CRICKET_BALLS",
   "CRICKET_EVENTS",
+  // Leagues and seasons (2026-11-24); the PUBLIC_LEAGUE* reads are the signed-out page at /leagues/<code>.
+  "LEAGUE_LIST",
+  "LEAGUE_CANDIDATES",
+  "LEAGUE_CREATE",
+  "LEAGUE_GET",
+  "LEAGUE_UPDATE",
+  "LEAGUE_DELETE",
+  "LEAGUE_LOGO_SET",
+  "LEAGUE_LOGO_REMOVE",
+  "LEAGUE_ORGANISER_ADD",
+  "LEAGUE_ORGANISER_REMOVE",
+  "LEAGUE_SEASON_ADD",
+  "LEAGUE_SEASON_REMOVE",
+  "LEAGUE_STATS",
+  "LEAGUE_TEAMS",
+  "LEAGUE_BRING_BACK_OPTIONS",
+  "LEAGUE_BRING_BACK",
+  "PUBLIC_LEAGUE",
+  "PUBLIC_LEAGUE_STATS",
+  "PUBLIC_LEAGUE_TEAMS",
 ];

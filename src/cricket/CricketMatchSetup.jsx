@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { font, cricketTheme as theme } from "../theme";
-import { getSetupOptions, setupCricketMatch } from "../api/cricketApi";
+import { getCricketMatch, getSetupOptions, setupCricketMatch } from "../api/cricketApi";
+import { claimScoring } from "../api/scoringApi";
+import ScoringBanner from "../ScoringBanner";
 import ErrorBanner from "../ErrorBanner";
 
 // Everything a scorer sets before the first ball: the format, the toss, and the two XIs. The
@@ -233,11 +235,15 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
   const [squads, setSquads] = useState({});
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [scoring, setScoring] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        // Opening setup takes the match if nobody has it; the answer says who does.
+        const claimed = await claimScoring("cricket", matchId);
+        if (!cancelled) setScoring(claimed);
         const data = await getSetupOptions(matchId);
         if (cancelled) return;
         setOptions(data);
@@ -274,6 +280,26 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
       }
     })();
     return () => { cancelled = true; };
+  }, [matchId]);
+
+  // Every 30 s while the tab is visible: keeps the holder "seen" while they pick the XIs, follows a
+  // handover, and moves anyone else on to the live match once it is set up.
+  const setUp = useRef(onSetUp);
+  useEffect(() => {
+    setUp.current = onSetUp;
+  });
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      if (document.hidden) return;
+      try {
+        const state = await getCricketMatch(matchId);
+        if (state.isSetUp) setUp.current();
+        else setScoring(state.scoring);
+      } catch {
+        // The next look tries again.
+      }
+    }, 30000);
+    return () => clearInterval(timer);
   }, [matchId]);
 
   const applyPreset = (name) => {
@@ -347,6 +373,9 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
     return <p style={{ color: theme.onDarkMuted }}>Loading match setup…</p>;
   }
 
+  // Someone else is setting it up: the banner says who (Ask to score / Take over), not a form for nothing.
+  const locked = !!scoring && !scoring.canScore;
+
   const tossLoser = tossWinnerTeamId === options.homeTeamId ? options.awayTeamName : options.homeTeamName;
   const battingFirst = tossDecision === "Bat"
     ? (tossWinnerTeamId === options.homeTeamId ? options.homeTeamName : options.awayTeamName)
@@ -369,7 +398,9 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
       </p>
 
       <ErrorBanner message={error} />
+      <ScoringBanner sport="cricket" matchId={matchId} scoring={scoring} onChange={setScoring} />
 
+      {!locked && (<>
       {/* --- Format ------------------------------------------------- */}
       <div style={card}>
         <h4 style={sectionTitle}>FORMAT</h4>
@@ -530,6 +561,7 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
           Each side needs exactly {rules.playersPerSide} players, one captain and one wicket-keeper.
         </p>
       )}
+      </>)}
     </div>
   );
 }

@@ -20,10 +20,10 @@ export const getPublicStats = (code) => api.call("PUBLIC_STATS", { routeParams: 
 export const getPublicKnockout = (code) => api.call("PUBLIC_KNOCKOUT", { routeParams: at(code) });
 /** { name, sports: [{ sport, matches, tournaments, headline }] } — never the detailed career. */
 export const getPublicPlayer = (code, playerId) => api.call("PUBLIC_PLAYER", { routeParams: { code, playerId } });
+export const getPublicPlayerLines = (code, playerId) => api.call("PUBLIC_PLAYER_LINES", { routeParams: { code, playerId } });
 
 // Signed in: the owners' switch, and following.
 /** Answers the tournament, with `share: { code, url }` while public. */
-export const setTournamentPublic = (id, isPublic) => api.call("TOURNAMENT_PUBLIC_SET", { routeParams: { id }, body: { isPublic } });
 /** `code` may be the whole link. Answers { tournamentId, name, sport, isStarted }. */
 export const followTournament = (code) => api.call("FOLLOW_ADD", { body: { code } });
 /** Public tournaments by name (3+ letters), code or link: [{ tournamentId, code, name, sport, status, startDate, endDate, teams, isFollowing, isMine }]. */

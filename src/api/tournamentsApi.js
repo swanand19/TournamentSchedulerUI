@@ -7,8 +7,9 @@ import { api, ApiError } from "./client";
 export const getTournaments = (sport) => api.call("TOURNAMENT_LIST", { query: { sport } });
 
 /** Dates ("YYYY-MM-DD") are optional here — they usually come with the schedule's approval. */
-export const createTournament = (name, sport, startDate, endDate) =>
-  api.call("TOURNAMENT_CREATE", { body: { name, sport, startDate, endDate } });
+/** leagueId: the league it starts the next season of ("Start Season 4", or chosen on Home). */
+export const createTournament = (name, sport, startDate, endDate, leagueId = null) =>
+  api.call("TOURNAMENT_CREATE", { body: { name, sport, startDate, endDate, leagueId } });
 
 export const updateTournament = (id, { name, startDate, endDate }) =>
   api.call("TOURNAMENT_UPDATE", { routeParams: { id }, body: { name, startDate, endDate } });
@@ -52,3 +53,6 @@ export const getTournamentStats = (id) => api.call("TOURNAMENT_STATS", { routePa
 
 // Cricket: points table with NRR, leaderboards, MVP and records, folded from the ball-by-ball.
 export const getCricketStats = (id) => api.call("TOURNAMENT_CRICKET_STATS", { routeParams: { id } });
+
+// One player's innings and spells, or goals and assists, under their leaderboard row.
+export const getPlayerLines = (id, playerId) => api.call("TOURNAMENT_PLAYER_LINES", { routeParams: { id, playerId } });

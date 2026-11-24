@@ -136,7 +136,7 @@ export default function SignIn() {
     <div style={{ minHeight: "100vh", background: theme.background, fontFamily: font.body, color: theme.onDark, padding: "0 clamp(1rem, 4vw, 2rem)" }}>
       <div style={{ maxWidth: 420, margin: "0 auto", paddingTop: "clamp(2.5rem, 10vh, 6rem)" }}>
         <p style={{ fontFamily: font.condensed, fontSize: 18, letterSpacing: "0.35em", color: theme.accent, margin: 0, fontWeight: 600 }}>
-          MATCHDAY SCHEDULER
+          KICKCRICKET
         </p>
         <h1 style={{ fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 2.8rem)", margin: "0.2rem 0 1.6rem", lineHeight: 1 }}>
           {step === "name" ? "WELCOME" : "SIGN IN"}

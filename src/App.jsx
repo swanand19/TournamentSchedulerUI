@@ -1,12 +1,22 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { randomizeGroups, setManualGroups, generateSchedule, approveSchedule } from "./api/tournamentApi";
 import { getTeams } from "./api/teamsApi";
 import Home from "./Home";
 import Account from "./Account";
 import JoinTeam from "./JoinTeam";
+import ClubPage from "./clubs/ClubPage";
+import EnterTournament from "./clubs/EnterTournament";
+import LeaguePage from "./leagues/LeaguePage";
+import LeagueSettings from "./leagues/LeagueSettings";
+import NewLeague from "./leagues/NewLeague";
+import { leagueSource } from "./api/leaguesApi";
 import FindTournament from "./FindTournament";
 import Notifications from "./Notifications";
 import TournamentPeople from "./TournamentPeople";
+import PoolPage from "./pool/PoolPage";
+import AuctionPage from "./pool/AuctionPage";
+import DrawPage from "./pool/DrawPage";
+import { publicLinkFor } from "./api/publicApi";
 import TeamManagement from "./TeamManagement";
 import { getTournamentSchedule, getScheduleHistory, activateSchedule, startTournament, getTournament, completeTournament } from "./api/tournamentsApi";
 import { getMatches } from "./api/matchesApi";
@@ -25,6 +35,9 @@ import Profile from "./Profile";
 import { pathFor, parsePath } from "./routing/routes";
 import { startHistory, showPath, onHistoryMove } from "./routing/history";
 import { followTournament } from "./api/publicApi";
+import { joinClubByLink } from "./api/clubsApi";
+import { joinTeamByLink } from "./api/teamsApi";
+import { pictureSrc } from "./pictures";
 
 // A stored schedule keeps only the fixtures, so the per-team totals shown for a freshly generated
 // schedule are recomputed here rather than lost on reload.
@@ -58,7 +71,13 @@ function isoDay(days) {
 }
 
 export default function App() {
-  const [view, setView] = useState("home"); // home | tournament | account | join | find | profile
+  const [view, setView] = useState("home"); // home | tournament | account | join | find | profile | club | enter
+  // A lasting team on screen: { id, screen: "page" | "enter", entryId, ask } — or, for /enter/<code>, { code }.
+  const [club, setClub] = useState(null);
+  // A league (2026-11-24): { id, screen: page | settings | new, sport }.
+  const [league, setLeague] = useState(null);
+  const openLeagueId = league?.id ?? null;
+  const leagueReads = useMemo(() => (openLeagueId ? leagueSource(openLeagueId) : null), [openLeagueId]);
   // Whose profile is open ({} = mine, or { playerId } from a name tapped), and where Back goes.
   const [profileWho, setProfileWho] = useState({});
   const [profileReturn, setProfileReturn] = useState("home");
@@ -74,8 +93,12 @@ export default function App() {
   const [tournamentInfo, setTournamentInfo] = useState(null);
   const [prePeopleStage, setPrePeopleStage] = useState("setup");
   const [preKnockoutStage, setPreKnockoutStage] = useState("setup");
+  // The player pool and the draw or auction that fills the teams from it (2026-11-17).
+  const [prePoolStage, setPrePoolStage] = useState("setup");
   const [completePromptDismissed, setCompletePromptDismissed] = useState(false);
   const access = tournamentInfo?.access ?? {};
+  // The hall's TV board comes with a public tournament's link (/live/<code>/tv).
+  const tvLink = tournamentInfo?.share ? `${publicLinkFor(tournamentInfo.share)}/tv` : null;
   const closed = tournamentInfo?.status === "Completed" || tournamentInfo?.status === "Cancelled";
   // The tournament's dates are chosen with its fixtures, on the schedule step: what's typed, or the
   // dates it already has, or today and a week on.
@@ -103,6 +126,9 @@ export default function App() {
   const theme = themeFor(sport);
   const isCricket = sport === "Cricket";
   const compactHeader = stage === "matchSetup" || stage === "liveMatch" || stage === "watchMatch";
+  // The tournament's pictures (HLD P-26): the banner only on the full header, the logo on both.
+  const banner = compactHeader ? null : pictureSrc(tournamentInfo?.bannerUrl);
+  const logo = pictureSrc(tournamentInfo?.logoUrl);
   const [hadExistingSchedule, setHadExistingSchedule] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState([]);
@@ -267,8 +293,45 @@ export default function App() {
   };
 
   // A notification: its tournament, and the match itself for a scoring handover.
-  const openFromNotification = async ({ tournamentId, matchId }) => {
-    if ((await openJoinedTournament({ tournamentId })) && matchId != null) openLiveMatch(matchId);
+  const openFromNotification = async ({ tournamentId, matchId, clubId, clubPlayerId, kind, teamId, profileUserId, leagueId }) => {
+    // Made a league's organiser: its page.
+    if (leagueId != null) return openLeague(leagueId);
+    // Someone followed you (2026-11-23): their profile.
+    if (profileUserId != null) return openProfile({ userId: profileUserId });
+    // A lasting team's news opens its page (with the live-tournaments question for someone who just joined).
+    if (clubId != null) return openClub(clubId, { ask: clubPlayerId ?? null });
+    const opened = await openJoinedTournament({ tournamentId });
+    if (!opened) return;
+    // Someone you follow is playing: the match, to watch (never to score).
+    if (kind === "Social" && matchId != null) openWatch(matchId);
+    else if (matchId != null) openLiveMatch(matchId);
+    else if (kind === "Club" || teamId != null) openManageTeams(); // an entry waiting for an answer, or "keep this team?"
+  };
+
+  /** A league's page, its settings, or (screen "new") starting one in a sport. */
+  const openLeague = (id, { screen = "page", sport = null } = {}) => {
+    setLeague({ id, screen, sport });
+    setView("league");
+  };
+
+  // A season from its league's page: straight in if the person is in it already; otherwise they follow it first
+  // (every tournament is public), then it opens like any tournament they follow.
+  const openSeason = async (s) => {
+    if (!s.canOpen && s.liveCode) {
+      try {
+        await followTournament(s.liveCode);
+      } catch (e) {
+        setError(e.message);
+        return;
+      }
+    }
+    await openJoinedTournament({ tournamentId: s.tournamentId });
+  };
+
+  /** A lasting team's page, or (screen "enter") entering it into a tournament. */
+  const openClub = (id, { screen = "page", entryId = null, ask = null } = {}) => {
+    setClub({ id, screen, entryId, ask });
+    setView("club");
   };
 
   // A player left their own team: if that was all they were here, the tournament is gone for them.
@@ -309,6 +372,22 @@ export default function App() {
   const openPeople = () => {
     setPrePeopleStage(stage);
     setStage("people");
+  };
+
+  const openPool = () => {
+    if (!["pool", "auction", "draw"].includes(stage)) setPrePoolStage(stage);
+    setStage("pool");
+  };
+
+  // Back from the pool: the squads may have changed (a draw or an auction confirmed).
+  const closePool = async () => {
+    await loadAvailableTeams(tournamentId);
+    if (tournamentStarted) {
+      await loadMatches();
+      setStage("matches");
+    } else {
+      setStage(prePoolStage || "setup");
+    }
   };
 
   // The knockout stage: everyone may look; owners set it up from here, before or after the start.
@@ -709,6 +788,34 @@ export default function App() {
       }
       return;
     }
+    // An invite link (2026-11-23): eight characters are a lasting team's code, six a tournament's team's. Signed out,
+    // AuthGate keeps the address until sign-in or sign-up finishes, so leaving halfway joins nobody.
+    if (route.name === "joinLink") {
+      try {
+        const code = route.code.replace(/[\s-]/g, "");
+        if (code.length === 8) openClub((await joinClubByLink(code)).clubId);
+        else await openJoinedTournament(await joinTeamByLink(code));
+      } catch (e) {
+        goHome();
+        setHomeNotice(e.message);
+      }
+      return;
+    }
+    if (route.name === "club") {
+      setClub({ id: route.id, screen: route.screen });
+      setView("club");
+      return;
+    }
+    if (route.name === "league") {
+      setLeague({ id: route.id ?? null, screen: route.screen, sport: null });
+      setView("league");
+      return;
+    }
+    if (route.name === "enter") {
+      setClub({ code: route.code });
+      setView("enter");
+      return;
+    }
     if (route.name !== "tournament") {
       setView(route.name);
       return;
@@ -748,6 +855,12 @@ export default function App() {
         setPreKnockoutStage(landing);
         setStage("knockout");
         return;
+      case "pool":
+      case "auction":
+      case "draw":
+        setPrePoolStage(landing);
+        setStage(route.screen);
+        return;
       case "stats":
         if (!started) return backToLanding();
         setMatchesTab("stats");
@@ -773,7 +886,7 @@ export default function App() {
     }
   };
 
-  const path = pathFor({ view, stage, tournamentId, activeMatchId, liveMatchId, watchMatchId, matchesTab, profileWho });
+  const path = pathFor({ view, stage, tournamentId, activeMatchId, liveMatchId, watchMatchId, matchesTab, profileWho, club, league });
 
   // While a path is being opened, the screens it passes through replace the address instead of adding
   // entries; the round it finishes with (routeRound) ends that.
@@ -784,7 +897,7 @@ export default function App() {
     if (routeRound === openingRound.current) replacingPath.current = false;
     showPath(path, { replace });
     shownPath.current = path;
-    document.title = view === "tournament" && tournamentName ? `${tournamentName} · Tournament Scheduler` : "Tournament Scheduler";
+    document.title = view === "tournament" && tournamentName ? `${tournamentName} · KickCricket` : "KickCricket";
   }, [path, routeRound, view, tournamentName]);
 
   useEffect(() => {
@@ -822,8 +935,36 @@ export default function App() {
         onJoinTeam={() => setView("join")}
         onFindTournament={() => setView("find")}
         onOpenNotifications={() => setView("notifications")}
+        onOpenClub={(id) => openClub(id)}
+        onOpenLeague={(id) => openLeague(id)}
+        onNewLeague={(sport) => openLeague(null, { screen: "new", sport })}
       />
     );
+  }
+
+  if (view === "league") {
+    if (league?.screen === "new")
+      return <NewLeague key={`new-${league.sport}`} sport={league.sport ?? "Cricket"} onBack={goHome} onCreated={(id) => openLeague(id)} />;
+    if (league?.id && league.screen === "settings")
+      return <LeagueSettings key={`settings-${league.id}`} leagueId={league.id} onBack={() => openLeague(league.id)} onDeleted={goHome} />;
+    if (league?.id && leagueReads)
+      return (
+        <LeaguePage
+          key={`league-${league.id}`}
+          source={leagueReads}
+          back="Your tournaments"
+          onBack={goHome}
+          onGone={(message) => {
+            goHome();
+            setHomeNotice(message);
+          }}
+          onSettings={() => openLeague(league.id, { screen: "settings" })}
+          onOpenSeason={openSeason}
+          onCreated={(t) => openJoinedTournament({ tournamentId: t.id })}
+          onOpenPlayer={(r) => openProfile(r.userId != null ? { userId: r.userId } : { playerId: r.playerId })}
+        />
+      );
+    return null;
   }
 
   if (view === "profile") {
@@ -836,6 +977,10 @@ export default function App() {
           setView("account");
         }}
         onOpenTournament={(tournamentId) => openJoinedTournament({ tournamentId })}
+        onOpenPerson={(userId) => setProfileWho({ userId })}
+        onWatchMatch={async (tournamentId, matchId) => {
+          if (await openJoinedTournament({ tournamentId })) openWatch(matchId);
+        }}
       />
     );
   }
@@ -853,11 +998,37 @@ export default function App() {
   }
 
   if (view === "join") {
-    return <JoinTeam onBack={() => setView("home")} onJoined={openJoinedTournament} />;
+    return <JoinTeam onBack={() => setView("home")} onJoined={openJoinedTournament} onJoinedClub={(id) => openClub(id)} />;
+  }
+
+  if (view === "club" && club?.id) {
+    return club.screen === "enter" ? (
+      <EnterTournament
+        key={`enter-${club.id}-${club.entryId ?? 0}`}
+        clubId={club.id}
+        entryId={club.entryId}
+        onBack={() => openClub(club.id)}
+        onOpenTournament={(tournamentId) => openJoinedTournament({ tournamentId })}
+      />
+    ) : (
+      <ClubPage
+        key={`club-${club.id}`}
+        clubId={club.id}
+        ask={club.ask}
+        onBack={goHome}
+        onGone={goHome}
+        onOpenTournament={(tournamentId) => openJoinedTournament({ tournamentId })}
+        onEnter={(entryId) => openClub(club.id, { screen: "enter", entryId })}
+      />
+    );
+  }
+
+  if (view === "enter" && club?.code) {
+    return <EnterTournament code={club.code} onBack={goHome} onOpenTournament={(tournamentId) => openJoinedTournament({ tournamentId })} />;
   }
 
   if (view === "find") {
-    return <FindTournament onBack={() => setView("home")} onOpen={(tournamentId) => openJoinedTournament({ tournamentId })} />;
+    return <FindTournament onBack={() => setView("home")} onOpen={(tournamentId) => openJoinedTournament({ tournamentId })} onOpenPerson={(userId) => openProfile({ userId })} />;
   }
 
   if (view === "notifications") {
@@ -881,6 +1052,12 @@ export default function App() {
           borderBottom: `3px solid ${theme.borderOnDark}`,
           position: "relative",
           overflow: "hidden",
+          // The owners' banner (HLD P-26) behind the name, under a wash that keeps the light text readable.
+          ...(banner && {
+            backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url("${banner}")`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }),
         }}
       >
         <div
@@ -914,11 +1091,14 @@ export default function App() {
                   fontWeight: 600,
                 }}
               >
-                {theme.label.toUpperCase()} · MATCHDAY SCHEDULER
+                {theme.label.toUpperCase()} · KICKCRICKET
               </p>
             )}
             <h1
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
                 fontFamily: font.display,
                 fontSize: compactHeader ? "clamp(1.4rem, 5vw, 1.9rem)" : "clamp(2rem, 8vw, 3rem)",
                 margin: "0.2rem 0 0",
@@ -928,10 +1108,25 @@ export default function App() {
                 overflowWrap: "anywhere",
               }}
             >
-              {tournamentName || "Tournament scheduler"}
+              {logo && <img src={logo} alt="" width={56} height={56} style={{ width: compactHeader ? 40 : 56, height: compactHeader ? 40 : 56, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />}
+              <span>{tournamentName || "Tournament scheduler"}</span>
             </h1>
+            {/* A league's season (2026-11-24): "Season 3 of Corporate Premier League", opening the league. */}
+            {!compactHeader && tournamentInfo?.league && (
+              <button
+                type="button"
+                onClick={() => openLeague(tournamentInfo.league.leagueId)}
+                style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, background: "rgba(247,245,239,0.1)", color: theme.onDark, border: "1px solid rgba(247,245,239,0.25)", borderRadius: 10, padding: "0.5rem 0.9rem", cursor: "pointer", textAlign: "left", minHeight: 44 }}
+              >
+                <span>
+                  <strong style={{ display: "block", fontSize: 14 }}>Season {tournamentInfo.league.season} of {tournamentInfo.league.name}</strong>
+                  {tournamentInfo.league.line && <span style={{ fontSize: 13, color: theme.onDarkMuted }}>{tournamentInfo.league.line}</span>}
+                </span>
+                <span aria-hidden="true">→</span>
+              </button>
+            )}
           </div>
-          {!["manageTeams", "matchSetup", "people", "knockout"].includes(stage) && (
+          {!["manageTeams", "matchSetup", "people", "knockout", "pool", "auction", "draw"].includes(stage) && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
                 onClick={openPeople}
@@ -939,6 +1134,14 @@ export default function App() {
               >
                 People & settings
               </button>
+              {tournamentInfo && (
+                <button
+                  onClick={openPool}
+                  style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.6rem 1.1rem", fontSize: 14, cursor: "pointer", minHeight: 44 }}
+                >
+                  Player pool
+                </button>
+              )}
               {tournamentInfo && (access.canEdit || tournamentStarted) && stage !== "waiting" && (
                 <button
                   onClick={openKnockouts}
@@ -962,7 +1165,7 @@ export default function App() {
 
       {stage === "manageTeams" ? (
         <div className="view-in">
-          <TeamManagement tournamentId={tournamentId} onBack={closeManageTeams} sport={sport} canEdit={!!access.canEdit} onLeftTeam={afterLeavingTeam} onOpenPlayer={(playerId) => openProfile({ playerId })} />
+          <TeamManagement tournamentId={tournamentId} onBack={closeManageTeams} sport={sport} canEdit={!!access.canEdit} started={tournamentStarted} league={tournamentInfo?.league ?? null} onLeftTeam={afterLeavingTeam} onOpenPlayer={(playerId) => openProfile({ playerId })} onOpenClub={(id) => openClub(id)} />
         </div>
       ) : stage === "people" && tournamentInfo ? (
         <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>
@@ -994,6 +1197,23 @@ export default function App() {
             }}
             starting={startingTournament}
           />
+        </main>
+      ) : ["pool", "auction", "draw"].includes(stage) && tournamentInfo ? (
+        <main style={{ maxWidth: 1376, margin: "0 auto", padding: "2rem clamp(1rem, 3vw, 2rem) 3.5rem" }}>
+          {stage === "pool" ? (
+            <PoolPage
+              tournamentId={tournamentId}
+              tournamentName={tournamentName}
+              sport={sport}
+              onBack={closePool}
+              onOpenDraw={() => setStage("draw")}
+              onOpenAuction={() => setStage("auction")}
+            />
+          ) : stage === "auction" ? (
+            <AuctionPage tournamentId={tournamentId} tournamentName={tournamentName} sport={sport} tvLink={tvLink} onBack={() => setStage("pool")} />
+          ) : (
+            <DrawPage tournamentId={tournamentId} tournamentName={tournamentName} sport={sport} tvLink={tvLink} onBack={() => setStage("pool")} />
+          )}
         </main>
       ) : stage === "waiting" ? (
         <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>

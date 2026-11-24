@@ -5,6 +5,8 @@ import ErrorBanner from "../ErrorBanner";
 import ChampionBanner from "../ChampionBanner";
 import { TrophyIcon } from "../icons";
 import PlayerName from "../PlayerName";
+import { LinesToggle, RowWithLines } from "../PlayerLines";
+import { useOpenRows } from "../statsRows";
 import { OpenPlayerContext } from "../playerContext";
 
 // The cricket stats page: points table with net run rate, batting, bowling and fielding
@@ -100,7 +102,8 @@ function RankCell({ rank }) {
 }
 
 /** One leaderboard as a table: rank, player, the ranked figure, then its supporting columns. */
-function Board({ board }) {
+function Board({ board, unfold, tournamentId }) {
+  const [open, toggle] = useOpenRows(board.key);
   if (!board.rows.length) {
     return <Empty>Nothing recorded yet for {board.title.toLowerCase()}.</Empty>;
   }
@@ -122,10 +125,12 @@ function Board({ board }) {
           </thead>
           <tbody>
             {board.rows.map((r, i) => (
-              <tr key={`${r.playerId}-${i}`} style={{ borderBottom: "1px solid #EDEAE0" }}>
+              <RowWithLines key={`${r.playerId}-${i}`} rowKey={`${r.playerId}-${i}`} open={open.has(i)} unfold={unfold} tournamentId={tournamentId} playerId={r.playerId} colSpan={3 + board.columns.length} ink={theme.ink} muted={theme.muted}>
+              <tr style={{ borderBottom: "1px solid #EDEAE0" }}>
                 <RankCell rank={r.rank} />
                 <td style={{ ...cell, textAlign: "left", whiteSpace: "normal", minWidth: 140 }}>
                   <span style={{ fontWeight: 600 }}><PlayerName playerId={r.playerId}>{r.playerName}</PlayerName></span>
+                  {unfold && <LinesToggle open={open.has(i)} onToggle={() => toggle(i)} noun={unfold.noun} name={r.playerName} color={theme.deep} />}
                   <span style={{ display: "block", fontSize: 12, color: theme.muted }}>
                     {r.teamName}{r.note ? ` · ${r.note}` : ""}
                   </span>
@@ -135,6 +140,7 @@ function Board({ board }) {
                   <td key={c} style={{ ...cell, color: "#4a4d52" }}>{r.detail[c] ?? "—"}</td>
                 ))}
               </tr>
+              </RowWithLines>
             ))}
           </tbody>
         </table>
@@ -144,7 +150,8 @@ function Board({ board }) {
 }
 
 /** A family of boards (batting, bowling, fielding) with a chip to pick one. */
-function BoardSet({ boards, label }) {
+/** `unfold`: what each row opens into (batting boards: innings; bowling: spells). */
+function BoardSet({ boards, label, unfold, tournamentId }) {
   const [active, setActive] = useState(boards[0]?.key);
   const board = boards.find((b) => b.key === active) ?? boards[0];
   if (!board) return <Empty>Nothing recorded yet.</Empty>;
@@ -152,7 +159,7 @@ function BoardSet({ boards, label }) {
   return (
     <div>
       <Pills items={boards.map((b) => ({ key: b.key, label: b.title }))} active={board.key} onPick={setActive} label={label} />
-      <Board board={board} />
+      <Board board={board} unfold={unfold} tournamentId={tournamentId} />
     </div>
   );
 }
@@ -399,8 +406,8 @@ function CricketStatsBody({ tournamentId, refreshKey }) {
       <div key={tab} className="view-in">
         {tab === "overview" && <Overview stats={stats} />}
         {tab === "table" && <PointsTable groups={stats.pointsTable} notes={stats.notes} />}
-        {tab === "batting" && <BoardSet boards={stats.battingBoards} label="Batting leaderboards" />}
-        {tab === "bowling" && <BoardSet boards={stats.bowlingBoards} label="Bowling leaderboards" />}
+        {tab === "batting" && <BoardSet boards={stats.battingBoards} label="Batting leaderboards" unfold={{ kinds: ["batting"], noun: "innings" }} tournamentId={tournamentId} />}
+        {tab === "bowling" && <BoardSet boards={stats.bowlingBoards} label="Bowling leaderboards" unfold={{ kinds: ["bowling"], noun: "spells" }} tournamentId={tournamentId} />}
         {tab === "fielding" && <BoardSet boards={stats.fieldingBoards} label="Fielding leaderboards" />}
         {tab === "mvp" && <Mvp stats={stats} />}
       </div>

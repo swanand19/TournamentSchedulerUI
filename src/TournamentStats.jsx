@@ -4,6 +4,8 @@ import { useSource } from "./api/source";
 import ErrorBanner from "./ErrorBanner";
 import ChampionBanner from "./ChampionBanner";
 import PlayerName from "./PlayerName";
+import { LinesToggle, RowWithLines } from "./PlayerLines";
+import { footballUnfold, useOpenRows } from "./statsRows";
 import { OpenPlayerContext } from "./playerContext";
 
 
@@ -48,13 +50,17 @@ function EmptyBoard({ message }) {
   );
 }
 
-function PlayerBoard({ board }) {
+function PlayerBoard({ board, tournamentId }) {
+  const [open, toggle] = useOpenRows(board.key);
   if (!board.rows.length) {
     return <EmptyBoard message={`Nothing recorded yet for ${board.title.toLowerCase()}.`} />;
   }
 
   const cell = { padding: "0.6rem 0.7rem", fontSize: 14 };
   const head = { ...cell, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: theme.muted, fontWeight: 700, whiteSpace: "nowrap" };
+  // Goals, assists and G+A rows unfold into the player's goals and assists, match by match.
+  const unfold = footballUnfold(board.key);
+  const columns = 6 + board.detailColumns.length + (board.showPerMatch ? 1 : 0);
 
   return (
     <div>
@@ -80,7 +86,8 @@ function PlayerBoard({ board }) {
           </thead>
           <tbody>
             {board.rows.map((r) => (
-              <tr key={r.playerId} style={{ borderBottom: "1px solid #EDEAE0" }}>
+              <RowWithLines key={r.playerId} rowKey={r.playerId} open={open.has(r.playerId)} unfold={unfold} tournamentId={tournamentId} playerId={r.playerId} colSpan={columns} ink={INK} muted={theme.muted}>
+              <tr style={{ borderBottom: "1px solid #EDEAE0" }}>
                 <td style={{ ...cell, fontWeight: 700, color: theme.muted }}>
                   {medal(r.rank) || r.rank}
                 </td>
@@ -89,6 +96,9 @@ function PlayerBoard({ board }) {
                     {r.jerseyNumber != null && <span style={{ color: theme.muted }}>#{r.jerseyNumber} </span>}
                     <PlayerName playerId={r.playerId}>{r.playerName}</PlayerName>
                   </span>
+                  {unfold && (
+                    <LinesToggle open={open.has(r.playerId)} onToggle={() => toggle(r.playerId)} noun={unfold.noun} name={r.playerName} color="#1B4332" />
+                  )}
                   {r.position && (
                     <span style={{ fontSize: 11, color: theme.muted, display: "block" }}>{r.position}</span>
                   )}
@@ -110,6 +120,7 @@ function PlayerBoard({ board }) {
                 <td style={{ ...cell, textAlign: "right", color: theme.muted }}>{r.appearances}</td>
                 <td style={{ ...cell, textAlign: "right", color: theme.muted }}>{r.minutesPlayed}'</td>
               </tr>
+              </RowWithLines>
             ))}
           </tbody>
         </table>
@@ -347,7 +358,7 @@ function TournamentStatsBody({ tournamentId, refreshKey }) {
 
       {activeTab === "overview" && <Overview stats={stats} />}
       {activeTab === "standings" && <StandingsTable standings={stats.standings} />}
-      {activeBoard && <PlayerBoard board={activeBoard} />}
+      {activeBoard && <PlayerBoard board={activeBoard} tournamentId={tournamentId} />}
 
       {activeTab === "overview" && stats.notes.length > 0 && (
         <div style={{ marginTop: 22, paddingTop: 14, borderTop: "1px solid rgba(247,245,239,0.15)" }}>

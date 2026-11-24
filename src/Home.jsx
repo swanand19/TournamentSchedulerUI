@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { getTournaments, createTournament } from "./api/tournamentsApi";
+import { listMyLeagues } from "./api/leaguesApi";
 import { font, SPORTS, themeFor, syncDocumentSport } from "./theme";
 import ErrorBanner from "./ErrorBanner";
 import { useSession } from "./auth/useSession";
 import NotificationBell from "./NotificationBell";
+import { pictureSrc } from "./pictures";
+import MyTeams from "./clubs/MyTeams";
 
 // The tab survives a reload, so someone running a cricket tournament isn't dropped back into
 // football every time the page refreshes.
@@ -44,11 +47,12 @@ function statusChip(t, theme) {
   }
 }
 
-/** "Owner", "Scorer · Player", "Player" — what I am in a tournament, from the server's myRoles. */
+/** "Owner", "Scorer · Player", "Team admin · Player" — what I am in a tournament, from the server's myRoles. */
 function roleLabel(myRoles = []) {
   const parts = [];
   if (myRoles.includes("owner")) parts.push("Owner");
   else if (myRoles.includes("scorer")) parts.push("Scorer");
+  if (myRoles.includes("teamAdmin") && !myRoles.includes("owner")) parts.push("Team admin");
   if (myRoles.includes("player")) parts.push("Player");
   return parts.length ? parts.join(" · ") : null;
 }
@@ -63,7 +67,23 @@ const SECTIONS = [
   { key: "following", title: "FOLLOWING", match: onlyFollowing },
 ];
 
-export default function Home({ notice = "", onSelectTournament, onOpenAccount, onJoinTeam, onFindTournament, onOpenNotifications }) {
+// The filter above the list (the user's 2026-11-20 ask; the phone's count tiles do the same).
+// Followed tournaments are filtered by their own status too.
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "live", label: "In play" },
+  { key: "upcoming", label: "Upcoming" },
+  { key: "past", label: "Past" },
+];
+const phaseOf = (t) => (t.status === "Live" ? "live" : t.status === "Completed" || t.status === "Cancelled" ? "past" : "upcoming");
+const FILTER_EMPTY = {
+  live: "Nothing is in play right now.",
+  upcoming: "Nothing upcoming — every tournament here has started or finished.",
+  past: "Nothing has finished yet.",
+};
+
+export default function Home({ notice = "", onSelectTournament, onOpenAccount, onJoinTeam, onFindTournament, onOpenNotifications, onOpenClub, onOpenLeague, onNewLeague }) {
+  const [filter, setFilter] = useState("all");
   const session = useSession();
   const [sport, setSport] = useState(loadStoredSport);
   const [tournaments, setTournaments] = useState([]);
@@ -72,6 +92,9 @@ export default function Home({ notice = "", onSelectTournament, onOpenAccount, o
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [nameError, setNameError] = useState("");
+  // The form's one optional question (leagues, 2026-11-24): a season of a league the person runs, or a one-off.
+  const [leagues, setLeagues] = useState([]);
+  const [leagueId, setLeagueId] = useState("");
 
   const theme = themeFor(sport);
 
@@ -92,6 +115,8 @@ export default function Home({ notice = "", onSelectTournament, onOpenAccount, o
     syncDocumentSport(sport);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load(sport);
+    setLeagueId("");
+    listMyLeagues(sport).then(setLeagues).catch(() => setLeagues([]));
   }, [sport]);
 
   const selectSport = (next) => {
@@ -125,7 +150,7 @@ export default function Home({ notice = "", onSelectTournament, onOpenAccount, o
     setError("");
     try {
       // Dates come later, with the schedule, once the teams are known.
-      const t = await createTournament(name, sport);
+      const t = await createTournament(name, sport, undefined, undefined, leagueId ? Number(leagueId) : null);
       setNewName("");
       await load(sport);
       onSelectTournament(t.id, false, false, sport, t.name ?? name);
@@ -150,7 +175,7 @@ export default function Home({ notice = "", onSelectTournament, onOpenAccount, o
         <div style={{ maxWidth: 920, margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
             <p style={{ fontFamily: font.condensed, fontSize: 18, letterSpacing: "0.35em", color: theme.accent, margin: 0, fontWeight: 600 }}>
-              MATCHDAY SCHEDULER
+              KICKCRICKET
             </p>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
               <NotificationBell theme={theme} onOpen={onOpenNotifications} />
@@ -249,6 +274,30 @@ export default function Home({ notice = "", onSelectTournament, onOpenAccount, o
               {nameError}
             </p>
           )}
+          <label htmlFor="new-tournament-league" style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.muted, margin: "12px 0 6px" }}>
+            League (optional)
+          </label>
+          <select
+            id="new-tournament-league"
+            value={leagueId}
+            disabled={creating}
+            onChange={(e) => {
+              if (e.target.value === "new") {
+                onNewLeague?.(sport);
+                return;
+              }
+              setLeagueId(e.target.value);
+            }}
+            style={{ width: "100%", minHeight: 44, padding: "0.5rem 0.7rem", borderRadius: 8, border: "1.5px solid #d8d4c8", fontSize: 14, background: "#fff" }}
+          >
+            <option value="">No, a one-off tournament</option>
+            {leagues.map((l) => (
+              <option key={l.leagueId} value={l.leagueId}>
+                {l.name} — this becomes Season {l.seasons + 1}
+              </option>
+            ))}
+            <option value="new">Start a new league…</option>
+          </select>
         </div>
 
         {/* Playing rather than organising: the team's code links you to your place in it. */}
@@ -257,7 +306,7 @@ export default function Home({ notice = "", onSelectTournament, onOpenAccount, o
           className="pressable"
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", minHeight: 48, background: theme.surfaceOnDark, color: theme.onDark, border: `1px solid ${theme.borderOnDark}`, borderRadius: 10, padding: "0.7rem 1.1rem", fontSize: 14, cursor: "pointer", marginBottom: 24, textAlign: "left" }}
         >
-          <span><strong>Join a team</strong> <span style={{ color: theme.onDarkMuted }}>· got a code from an organiser?</span></span>
+          <span><strong>Join a team</strong> <span style={{ color: theme.onDarkMuted }}>· got a code from an organiser or a team’s admin?</span></span>
           <span aria-hidden="true">→</span>
         </button>
 
@@ -267,14 +316,87 @@ export default function Home({ notice = "", onSelectTournament, onOpenAccount, o
           className="pressable"
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", minHeight: 48, background: theme.surfaceOnDark, color: theme.onDark, border: `1px solid ${theme.borderOnDark}`, borderRadius: 10, padding: "0.7rem 1.1rem", fontSize: 14, cursor: "pointer", marginTop: -14, marginBottom: 24, textAlign: "left" }}
         >
-          <span><strong>Find a tournament</strong> <span style={{ color: theme.onDarkMuted }}>· follow a public one by its name or code</span></span>
+          <span><strong>Find tournaments and people</strong> <span style={{ color: theme.onDarkMuted }}>· follow a tournament, or a player</span></span>
           <span aria-hidden="true">→</span>
         </button>
 
+        {/* Leagues the person runs (2026-11-24): a league with no season yet is reached here. */}
+        {leagues.length > 0 && (
+          <section style={{ marginBottom: 24 }}>
+            <h2 style={{ fontFamily: font.condensed, fontSize: 18, letterSpacing: "0.2em", color: theme.onDarkMuted, margin: "0 0 8px", fontWeight: 600 }}>LEAGUES YOU RUN</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {leagues.map((l) => (
+                <button
+                  key={l.leagueId}
+                  type="button"
+                  className="pressable"
+                  onClick={() => onOpenLeague?.(l.leagueId)}
+                  style={{ display: "flex", alignItems: "center", gap: 12, background: theme.cream, color: theme.ink, border: "none", borderRadius: 10, padding: "0.8rem 1.1rem", cursor: "pointer", textAlign: "left" }}
+                >
+                  {l.logoUrl ? (
+                    <img src={pictureSrc(l.logoUrl)} alt="" width={40} height={40} style={{ width: 40, height: 40, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
+                  ) : (
+                    <span aria-hidden="true" style={{ width: 40, height: 40, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center", background: theme.accent, color: theme.accentInk, fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                      {l.shortName}
+                    </span>
+                  )}
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ display: "block", fontWeight: 600 }}>{l.name}</strong>
+                    <span style={{ fontSize: 13, color: theme.muted }}>{l.line}</span>
+                  </span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Lasting teams (C-22): the ones I run or play for, and "Make a team". */}
+        <MyTeams sport={sport} theme={theme} onOpenClub={onOpenClub} />
+
         {loading && <p style={{ color: theme.onDarkMuted }}>Loading…</p>}
 
+        {!loading && tournaments.length > 0 && (
+          <div role="group" aria-label="Show tournaments" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>
+            {FILTERS.map((f) => {
+              const on = filter === f.key;
+              const count = f.key === "all" ? tournaments.length : tournaments.filter((t) => phaseOf(t) === f.key).length;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setFilter(f.key)}
+                  style={{
+                    minHeight: 36,
+                    background: on ? theme.accent : "rgba(247,245,239,0.1)",
+                    color: on ? theme.accentInk : theme.onDark,
+                    border: on ? `1px solid ${theme.accent}` : "1px solid rgba(247,245,239,0.22)",
+                    borderRadius: 999,
+                    padding: "0.35rem 0.9rem",
+                    fontSize: 14,
+                    fontWeight: on ? 700 : 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  {f.label} <span style={{ opacity: 0.75 }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && filter !== "all" && tournaments.length > 0 && !tournaments.some((t) => phaseOf(t) === filter) && (
+          <p style={{ color: theme.onDarkMuted, fontSize: 14 }}>
+            {FILTER_EMPTY[filter]}{" "}
+            <button type="button" onClick={() => setFilter("all")} style={{ background: "none", border: "none", color: theme.accent, textDecoration: "underline", cursor: "pointer", fontSize: 14, padding: 0 }}>
+              Show all
+            </button>
+          </p>
+        )}
+
         {SECTIONS.map((section) => {
-          const rows = tournaments.filter(section.match);
+          const rows = tournaments.filter((t) => section.match(t) && (filter === "all" || phaseOf(t) === filter));
           if (rows.length === 0) return null;
           return (
             <section key={section.key} style={{ marginBottom: 22 }}>
@@ -307,9 +429,14 @@ export default function Home({ notice = "", onSelectTournament, onOpenAccount, o
                         opacity: section.key === "past" ? 0.85 : 1,
                       }}
                     >
-                      <div style={{ minWidth: 0 }}>
+                      {/* The tournament's logo when it has one (HLD P-26). */}
+                      {t.logoUrl && (
+                        <img src={pictureSrc(t.logoUrl)} alt="" width={44} height={44} style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
+                      )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontWeight: 600, fontSize: 16, overflowWrap: "anywhere" }}>{theme.icon} {t.name}</div>
                         <div style={{ fontSize: 12, color: theme.muted }}>
+                          {t.league && <>Season {t.league.season} · </>}
                           {range ?? `Created ${new Date(t.createdAt).toLocaleDateString()}`}
                           {role && <> · {role}</>}
                         </div>

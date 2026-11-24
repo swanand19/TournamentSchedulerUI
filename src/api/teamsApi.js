@@ -48,7 +48,20 @@ export const unlinkPlayer = (tournamentId, teamId, playerId) =>
   api.call("PLAYER_UNLINK", { routeParams: { id: tournamentId, teamId, playerId }, body: {} });
 
 /** What a team code opens: { tournamentId, tournamentName, sport, teamId, teamName, places: [{ playerId, name, detail }] }. */
+/** Back into the squad after being left out (a player who had played is never deleted). */
+export const restorePlayer = (tournamentId, teamId, playerId) =>
+  api.call("PLAYER_RESTORE", { routeParams: { id: tournamentId, teamId, playerId } });
+
+/** Owners name who runs a team: one of its players on the app ({ playerId }) or anyone by { contact }. */
+export const addTeamAdmin = (tournamentId, teamId, body) => api.call("TEAM_ADMIN_ADD", { routeParams: { id: tournamentId, teamId }, body });
+
+/** An owner removes a team's admin, or the admin steps down. */
+export const removeTeamAdmin = (tournamentId, teamId, userId) =>
+  api.call("TEAM_ADMIN_REMOVE", { routeParams: { id: tournamentId, teamId, userId } });
+
 export const previewJoin = (code) => api.call("TEAM_JOIN_PREVIEW", { body: { code } });
 
 /** Claims a place (`playerId`), or joins as a new player (null). Answers { tournamentId, sport, teamId, playerId, … }. */
 export const joinTeam = (code, playerId) => api.call("TEAM_JOIN", { body: { code, playerId: playerId ?? null } });
+// From an invite link (2026-11-23): straight in as new; already in the team answers { alreadyIn: true }.
+export const joinTeamByLink = (code) => api.call("TEAM_JOIN", { body: { code, link: true } });

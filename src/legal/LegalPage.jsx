@@ -8,9 +8,9 @@ import { font, footballTheme as t } from "../theme";
 // Plain words about what the app really does; when a feature changes what is kept or who sees it,
 // change this page in the same release. The facts behind each line are in docs/LLD (tables, retention).
 
-const APP = import.meta.env.VITE_APP_NAME || "Tournament Scheduler";
+const APP = import.meta.env.VITE_APP_NAME || "KickCricket";
 const CONTACT = import.meta.env.VITE_CONTACT_EMAIL || "";
-const UPDATED = "6 November 2026";
+const UPDATED = "23 November 2026";
 
 export default function LegalPage() {
   const page = window.location.pathname.startsWith("/delete-account") ? "delete" : "privacy";
@@ -82,6 +82,7 @@ function Privacy() {
       <ul>
         <li><strong>Your account:</strong> your name, and the email address and/or mobile number you sign in with. There are no passwords: you sign in with a one-time code.</li>
         <li><strong>Your cricket profile,</strong> if you fill it in (role, batting and bowling style).</li>
+        <li><strong>Pictures you add:</strong> your profile photo, and a tournament&apos;s logo and banner if you own it. They&apos;re made smaller on your device before upload, which also removes where the photo was taken.</li>
         <li><strong>What you and others enter in tournaments:</strong> teams, players&apos; names and shirt numbers, fixtures, and every goal, card, ball and result.</li>
         <li><strong>People you add.</strong> When you add an owner, scorer or player by email or number, it&apos;s kept so they can be linked to their place, or sent an invite if they have no account yet.</li>
         <li><strong>Sign-in records:</strong> which devices are signed in (a random device id and the app&apos;s version), so you can sign out of all of them.</li>
@@ -92,7 +93,9 @@ function Privacy() {
       <ul>
         <li>Everyone in a tournament sees its teams, players&apos; names, matches and stats.</li>
         <li>Only a tournament&apos;s owners see the emails and numbers used to add people to it.</li>
-        <li>An owner may make a tournament <strong>public</strong>. Then anyone with its link, or who searches for it, can watch its scores and see players&apos; names. Emails, numbers and accounts are never shown on public pages.</li>
+        <li>Your profile photo is seen by people in your tournaments, beside your name and on your profile. It is never on public pages; a tournament&apos;s logo and banner are.</li>
+        <li>Every tournament is <strong>public</strong>: anyone with its link can watch its scores, tables and stats and see the names of its teams and players, without an account. Once its schedule is set, anyone signed in can also find it by name and follow it. Emails, numbers, accounts and profile photos are never shown on public pages. If a tournament, or your name in one, should not be public, write to us (below) and we can hide it.</li>
+        <li>A <strong>lasting team</strong>&apos;s page (a team kept between tournaments) can be seen by anyone signed in, and by anyone with its link: the team&apos;s name, place and logo, who runs it, its tournaments and results, and its players&apos; names and roles. Emails, numbers and photos are never shown there.</li>
         <li>Once you play in a tournament, anyone signed in can open your player profile: your name and career stats. Your email and number are only ever on your own.</li>
       </ul>
 
@@ -155,7 +158,7 @@ function DeleteAccount() {
 
       <h2 style={h2}>What happens</h2>
       <ul>
-        <li>Your name, email, mobile number and cricket profile are removed, and every device is signed out.</li>
+        <li>Your name, email, mobile number, cricket profile and profile photo are removed, and every device is signed out.</li>
         <li>Tournaments you alone own are deleted, for everyone in them. Ones with other owners pass to one of them.</li>
         <li>You&apos;re taken off every other tournament.</li>
         <li>Your name stays on scorecards of matches you played in, because they belong to the other teams as well. Your account is no longer linked to them.</li>

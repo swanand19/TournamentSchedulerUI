@@ -3,6 +3,8 @@ import { getCareer, getProfile } from "./api/profileApi";
 import ErrorBanner from "./ErrorBanner";
 import { font, footballTheme, themeFor } from "./theme";
 import { formatPhone } from "./useAuthOptions";
+import { pictureSrc } from "./pictures";
+import { FollowButton, FollowListDialog } from "./people/PeopleBits";
 
 // A person's profile and career, from the "Profile & Career Stats" designs: who they are in a side
 // column, and the chosen sport's career beside it — Stats (cricket splits it into batting, bowling
@@ -48,8 +50,11 @@ const TABS = [
 
 const plainButton = { background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit", color: "inherit" };
 
-export default function Profile({ who, onBack, onEditAccount, onOpenTournament }) {
+export default function Profile({ who, onBack, onEditAccount, onOpenTournament, onOpenPerson, onWatchMatch }) {
   const [profile, setProfile] = useState(null);
+  // Following (2026-11-23): the counts after a click on Follow, and the followers / following dialog.
+  const [followHere, setFollowHere] = useState(null);
+  const [list, setList] = useState(null);
   const [error, setError] = useState("");
   const [sport, setSport] = useState(null);
 
@@ -101,7 +106,29 @@ export default function Profile({ who, onBack, onEditAccount, onOpenTournament }
         {!profile && !error ? <p style={{ color: base.onDarkMuted }}>Loading the profile…</p> : null}
         {profile ? (
           <>
-            <Identity profile={profile} sport={sport} onSport={setSport} onEditAccount={onEditAccount} />
+            <Identity
+              profile={profile}
+              follow={followHere?.userId === profile.userId ? followHere.follow : profile.follow}
+              onFollowed={(follow) => setFollowHere({ userId: profile.userId, follow })}
+              onList={(tab) => setList(tab)}
+              onWatchMatch={onWatchMatch}
+              sport={sport}
+              onSport={setSport}
+              onEditAccount={onEditAccount}
+            />
+            {list && (
+              <FollowListDialog
+                key={`${profile.userId}-${list}`}
+                userId={profile.userId}
+                initialTab={list}
+                theme={themeFor("Football")}
+                onClose={() => setList(null)}
+                onOpenPerson={(userId) => {
+                  setList(null);
+                  onOpenPerson(userId);
+                }}
+              />
+            )}
             {sport ? (
               <CareerPanel key={sport} sport={sport} userId={profile.isMe ? undefined : profile.userId} onOpenTournament={onOpenTournament} />
             ) : null}
@@ -112,8 +139,11 @@ export default function Profile({ who, onBack, onEditAccount, onOpenTournament }
   );
 }
 
-function Identity({ profile, sport, onSport, onEditAccount }) {
+function Identity({ profile, follow, onFollowed, onList, onWatchMatch, sport, onSport, onEditAccount }) {
   const t = footballTheme;
+  const light = themeFor("Football");
+  const tournaments = profile.sports.reduce((n, s) => n + s.tournaments, 0);
+  const first = profile.name.split(" ")[0];
   return (
     <aside style={{ flex: "1 1 280px", maxWidth: 360, display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -130,9 +160,15 @@ function Identity({ profile, sport, onSport, onEditAccount }) {
             justifyContent: "center",
             fontFamily: font.display,
             fontSize: 34,
+            overflow: "hidden",
           }}
         >
-          {initials(profile.name)}
+          {/* Their photo (HLD P-26) fills the circle; initials while there's none. */}
+          {profile.photoUrl ? (
+            <img src={pictureSrc(profile.photoUrl)} alt="" width={88} height={88} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            initials(profile.name)
+          )}
         </div>
         <div>
           <h1 style={{ margin: 0, fontFamily: font.display, fontWeight: 400, fontSize: 40, lineHeight: "44px", letterSpacing: 0.5 }}>{profile.name.toUpperCase()}</h1>
@@ -150,6 +186,59 @@ function Identity({ profile, sport, onSport, onEditAccount }) {
           </button>
         ) : null}
       </div>
+
+      {follow ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+          {[
+            ["Followers", follow.followers, () => onList("followers")],
+            ["Following", follow.following, () => onList("following")],
+            ["Tournaments", tournaments, null],
+          ].map(([label, value, onClick]) => {
+            const inner = (
+              <>
+                <span style={{ display: "block", fontSize: 22, fontWeight: 700 }}>{value}</span>
+                <span style={{ fontSize: 12, color: t.onDarkMuted }}>{label}</span>
+              </>
+            );
+            const box = { borderRadius: 12, border: `1px solid ${t.borderOnDark}`, padding: "10px 4px", textAlign: "center", minHeight: 64 };
+            return onClick ? (
+              <button key={label} type="button" onClick={onClick} aria-label={`${value} ${label}. Opens the list`} style={{ ...plainButton, ...box }}>
+                {inner}
+              </button>
+            ) : (
+              <div key={label} style={box}>
+                {inner}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {follow && !profile.isMe ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <FollowButton userId={profile.userId} name={profile.name} state={follow} theme={{ ...light, deep: t.accent, cream: t.night }} onChanged={onFollowed} />
+          <span style={{ fontSize: 13, color: t.onDarkMuted }}>
+            {follow.isFollowing
+              ? `You'll hear when ${first} starts a match you can watch.`
+              : follow.followsMe
+                ? "Follows you."
+                : `Follow to hear when ${first} starts a match you can watch.`}
+          </span>
+        </div>
+      ) : null}
+
+      {profile.playingNow?.map((m) => (
+        <button
+          key={`${m.sport}-${m.matchId}`}
+          type="button"
+          onClick={() => onWatchMatch(m.tournamentId, m.matchId)}
+          style={{ ...plainButton, textAlign: "left", borderRadius: 12, background: t.surfaceOnDark, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 2 }}
+        >
+          <span style={{ fontSize: 12, fontWeight: 700, color: t.liveOnDark ?? t.accent }}>● PLAYING NOW · WATCH LIVE</span>
+          <span style={{ fontWeight: 700 }}>{m.match}</span>
+          <span style={{ fontSize: 13, color: t.onDarkMuted }}>{m.tournamentName}</span>
+        </button>
+      ))}
 
       {profile.isMe && (profile.email || profile.phone) ? (
         <div>

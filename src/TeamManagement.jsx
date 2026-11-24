@@ -1,10 +1,14 @@
 import { font, themeFor } from "./theme";
 import { useState, useEffect } from "react";
-import { getTeams, createTeam, updateTeam, deleteTeam, addPlayer, lookupPlayer, updatePlayer, deletePlayer, resetJoinCode, unlinkPlayer } from "./api/teamsApi";
+import { getTeams, createTeam, updateTeam, deleteTeam, addPlayer, lookupPlayer, updatePlayer, deletePlayer, resetJoinCode, unlinkPlayer, restorePlayer, addTeamAdmin, removeTeamAdmin } from "./api/teamsApi";
 import ErrorBanner from "./ErrorBanner";
+import InviteLink from "./InviteLink";
+import { EntriesPanel, KeepTeam } from "./clubs/TeamExtras";
+import BringBack from "./leagues/BringBack";
 import PlayerName from "./PlayerName";
 import { OpenPlayerContext } from "./playerContext";
 import { formatPhone, useAuthOptions } from "./useAuthOptions";
+import { pictureSrc } from "./pictures";
 import {
   CRICKET_ROLES,
   BATTING_STYLES,
@@ -348,9 +352,11 @@ function PlayerFields({ draft, onChange, isCricket, linked = false, showPhone = 
 
 /**
  * Owners (`canEdit`) manage teams and players here: names, numbers, emails that link a place to a
- * player's account, and each team's join code. Everyone else in the tournament sees the same
+ * player's account, and each team's join code. A team's admins (2026-11-20) change that one squad —
+ * each team's `canManage` from the server says who may. Everyone else in the tournament sees the same
  * teams read-only, and a player can leave their own team (`onLeftTeam` then re-checks what they
- * can still see).
+ * can still see). Under each squad: who runs the team (owners name them) and the players left out
+ * after they had played, who can be brought back.
  */
 /** Player names on this page open their profile (`onOpenPlayer(playerId)`). */
 export default function TeamManagement({ onOpenPlayer, ...props }) {
@@ -361,7 +367,7 @@ export default function TeamManagement({ onOpenPlayer, ...props }) {
   );
 }
 
-function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit = true, onLeftTeam }) {
+function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit = true, started = false, league = null, onLeftTeam, onOpenClub }) {
   const theme = themeFor(sport);
   const isCricket = sport === "Cricket";
   const options = useAuthOptions();
@@ -495,7 +501,9 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
   };
 
   const handleResetCode = (team) => {
-    if (!confirm(`Make a new join code for ${team.name}?\n\nThe old code stops working. Anyone who already joined stays in the team.`)) return;
+    // A team kept from a lasting one keeps sharing the lasting team's link; only this tournament's code changes.
+    const what = team.clubId ? "join code" : "invite link and join code";
+    if (!confirm(`Make a new ${what} for ${team.name}?\n\nThe old one stops working. Anyone who already joined stays in the team.`)) return;
     runFor(`code-${team.id}`, async () => {
       await resetJoinCode(tournamentId, team.id);
       await loadTeams();
@@ -510,7 +518,7 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
     if (!confirm(question)) return;
     runFor(`unlink-${player.id}`, async () => {
       await unlinkPlayer(tournamentId, team.id, player.id);
-      if (player.isMe && !canEdit && (await onLeftTeam?.()) === false) return; // gone home
+      if (player.isMe && !(team.canManage ?? canEdit) && (await onLeftTeam?.()) === false) return; // gone home
       await loadTeams();
     });
   };
@@ -541,14 +549,38 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
     }
   };
 
-  const handleDeletePlayer = async (teamId, playerId) => {
+  const handleDeletePlayer = async (team, player) => {
+    if (!confirm(`Remove ${player.name} from ${team.name}?\n\nIf they've already played, they stay on the scorecards and can be brought back.`)) return;
     setError("");
     try {
-      await deletePlayer(tournamentId, teamId, playerId);
+      await deletePlayer(tournamentId, team.id, player.id);
       loadTeams();
     } catch (e) {
       setError(e.message);
     }
+  };
+
+  const handleRestore = (team, player) =>
+    runFor(`restore-${player.id}`, async () => {
+      await restorePlayer(tournamentId, team.id, player.id);
+      await loadTeams();
+    });
+
+  const handleAddAdmin = (team, body) =>
+    runFor(`admin-${team.id}`, async () => {
+      await addTeamAdmin(tournamentId, team.id, body);
+      await loadTeams();
+    });
+
+  const handleRemoveAdmin = (team, admin) => {
+    const question = admin.isMe
+      ? `Stop running ${team.name}?\n\nYou won't be able to change its squad any more.`
+      : `Remove ${admin.name} as an admin of ${team.name}?`;
+    if (!confirm(question)) return;
+    runFor(`admin-${team.id}`, async () => {
+      await removeTeamAdmin(tournamentId, team.id, admin.userId);
+      await loadTeams();
+    });
   };
 
   if (!tournamentId) {
@@ -603,13 +635,21 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
         </div>
       )}
 
+      {/* Lasting teams entering with the code (step 3): owners, until the start. */}
+      {/* A league's season (2026-11-24): bring back teams from an earlier season, before it starts. */}
+      {canEdit && !started && league && league.season > 1 && <BringBack tournamentId={tournamentId} league={league} theme={theme} onDone={loadTeams} />}
+      {canEdit && !started && <EntriesPanel tournamentId={tournamentId} theme={theme} onTeamsChanged={loadTeams} />}
+
       {loading && <p style={{ color: theme.onDarkMuted }}>Loading…</p>}
       {!loading && teams.length === 0 && (
         <p style={{ color: theme.onDarkMuted, fontSize: 14 }}>{canEdit ? "No teams yet. Add the first one above." : "No teams yet."}</p>
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {teams.map((team) => (
+        {teams.map((team) => {
+          // Who may change this squad: the server's answer (owners, and this team's admins).
+          const manage = team.canManage ?? canEdit;
+          return (
           <div key={team.id} style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1rem 1.2rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               {editingTeamId === team.id ? (
@@ -636,13 +676,16 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                   >
                     {theme.icon} {team.name} <span style={{ fontSize: 14, color: theme.muted }}>({team.players.length} players)</span>
                     {team.players.some((p) => p.isMe) && <span style={chip(theme.tint, theme.successInk)}>YOUR TEAM</span>}
+                    {team.admins?.some((a) => a.isMe) && <span style={chip(theme.accentSoft, theme.warnInk)}>YOU RUN IT</span>}
                   </span>
                   <div style={{ display: "flex", gap: 6 }}>
+                    {manage && (
+                      <button onClick={() => startEditTeam(team)} style={{ background: "none", border: "1px solid #ccc", borderRadius: 6, padding: "0.3rem 0.7rem", fontSize: 12, cursor: "pointer" }}>
+                        Rename
+                      </button>
+                    )}
                     {canEdit && (
                       <>
-                        <button onClick={() => startEditTeam(team)} style={{ background: "none", border: "1px solid #ccc", borderRadius: 6, padding: "0.3rem 0.7rem", fontSize: 12, cursor: "pointer" }}>
-                          Rename
-                        </button>
                         <button onClick={() => handleDeleteTeam(team.id)} style={{ background: "none", border: `1px solid ${theme.danger}`, color: "#a33", borderRadius: 6, padding: "0.3rem 0.7rem", fontSize: 12, cursor: "pointer" }}>
                           Delete
                         </button>
@@ -662,7 +705,7 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
             {expandedTeamId === team.id && (
               <div style={{ marginTop: 12, borderTop: "1px solid #e5e2d8", paddingTop: 12 }}>
                 {/* Owners share this; players type it under "Join a team" and pick their name. */}
-                {canEdit && team.joinCode && (
+                {manage && team.joinCode && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: theme.tint, borderRadius: 8, padding: "0.6rem 0.8rem", marginBottom: 12, fontSize: 14 }}>
                     <span style={{ color: theme.muted }}>Join code</span>
                     <strong style={{ fontFamily: font.condensed, fontSize: 24, letterSpacing: "0.18em", lineHeight: 1 }}>{team.joinCode}</strong>
@@ -670,15 +713,21 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                       {copiedTeamId === team.id ? "Copied" : "Copy"}
                     </button>
                     <button onClick={() => handleResetCode(team)} disabled={busyId === `code-${team.id}`} style={smallButton}>
-                      {busyId === `code-${team.id}` ? "Making…" : "New code"}
+                      {busyId === `code-${team.id}` ? "Making…" : team.clubId ? "New code" : "New link"}
                     </button>
                     <span style={{ color: theme.muted, fontSize: 12, flexBasis: "100%" }}>
                       Players enter it under “Join a team”, then pick their name — or join as a new player.
                     </span>
+                    {team.invite && (
+                      <div style={{ flexBasis: "100%", borderTop: "1px solid #e5e2d8", paddingTop: 8 }}>
+                        <span style={{ color: theme.muted, display: "block", marginBottom: 6 }}>Invite link</span>
+                        <InviteLink invite={team.invite} teamName={team.name} buttonStyle={smallButton} mutedColor={theme.muted} />
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {canEdit && isCricket && team.players.length > 0 && (
+                {manage && isCricket && team.players.length > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, fontSize: 14 }}>
                     <span id={`captain-${team.id}`} style={{ color: theme.muted }}>Usual captain</span>
                     <select
@@ -720,6 +769,10 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                   ) : (
                     <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#EDEAE0", padding: "0.4rem 0.7rem", borderRadius: 6, fontSize: 14, marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
                       <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+                        {/* A linked player's own photo (HLD P-26). */}
+                        {p.photoUrl && (
+                          <img src={pictureSrc(p.photoUrl)} alt="" width={24} height={24} style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover", verticalAlign: "middle", marginRight: 6 }} />
+                        )}
                         {p.jerseyNumber != null && <strong>#{p.jerseyNumber} </strong>}
                         {p.isLinked ? <PlayerName playerId={p.id}>{p.name}</PlayerName> : p.name}
                         {isCricket && team.defaultCaptainPlayerId === p.id && (
@@ -732,25 +785,25 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                           : p.position && <span style={{ color: theme.muted }}> · {p.position}</span>}
                         {p.isMe && <span style={chip(theme.accentSoft, theme.warnInk)}>YOU</span>}
                         {p.isLinked && !p.isMe && <span style={chip(theme.tint, theme.successInk)} title="Signed in to the app">LINKED</span>}
-                        {canEdit && (p.email || p.phone) && (
+                        {manage && (p.email || p.phone) && (
                           <span style={{ color: theme.muted, fontSize: 12 }}>
                             {" "}{p.isLinked ? p.email ?? formatPhone(p.phone) : `· waiting for ${p.email ?? formatPhone(p.phone)} to sign up`}
                           </span>
                         )}
                       </span>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                        {canEdit && (
+                        {manage && (
                           <button onClick={() => startEditPlayer(team.id, p)} style={smallButton}>
                             Edit
                           </button>
                         )}
-                        {(canEdit ? p.isLinked || p.email || p.phone : p.isMe) && (
+                        {(manage ? p.isLinked || p.email || p.phone : p.isMe) && (
                           <button onClick={() => handleUnlink(team, p)} disabled={busyId === `unlink-${p.id}`} style={smallButton}>
-                            {p.isMe && !canEdit ? "Leave team" : "Unlink"}
+                            {p.isMe && !manage ? "Leave team" : "Unlink"}
                           </button>
                         )}
-                        {canEdit && (
-                          <button onClick={() => handleDeletePlayer(team.id, p.id)} style={{ ...smallButton, border: `1px solid ${theme.danger}`, color: "#a33" }}>
+                        {manage && (
+                          <button onClick={() => handleDeletePlayer(team, p)} style={{ ...smallButton, border: `1px solid ${theme.danger}`, color: "#a33" }}>
                             Remove
                           </button>
                         )}
@@ -760,7 +813,7 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                 )}
                 {team.players.length === 0 && <p style={{ fontSize: 14, color: theme.muted }}>No players yet.</p>}
 
-                {canEdit && (
+                {manage && (
                   <AddPlayerRow
                     tournamentId={tournamentId}
                     team={team}
@@ -771,11 +824,106 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                     onAdded={loadTeams}
                   />
                 )}
+
+                <LeftPlayers team={team} manage={manage} busyId={busyId} onRestore={handleRestore} theme={theme} smallButton={smallButton} />
+                <TeamAdmins team={team} busyId={busyId} onAdd={handleAddAdmin} onRemove={handleRemoveAdmin} showPhone={options.phone} theme={theme} smallButton={smallButton} />
+                <KeepTeam team={team} tournamentId={tournamentId} theme={theme} onKept={(kept) => onOpenClub?.(kept.clubId)} onOpenClub={onOpenClub} />
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
+    </div>
+  );
+}
+
+/** Players left out after they had played: on the scorecards still; whoever manages the squad can bring one back. */
+function LeftPlayers({ team, manage, busyId, onRestore, theme, smallButton }) {
+  const left = team.leftPlayers ?? [];
+  if (left.length === 0) return null;
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: theme.muted, marginBottom: 6 }}>Left the squad · {left.length}</div>
+      <p style={{ fontSize: 12, color: theme.muted, margin: "0 0 6px" }}>They played earlier, so their runs, goals and wickets stay on the scorecards.</p>
+      {left.map((p) => (
+        <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "0.3rem 0.7rem", fontSize: 14, color: theme.muted }}>
+          <span>
+            {p.jerseyNumber != null && <strong>#{p.jerseyNumber} </strong>}
+            {p.name}
+          </span>
+          {manage && (
+            <button onClick={() => onRestore(team, p)} disabled={busyId === `restore-${p.id}`} style={smallButton}>
+              {busyId === `restore-${p.id}` ? "Bringing back…" : "Bring back"}
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Who runs this team (2026-11-20): they can change its squad, nothing else — never score. Owners name up to three,
+ * from the team's players on the app or by email or number.
+ */
+function TeamAdmins({ team, busyId, onAdd, onRemove, showPhone, theme, smallButton }) {
+  const [contact, setContact] = useState("");
+  const [pick, setPick] = useState("");
+  const admins = team.admins ?? [];
+  if (!team.canManageAdmins && admins.length === 0) return null;
+  const busy = busyId === `admin-${team.id}`;
+  const running = new Set(admins.map((a) => a.name));
+  const candidates = team.players.filter((p) => p.isLinked && !running.has(p.name));
+
+  return (
+    <div style={{ marginTop: 14, borderTop: "1px solid #e5e2d8", paddingTop: 12 }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: theme.muted, marginBottom: 4 }}>Team admins</div>
+      <p style={{ fontSize: 12, color: theme.muted, margin: "0 0 8px" }}>
+        They can add and remove this team’s players and choose its captain. They can’t score matches or change other teams.
+      </p>
+      {admins.map((a) => (
+        <div key={a.userId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "0.3rem 0", fontSize: 14 }}>
+          <span>
+            {a.name}
+            {a.isMe ? " (you)" : ""}
+          </span>
+          {a.canRemove && (
+            <button onClick={() => onRemove(team, a)} disabled={busy} style={smallButton}>
+              {a.isMe ? "Step down" : "Remove"}
+            </button>
+          )}
+        </div>
+      ))}
+      {team.canManageAdmins && admins.length < 3 && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
+          {candidates.length > 0 && (
+            <>
+              <select aria-label={`Make one of ${team.name}'s players an admin`} value={pick} onChange={(e) => setPick(e.target.value)} style={{ ...inputStyle, minWidth: 180 }}>
+                <option value="">A player on the app…</option>
+                {candidates.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <button onClick={() => { onAdd(team, { playerId: Number(pick) }); setPick(""); }} disabled={!pick || busy} style={smallButton}>
+                Make admin
+              </button>
+              <span style={{ color: theme.muted, fontSize: 12 }}>or</span>
+            </>
+          )}
+          <input
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            placeholder={showPhone ? "Email or mobile number" : "Email"}
+            aria-label={`Add an admin to ${team.name} by ${showPhone ? "email or mobile number" : "email"}`}
+            autoCapitalize="none"
+            style={{ ...inputStyle, minWidth: 200 }}
+          />
+          <button onClick={() => { onAdd(team, { contact: contact.trim() }); setContact(""); }} disabled={!contact.trim() || busy} style={smallButton}>
+            {busy ? "Saving…" : "Add admin"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

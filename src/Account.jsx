@@ -12,6 +12,8 @@ import {
 } from "./api/accountApi";
 import { clearSession, updateSessionUser } from "./auth/session";
 import ErrorBanner from "./ErrorBanner";
+import PictureField from "./PictureField";
+import { removeMyPhoto, setMyPhoto } from "./api/picturesApi";
 import { font, footballTheme as theme } from "./theme";
 import { formatPhone, useAuthOptions } from "./useAuthOptions";
 import {
@@ -24,7 +26,7 @@ import {
   roleBowls,
 } from "./cricket/cricketLabels";
 
-// The signed-in person's account: their name and cricket profile (both copied to every team place
+// The signed-in person's account: their photo (HLD P-26), their name and cricket profile (both copied to every team place
 // linked to them), the email and mobile number they sign in with, signing out — of this browser, or
 // of every device at once (for a lost phone) — and deleting the account, confirmed with a code sent
 // to them.
@@ -158,6 +160,20 @@ export default function Account({ onBack, backLabel = "Your tournaments" }) {
 
         {account && (
           <>
+            <section style={card} aria-label="Profile photo">
+              <PictureField
+                label="Profile photo"
+                hint="Shown on your profile and beside your name in your teams. Never on the public pages."
+                shape="square"
+                link={account.photoUrl}
+                name={account.name}
+                upload={setMyPhoto}
+                remove={removeMyPhoto}
+                onChanged={(photoUrl) => setAccount((a) => ({ ...a, photoUrl }))}
+                theme={theme}
+              />
+            </section>
+
             <form onSubmit={save} style={card}>
               <label htmlFor="account-name" style={label}>
                 Name

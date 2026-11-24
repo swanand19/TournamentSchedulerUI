@@ -11,6 +11,7 @@ import { usePoll } from "../watch/usePoll";
 import { SourceContext, publicSource } from "../api/source";
 import { getPublicMatches, getPublicPlayer, getPublicTournament } from "../api/publicApi";
 import { getSession } from "../auth/session";
+import { pictureSrc } from "../pictures";
 
 // A public tournament (6E) for anyone with its link, no account needed: its matches, table and stats,
 // knockouts, and every match through the same viewer the app uses. Outside the sign-in gate (main.jsx).
@@ -105,7 +106,7 @@ export default function LiveTournament() {
         <main style={{ ...main, maxWidth: 560 }}>
           <h1 style={{ fontFamily: font.display, fontSize: 30, margin: "1rem 0" }}>LIVE SCORES</h1>
           <ErrorBanner message={error} />
-          <a href="/" style={{ color: theme.accent, fontWeight: 600 }}>Go to Tournament Scheduler</a>
+          <a href="/" style={{ color: theme.accent, fontWeight: 600 }}>Go to KickCricket</a>
         </main>
       </div>
     );
@@ -114,19 +115,39 @@ export default function LiveTournament() {
   return (
     <SourceContext.Provider value={source}>
       <div style={page}>
-        <header style={{ padding: "2rem clamp(1rem, 4vw, 2rem) 1.5rem", borderBottom: `3px solid ${theme.borderOnDark}` }}>
+        <header
+          style={{
+            padding: "2rem clamp(1rem, 4vw, 2rem) 1.5rem",
+            borderBottom: `3px solid ${theme.borderOnDark}`,
+            // The owners' banner (HLD P-26) behind the name, under a wash that keeps the light text readable.
+            ...(tournament?.bannerUrl && {
+              backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url("${pictureSrc(tournament.bannerUrl)}")`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }),
+          }}
+        >
           <div style={{ maxWidth: 1040, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
             <div>
               <p style={{ fontFamily: font.condensed, fontSize: 18, letterSpacing: "clamp(0.12em, 0.9vw, 0.3em)", color: theme.accent, margin: 0, fontWeight: 600 }}>
                 {theme.label.toUpperCase()} · LIVE SCORES
               </p>
-              <h1 style={{ fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 3rem)", margin: "0.2rem 0 0", lineHeight: 1.05, textTransform: "uppercase", overflowWrap: "anywhere" }}>
-                {tournament?.name ?? "Loading…"}
+              <h1 style={{ display: "flex", alignItems: "center", gap: 14, fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 3rem)", margin: "0.2rem 0 0", lineHeight: 1.05, textTransform: "uppercase", overflowWrap: "anywhere" }}>
+                {tournament?.logoUrl && (
+                  <img src={pictureSrc(tournament.logoUrl)} alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+                )}
+                <span>{tournament?.name ?? "Loading…"}</span>
               </h1>
               {tournament && (
                 <p style={{ margin: "6px 0 0", color: theme.onDarkMuted, fontSize: 14 }}>
                   {[STATUS[tournament.status], dateLine(tournament)].filter(Boolean).join(" · ")}
                 </p>
+              )}
+              {/* A league's season (2026-11-24): its league's public page, every season and all-time stats. */}
+              {tournament?.league?.leagueCode && (
+                <a href={`/leagues/${tournament.league.leagueCode}`} style={{ display: "inline-block", marginTop: 8, color: theme.accent, fontSize: 14, fontWeight: 600 }}>
+                  Season {tournament.league.season} of {tournament.league.name} →
+                </a>
               )}
             </div>
             {tournament && (

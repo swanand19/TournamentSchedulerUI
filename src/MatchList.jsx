@@ -11,6 +11,16 @@ const target = (text) => <><TargetIcon size={12} /> {text}</>;
 // their in-play states differently, so the set is the union of both.
 const LIVE_STATUSES = ["InProgress", "Paused", "PenaltyShootout", "InningsBreak", "SuperOver"];
 
+// The filter above the list, as on the phone's Matches tab. A match is upcoming until it starts,
+// completed once it's over (or abandoned), and live in between.
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "live", label: "Live" },
+  { key: "upcoming", label: "Upcoming" },
+  { key: "completed", label: "Completed" },
+];
+const phaseOf = (m) => (m.status === "NotStarted" ? "upcoming" : m.status === "Completed" || m.status === "Abandoned" ? "completed" : "live");
+
 // Someone who can't score here (a player, say) watches instead: "Match preview", "Watch live",
 // "View result" all open the watcher's screen (onWatchMatch).
 export default function MatchList({ tournamentId, matches, loading, tournamentStarted, starting, onStartTournament, onStartMatch, onEnterMatch, onWatchMatch, onOpenKnockouts, canScore = true, onBack, sport = "Football" }) {
@@ -74,9 +84,13 @@ export default function MatchList({ tournamentId, matches, loading, tournamentSt
 
   const statusLabel = isCricket ? cricketStatusLabel : footballStatusLabel;
 
+  const [filter, setFilter] = useState("all");
+  const shown = filter === "all" ? matches : matches.filter((m) => phaseOf(m) === filter);
+  const count = (key) => (key === "all" ? matches.length : matches.filter((m) => phaseOf(m) === key).length);
+
   // The groups, then the knockout matches in their own section (they have no group).
   const KNOCKOUT = "knockout:";
-  const grouped = matches.reduce((acc, m) => {
+  const grouped = shown.reduce((acc, m) => {
     const key = m.stage === "Knockout" ? KNOCKOUT : m.groupName;
     (acc[key] = acc[key] || []).push(m);
     return acc;
@@ -113,6 +127,41 @@ export default function MatchList({ tournamentId, matches, loading, tournamentSt
       )}
 
       {tournamentStarted && loading && <p style={{ color: "rgba(247,245,239,0.6)" }}>Loading matches…</p>}
+
+      {tournamentStarted && !loading && matches.length > 0 && (
+        <div role="group" aria-label="Show matches" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>
+          {FILTERS.map((f) => {
+            const on = filter === f.key;
+            return (
+              <button
+                key={f.key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setFilter(f.key)}
+                style={{
+                  minHeight: 36,
+                  background: on ? theme.accent : "rgba(247,245,239,0.1)",
+                  color: on ? theme.accentInk : "#F7F5EF",
+                  border: on ? `1px solid ${theme.accent}` : "1px solid rgba(247,245,239,0.22)",
+                  borderRadius: 999,
+                  padding: "0.35rem 0.9rem",
+                  fontSize: 14,
+                  fontWeight: on ? 700 : 500,
+                  cursor: "pointer",
+                }}
+              >
+                {f.label} <span style={{ opacity: 0.75 }}>{count(f.key)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {tournamentStarted && !loading && matches.length > 0 && shown.length === 0 && (
+        <p style={{ color: "rgba(247,245,239,0.7)", fontSize: 14 }}>
+          {filter === "live" ? "No match is being played right now." : filter === "upcoming" ? "No matches left to play." : "No matches have finished yet."}
+        </p>
+      )}
 
       {tournamentStarted && !loading && sections.map(([groupName, groupMatches]) => (
         <div key={groupName} style={{ marginBottom: 24 }}>

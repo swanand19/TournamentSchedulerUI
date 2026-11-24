@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from "./api/notificationsApi";
 import ErrorBanner from "./ErrorBanner";
+import { FollowButton } from "./people/PeopleBits";
 import { font, themeFor } from "./theme";
 
 // The inbox (phase 6D): what happened that concerns you — scoring handovers, being added to a
 // tournament or a team, invites taken up, a tournament ready to complete or reaching its end date.
-// Newest first, a page at a time. Clicking one marks it read and opens what it's about.
+// Newest first, a page at a time. Clicking one marks it read and opens what it's about. Chips (2026-11-23): All ·
+// Social · Scoring · Tournaments · Teams with their unread counts; Social news has Follow back or Watch live.
+
+const CHIPS = ["All", "Social", "Scoring", "Tournaments", "Teams"];
 
 const SYMBOLS = {
   ScoringRequested: "✋",
@@ -17,6 +21,7 @@ const SYMBOLS = {
   LinkedToTeam: "★",
   AllMatchesPlayed: "⚑",
   EndDateReminder: "◷",
+  Social: "♥",
 };
 
 const parseUtc = (v) => (v ? new Date(/Z$|[+-]\d{2}:\d{2}$/.test(v) ? v : `${v}Z`) : null);
@@ -48,6 +53,9 @@ const button = {
 export default function Notifications({ onBack, onOpen }) {
   const theme = themeFor("Football");
   const [items, setItems] = useState(null);
+  const [chip, setChip] = useState("All");
+  const [counts, setCounts] = useState(null);
+  const category = chip === "All" ? undefined : chip;
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
@@ -71,13 +79,14 @@ export default function Notifications({ onBack, onOpen }) {
   const load = useCallback(async () => {
     setError("");
     try {
-      const page = await getNotifications();
+      const page = await getNotifications(undefined, category);
       setItems(page.items);
       setHasMore(page.hasMore);
+      setCounts({ All: page.unreadCount, ...page.unreadByCategory });
     } catch (e) {
       setError(e.message);
     }
-  }, []);
+  }, [category]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -86,7 +95,7 @@ export default function Notifications({ onBack, onOpen }) {
 
   const older = () =>
     run("older", async () => {
-      const page = await getNotifications(items.at(-1).notificationId);
+      const page = await getNotifications(items.at(-1).notificationId, category);
       setItems((now) => [...now, ...page.items]);
       setHasMore(page.hasMore);
     });
@@ -103,7 +112,7 @@ export default function Notifications({ onBack, onOpen }) {
       // Not waited for: opening shouldn't hang on it.
       markNotificationRead(n.notificationId).catch(() => {});
     }
-    if (n.tournamentId != null) onOpen(n);
+    if (n.tournamentId != null || n.clubId != null || n.profileUserId != null || n.leagueId != null) onOpen(n);
   };
 
   const unread = items ? items.filter((n) => !n.isRead).length : 0;
@@ -120,6 +129,28 @@ export default function Notifications({ onBack, onOpen }) {
       </header>
 
       <main style={{ maxWidth: 560, margin: "0 auto", padding: "2rem clamp(1rem, 4vw, 2rem)", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div role="tablist" aria-label="Kinds of notification" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          {CHIPS.map((c) => {
+            const on = c === chip;
+            const n = counts?.[c] ?? 0;
+            return (
+              <button
+                key={c}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => {
+                  setItems(null);
+                  setChip(c);
+                }}
+                style={{ flex: "none", minHeight: 40, borderRadius: 999, padding: "0 14px", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14, fontWeight: on ? 700 : 500, border: `1px solid ${on ? theme.accent : theme.borderOnDark}`, background: on ? theme.cream : "transparent", color: on ? theme.ink : theme.onDark }}
+              >
+                {c}
+                {n > 0 && <span style={{ minWidth: 20, height: 20, borderRadius: 10, padding: "0 6px", display: "inline-grid", placeItems: "center", fontSize: 12, fontWeight: 700, background: theme.accent, color: theme.accentInk }}>{n}</span>}
+              </button>
+            );
+          })}
+        </div>
         <ErrorBanner message={error} />
         {error && !items && (
           <button onClick={load} style={{ ...button, background: theme.accent, color: theme.accentInk, alignSelf: "flex-start" }}>
@@ -133,7 +164,9 @@ export default function Notifications({ onBack, onOpen }) {
           <div style={{ border: `1.5px dashed ${theme.borderOnDark}`, borderRadius: 14, padding: "2rem 1.2rem", textAlign: "center" }}>
             <p style={{ fontWeight: 700, fontSize: 18, margin: "0 0 6px" }}>Nothing yet</p>
             <p style={{ color: theme.onDarkMuted, margin: 0, fontSize: 14 }}>
-              You'll hear here when someone asks to take over your scoring, adds you to a tournament or a team, or a tournament of yours needs finishing.
+              {chip === "Social"
+                ? "When someone follows you, or someone you follow starts a match you can watch, it shows up here."
+                : "You'll hear here when someone asks to take over your scoring, adds you to a tournament or a team, or a tournament of yours needs finishing."}
             </p>
           </div>
         ) : (
@@ -148,8 +181,8 @@ export default function Notifications({ onBack, onOpen }) {
               </button>
             )}
             {items.map((n) => (
+              <div key={n.notificationId} style={{ borderRadius: 12, background: n.isRead ? "#EDEAE0" : theme.cream, color: theme.ink }}>
               <button
-                key={n.notificationId}
                 className="pressable"
                 onClick={() => open(n)}
                 aria-label={`${n.isRead ? "" : "Unread. "}${n.title}. ${n.body} ${ago(n.createdAt)}`}
@@ -162,9 +195,9 @@ export default function Notifications({ onBack, onOpen }) {
                   border: "none",
                   borderRadius: 12,
                   padding: "0.9rem 1rem",
-                  background: n.isRead ? "#EDEAE0" : theme.cream,
+                  background: "transparent",
                   color: theme.ink,
-                  cursor: n.tournamentId != null ? "pointer" : "default",
+                  cursor: n.tournamentId != null || n.profileUserId != null || n.clubId != null || n.leagueId != null ? "pointer" : "default",
                   fontFamily: font.body,
                 }}
               >
@@ -185,12 +218,25 @@ export default function Notifications({ onBack, onOpen }) {
                   {SYMBOLS[n.kind] ?? "•"}
                 </span>
                 <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                  {chip === "All" && <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, color: theme.deep, textTransform: "uppercase" }}>{n.category}</span>}
                   <span style={{ fontSize: 15, fontWeight: n.isRead ? 500 : 700, overflowWrap: "anywhere" }}>{n.title}</span>
                   <span style={{ fontSize: 13, color: theme.muted, overflowWrap: "anywhere" }}>{n.body}</span>
                   <span style={{ fontSize: 12, color: theme.muted }}>{ago(n.createdAt)}</span>
                 </span>
                 {!n.isRead && <span aria-hidden="true" style={{ flexShrink: 0, width: 10, height: 10, borderRadius: 5, marginTop: 6, background: theme.accent }} />}
               </button>
+              {n.kind === "Social" && (n.matchId != null || n.profileUserId != null) && (
+                <div style={{ padding: "0 1rem 0.9rem 64px", display: "flex", gap: 8 }}>
+                  {n.matchId != null ? (
+                    <button type="button" onClick={() => open(n)} style={{ ...button, minHeight: 36, padding: "0 14px", borderRadius: 999, background: theme.deep, color: theme.cream }}>
+                      ▶ Watch live
+                    </button>
+                  ) : (
+                    <FollowButton userId={n.profileUserId} name={n.title.replace(/ started following you$/, "")} state={{ isFollowing: false, followsMe: true }} theme={theme} />
+                  )}
+                </div>
+              )}
+              </div>
             ))}
             {hasMore && (
               <button

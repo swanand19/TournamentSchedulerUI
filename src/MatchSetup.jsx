@@ -1,7 +1,9 @@
 import { font, footballTheme as theme } from "./theme";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getMatch, setupAndStartMatch } from "./api/matchesApi";
+import { claimScoring } from "./api/scoringApi";
 import ErrorBanner from "./ErrorBanner";
+import ScoringBanner from "./ScoringBanner";
 
 const STATUS_CYCLE = ["Bench", "Starting", "Unavailable"];
 
@@ -29,6 +31,8 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
     const load = async () => {
       setLoading(true);
       try {
+        // Opening setup takes the match if nobody has it, so a second person sees who instead of a form.
+        await claimScoring("football", matchId);
         const data = await getMatch(matchId);
         setMatch(data);
         // A knockout match must have a winner: the server refuses a draw, so the option isn't offered.
@@ -45,6 +49,26 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
       }
     };
     load();
+  }, [matchId]);
+
+  // Every 30 s while the tab is visible: keeps the holder "seen" while they fill the form, follows a
+  // handover, and moves anyone else on to the live match once it kicks off.
+  const started = useRef(onStarted);
+  useEffect(() => {
+    started.current = onStarted;
+  });
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      if (document.hidden) return;
+      try {
+        const m = await getMatch(matchId);
+        if (m.status !== "NotStarted") started.current();
+        else setMatch((old) => (old ? { ...old, scoring: m.scoring } : old));
+      } catch {
+        // The next look tries again.
+      }
+    }, 30000);
+    return () => clearInterval(timer);
   }, [matchId]);
 
   const cycleStatus = (playerId) => {
@@ -111,6 +135,9 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
   if (loading) return <p style={{ color: "rgba(247,245,239,0.6)" }}>Loading match…</p>;
   if (!match) return <p style={{ color: "rgba(247,245,239,0.6)" }}>Match not found.</p>;
 
+  // Someone else is setting it up: the banner says who (Ask to score / Take over), not a form for nothing.
+  const locked = !!match.scoring && !match.scoring.canScore;
+
   const renderTeamSquad = (team) => (
     <div style={{ background: "#F7F5EF", color: "#1B1B1B", borderRadius: 12, padding: "1.2rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -170,7 +197,9 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
       </p>
 
       <ErrorBanner message={error} />
+      <ScoringBanner sport="football" matchId={matchId} scoring={match.scoring} onChange={(scoring) => setMatch((m) => ({ ...m, scoring }))} />
 
+      {!locked && (<>
       <div style={{ background: "rgba(247,245,239,0.06)", border: "1px solid rgba(247,245,239,0.15)", borderRadius: 12, padding: "1.5rem", marginBottom: 20 }}>
         <h3 style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 14px" }}>MATCH RULES</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
@@ -274,6 +303,7 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
       >
         {submitting ? "STARTING MATCH…" : "▶ START MATCH"}
       </button>
+      </>)}
     </div>
   );
 }

@@ -4,7 +4,8 @@ import { api } from "./client";
 // matchId say where a notification leads.
 
 /** { items: [{ notificationId, kind, title, body, tournamentId, sport, matchId, createdAt, isRead }], unreadCount, hasMore } */
-export const getNotifications = (before) => api.call("NOTIFICATION_LIST", { query: { before } });
+// category: Social, Scoring, Tournaments or Teams (2026-11-23); the answer's unreadByCategory counts every chip.
+export const getNotifications = (before, category) => api.call("NOTIFICATION_LIST", { query: { before, category } });
 
 /** { unreadCount } — what the bell on Home shows. */
 export const getUnreadCount = () => api.call("NOTIFICATION_UNREAD");

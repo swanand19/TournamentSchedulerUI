@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 import { getWatchMatch, getActivity } from "./watchApi";
 import { getCricketAwards, getCricketMatch, getCricketScorecard } from "./cricketApi";
 import { getMatch, getMatchEvents } from "./matchesApi";
-import { getTournamentStats, getCricketStats } from "./tournamentsApi";
+import { getTournamentStats, getCricketStats, getPlayerLines } from "./tournamentsApi";
 import { getKnockout } from "./knockoutApi";
 import * as pub from "./publicApi";
 
@@ -22,6 +22,7 @@ export const signedInSource = {
   cricketScorecard: getCricketScorecard,
   stats: getTournamentStats, // (tournamentId)
   cricketStats: getCricketStats,
+  playerLines: getPlayerLines, // (tournamentId, playerId) — a leaderboard row unfolded
   knockout: getKnockout,
 };
 
@@ -37,6 +38,7 @@ export function publicSource(code) {
     cricketScorecard: (matchId) => pub.getPublicScorecard(code, matchId),
     stats: () => pub.getPublicStats(code),
     cricketStats: () => pub.getPublicStats(code),
+    playerLines: (_id, playerId) => pub.getPublicPlayerLines(code, playerId),
     knockout: () => pub.getPublicKnockout(code),
   };
 }

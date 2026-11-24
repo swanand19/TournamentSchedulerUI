@@ -1,0 +1,125 @@
+/* The player pool, team draw and auction screens (2026-11-17), and the hall's TV board. Scoped under
+   .pl (screens) and .tvb (the TV) so nothing here touches the rest of the app. The look is the web
+   app's floodlit ground: cream cards, the sport's accent, Anton headings, Teko figures. */
+
+.pl, .tvb { --s1: #1B4332; --s2: #17402E; --deck: #0F291E; --raised: #1D3A2D; --acc: #F2A93B; --accInk: #1B1B1B; --tint: #E3EEE6; }
+.pl.ck, .tvb.ck { --s1: #12243B; --s2: #0F1F34; --deck: #0A1627; --raised: #1A2C45; --acc: #E8B03A; --accInk: #12243B; --tint: #E1E8F2; }
+
+.pl { color: #F7F5EF; display: flex; flex-direction: column; gap: 20px; }
+.pl *, .tvb * { box-sizing: border-box; }
+.pl .disp, .tvb .disp { font-family: "Anton", sans-serif; text-transform: uppercase; letter-spacing: .02em; font-weight: 400; }
+.pl .teko, .tvb .teko { font-family: "Teko", sans-serif; font-weight: 600; }
+.pl .num, .tvb .num { font-variant-numeric: tabular-nums; }
+.pl .row { display: flex; align-items: center; gap: 12px; }
+.pl .between, .tvb .between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pl .wrapr { flex-wrap: wrap; }
+.pl .grow { flex: 1; min-width: 0; }
+.pl .stack { display: flex; flex-direction: column; }
+.pl .top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.pl .top h2 { margin: 0; font-size: 28px; line-height: 34px; }
+.pl .crumb { font-size: 13px; color: rgba(247,245,239,.72); }
+.pl .card { background: #F7F5EF; color: #1B1B1B; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.pl .deck { background: var(--deck); border: 1px solid rgba(247,245,239,.12); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.pl .warncard { background: #F5E4CE; color: #8a4b1b; }
+.pl .h2 { margin: 0; font-size: 24px; line-height: 30px; }
+.pl .h3 { margin: 0; font-size: 17px; line-height: 22px; }
+.pl .muted { color: #6b675b; }
+.pl .dim { color: rgba(247,245,239,.72); }
+.pl .warn { color: #8a4b1b; }
+.pl .small { font-size: 13px; line-height: 18px; }
+.pl .body { font-size: 15px; line-height: 22px; }
+.pl .gold { color: var(--acc); }
+.pl .btn { min-height: 44px; border-radius: 8px; padding: 0 18px; font: inherit; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; cursor: pointer; border: 0; text-decoration: none; transition: transform 120ms var(--ease-out, ease-out), opacity 150ms; }
+.pl .btn:active:not([disabled]) { transform: scale(.97); }
+.pl .btn.pri { background: var(--acc); color: var(--accInk); }
+.pl .btn.sec { background: #fff; color: #1B1B1B; border: 1.5px solid #d8d4c8; }
+.pl .btn.dark { background: rgba(247,245,239,.06); color: #F7F5EF; border: 1px solid rgba(247,245,239,.18); }
+.pl .btn.ghost { background: none; color: inherit; padding: 0 10px; }
+.pl .btn.danger { background: #fff; color: #c63b3a; border: 1.5px solid #e9c9c8; }
+.pl .btn.sm { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.pl .btn.lg { min-height: 56px; font-size: 17px; padding: 0 26px; }
+.pl .btn.xl { min-height: 72px; font-size: 20px; padding: 0 30px; border-radius: 10px; }
+.pl .btn[disabled] { opacity: .45; cursor: default; }
+.pl .chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 14px; font-size: 13px; font-weight: 600; background: #EDEAE0; color: #1B1B1B; white-space: nowrap; border: 0; font-family: inherit; }
+.pl button.chip { cursor: pointer; }
+.pl .chip.acc { background: var(--acc); color: var(--accInk); }
+.pl .chip.tint { background: var(--tint); }
+.pl .chip.ok { background: #e4efd9; color: #3b6d11; }
+.pl .chip.warn { background: #F5E4CE; color: #8a4b1b; }
+.pl .chip.dk { background: rgba(247,245,239,.10); color: #F7F5EF; }
+.pl .live { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 15px; background: rgba(159,211,107,.14); color: #9FD36B; font-size: 13px; font-weight: 600; }
+.pl .live i { width: 8px; height: 8px; border-radius: 4px; background: #9FD36B; box-shadow: 0 0 8px #9FD36B; }
+.pl .hair { height: 1px; background: #e5e2d8; }
+.pl .hairdk { height: 1px; background: rgba(247,245,239,.12); }
+.pl .field { display: flex; flex-direction: column; gap: 6px; }
+.pl .field label, .pl .lab { font-size: 13px; font-weight: 600; }
+.pl .input { min-height: 40px; border: 1.5px solid #d8d4c8; border-radius: 8px; background: #fff; padding: 0 12px; font: inherit; font-size: 14px; color: #1B1B1B; min-width: 0; }
+.pl select.input { padding-right: 6px; }
+.pl .field .seg { align-self: flex-start; }
+.pl .seg { display: inline-flex; border: 1.5px solid #d8d4c8; border-radius: 8px; overflow: hidden; background: #fff; flex-wrap: wrap; }
+.pl .seg button { min-height: 40px; padding: 0 16px; font: inherit; font-size: 14px; font-weight: 600; color: #1B1B1B; background: #fff; border: 0; border-left: 1.5px solid #d8d4c8; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.pl .seg button:first-child { border-left: 0; }
+.pl .seg button[aria-pressed="true"] { background: var(--s1); color: #F7F5EF; }
+.pl .seg button[disabled] { opacity: .5; cursor: default; }
+.pl .opt { border: 1.5px solid #d8d4c8; border-radius: 10px; padding: 14px 16px; display: flex; gap: 14px; align-items: flex-start; background: #fff; text-align: left; width: 100%; font: inherit; color: #1B1B1B; cursor: pointer; }
+.pl .opt[aria-checked="true"] { border: 2px solid var(--s1); background: var(--tint); }
+.pl .opt[disabled] { opacity: .5; cursor: default; }
+.pl .radio { width: 20px; height: 20px; border-radius: 10px; border: 2px solid #9b978a; flex: none; margin-top: 1px; }
+.pl .opt[aria-checked="true"] .radio { border: 6px solid var(--s1); }
+.pl .tog { width: 44px; height: 26px; border-radius: 13px; background: #c9c5b8; position: relative; flex: none; border: 0; cursor: pointer; transition: background 150ms; }
+.pl .tog::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 10px; background: #fff; transition: left 150ms var(--ease-out, ease-out); }
+.pl .tog[aria-checked="true"] { background: var(--s1); }
+.pl .tog[aria-checked="true"]::after { left: 21px; }
+.pl .deck .tog[aria-checked="true"] { background: var(--acc); }
+.pl table { border-collapse: collapse; width: 100%; }
+.pl th { font-size: 12px; font-weight: 600; color: #6b675b; text-align: left; padding: 8px 10px; border-bottom: 1.5px solid #e5e2d8; white-space: nowrap; }
+.pl td { font-size: 14px; padding: 8px 10px; border-bottom: 1px solid #eeebe2; vertical-align: middle; }
+.pl .av { width: 36px; height: 36px; border-radius: 18px; flex: none; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: var(--tint); color: #1B1B1B; }
+.pl .av.dk { background: rgba(247,245,239,.12); color: #F7F5EF; }
+.pl .grid { display: grid; gap: 20px; min-width: 0; }
+.pl .scroll { overflow-x: auto; }
+.pl .bar { height: 8px; border-radius: 4px; background: rgba(247,245,239,.12); overflow: hidden; }
+.pl .bar i { display: block; height: 100%; background: var(--acc); border-radius: 4px; transform-origin: left; }
+.pl .tile { border-radius: 10px; padding: 14px; background: rgba(247,245,239,.05); border: 1.5px solid rgba(247,245,239,.12); display: flex; flex-direction: column; gap: 6px; min-width: 0; transition: border-color 200ms, background 200ms; }
+.pl .tile.lit { border-color: var(--acc); background: rgba(242,169,59,.10); }
+.pl .row-in, .tvb .row-in { animation: pl-row-in 220ms var(--ease-out, ease-out) backwards; }
+.pl .lit-row { background: var(--tint); margin: 0 -8px; padding: 4px 8px; border-radius: 6px; }
+
+/* The spin window: names run past and slow down until the server's landing moment. */
+.pl .reel, .tvb .reel { position: relative; overflow: hidden; border-radius: 14px; background: rgba(0,0,0,.28); border: 2px solid color-mix(in srgb, var(--acc) 50%, transparent); }
+.pl .reel .strip, .tvb .reel .strip { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+.pl .reel .strip > div, .tvb .reel .strip > div { display: flex; align-items: center; justify-content: center; color: rgba(247,245,239,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 12px; }
+.pl .reel::after, .tvb .reel::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, var(--deck) 0%, transparent 32%, transparent 68%, var(--deck) 100%); }
+.pl .landed, .tvb .landed { animation: pl-land 420ms cubic-bezier(.23,1,.32,1) both; color: var(--acc); }
+
+/* SOLD, on every screen at once. */
+.pl .stamp, .tvb .stamp { animation: pl-stamp 600ms cubic-bezier(.23,1,.32,1) both; }
+
+@keyframes pl-row-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes pl-land { from { opacity: 0; transform: scale(1.12); } to { opacity: 1; transform: none; } }
+@keyframes pl-stamp { 0% { opacity: 0; transform: scale(1.15); } 60% { opacity: 1; transform: scale(.98); } 100% { transform: scale(1); } }
+
+@media (max-width: 900px) {
+  .pl .grid { grid-template-columns: 1fr !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pl *, .tvb * { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}
+
+/* The TV board: 16:9, readable from the back of a hall. Sizes follow the viewport so any screen fits. */
+.tvb { position: fixed; inset: 0; overflow: hidden; color: #F7F5EF; font-family: "Inter", sans-serif;
+  background: radial-gradient(70% 60% at 30% 35%, var(--raised) 0%, var(--deck) 70%), var(--deck);
+  display: flex; flex-direction: column; padding: 2.3vw 3.3vw 2.5vw; gap: 1.7vw; font-size: 1.15vw; }
+.tvb .soft { color: rgba(247,245,239,.72); }
+.tvb .gold { color: var(--acc); }
+.tvb .lab { font-size: 1.15vw; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: rgba(247,245,239,.72); }
+.tvb .panel { background: rgba(247,245,239,.05); border: 1px solid rgba(247,245,239,.12); border-radius: 1vw; min-width: 0; }
+.tvb .tvlive { display: inline-flex; align-items: center; gap: .6vw; height: 2.5vw; padding: 0 1vw; border-radius: 1.25vw; background: rgba(159,211,107,.14); color: #9FD36B; font-size: 1.15vw; font-weight: 600; }
+.tvb .tvlive i { width: .6vw; height: .6vw; border-radius: 50%; background: #9FD36B; box-shadow: 0 0 .6vw #9FD36B; }
+.tvb .tile { border-radius: .95vw; padding: 1.15vw 1.35vw; background: rgba(247,245,239,.05); border: 2px solid rgba(247,245,239,.10); display: flex; flex-direction: column; gap: .3vw; min-width: 0; transition: border-color 300ms, background 300ms, box-shadow 300ms; }
+.tvb .tile.lit { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 12%, transparent); box-shadow: 0 0 2vw color-mix(in srgb, var(--acc) 25%, transparent); }
+.tvb .bigav { width: 11vw; height: 11vw; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: "Anton", sans-serif; font-size: 4.6vw; background: rgba(247,245,239,.10); border: 3px solid rgba(247,245,239,.25); flex: none; }
+.tvb .bar { height: .75vw; border-radius: .4vw; background: rgba(247,245,239,.12); overflow: hidden; }
+.tvb .bar i { display: block; height: 100%; background: var(--acc); transform-origin: left; }
+.tvb .ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

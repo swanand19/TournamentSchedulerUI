@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import {
   addMember, cancelInvite, completeTournament, getMembers, getTournament, leaveTournament, removeMember, resendInvite, updateTournament,
 } from "./api/tournamentsApi";
-import { publicLinkFor, setTournamentPublic, unfollowTournament } from "./api/publicApi";
+import { publicLinkFor, unfollowTournament } from "./api/publicApi";
 import ErrorBanner from "./ErrorBanner";
+import PictureField from "./PictureField";
+import { removeTournamentPicture, setTournamentPicture } from "./api/picturesApi";
 import { font, themeFor } from "./theme";
 import { formatPhone, useAuthOptions } from "./useAuthOptions";
 
@@ -116,11 +118,9 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
     });
   };
 
-  // Public live scores (6E): the owners' switch and the one link it has for good; everyone may copy it.
+  // Public live scores (6E): every tournament is public (2026-11-23) with one link for good; everyone may copy it.
   const link = publicLinkFor(tournament.share);
   const [copied, setCopied] = useState(false);
-
-  const switchPublic = (on) => run("public", async () => onChanged(await setTournamentPublic(tournament.id, on)));
 
   const copyLink = async () => {
     try {
@@ -197,24 +197,41 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
         )}
       </form>
 
+      {/* --- Pictures (HLD P-26): a logo beside the name, a banner across the top ---------- */}
+      {access.canEdit && (
+        <section style={card(theme)} aria-labelledby="pictures-title">
+          <h2 id="pictures-title" style={heading}>PICTURES</h2>
+          {[
+            { kind: "logo", label: "Logo", shape: "square", hint: "Square. Shown beside the name on everyone's Home.", link: tournament.logoUrl },
+            { kind: "banner", label: "Banner", shape: "banner", hint: "Landscape, 16:9. Shown across the top of the tournament, and on its public page.", link: tournament.bannerUrl },
+          ].map((p) => (
+            <PictureField
+              key={p.kind}
+              label={p.label}
+              hint={p.hint}
+              shape={p.shape}
+              link={p.link}
+              name={tournament.name}
+              upload={(image) => setTournamentPicture(tournament.id, p.kind, image)}
+              remove={() => removeTournamentPicture(tournament.id, p.kind)}
+              onChanged={(url) => onChanged({ ...tournament, [`${p.kind}Url`]: url })}
+              theme={theme}
+            />
+          ))}
+        </section>
+      )}
+
       {/* --- Public live scores (6E) ----------------------------------- */}
-      {(access.canManageMembers || link) && (
+      {/* Every tournament is public (2026-11-23); only an admin can hide one, which takes the link away. */}
         <div style={card(theme)}>
           <h2 style={heading}>PUBLIC LIVE SCORES</h2>
-          {access.canManageMembers && (
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, cursor: "pointer", minHeight: 44 }}>
-              <input type="checkbox" checked={!!tournament.isPublic} onChange={(e) => switchPublic(e.target.checked)} disabled={!!busy} style={{ width: 20, height: 20, marginTop: 1 }} />
-              <span>
-                <strong>Anyone can find and watch this tournament</strong>
-                <span style={{ display: "block", fontSize: 13, color: theme.muted, marginTop: 2 }}>
-                  Scores, tables, stats and knockouts, no account needed. People find it by its name or this link, and
-                  can follow it. No emails or numbers are shown. Switch it off to make it private again.
-                </span>
-              </span>
-            </label>
-          )}
+          <p style={{ fontSize: 14, color: theme.muted, margin: 0 }}>
+            {tournament.isPublic
+              ? "Anyone can watch this tournament with its link: scores, tables, stats and knockouts, no account needed. People can also find it by name once its schedule or knockout stage is set. No emails or numbers are shown."
+              : "KickCricket has hidden this tournament from the public, so only the people in it can see it."}
+          </p>
           {link && (
-            <div style={{ marginTop: access.canManageMembers ? 12 : 0 }}>
+            <div style={{ marginTop: 12 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.muted }}>
                 Link
                 <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...input, marginTop: 4 }} />
@@ -231,7 +248,6 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
             </div>
           )}
         </div>
-      )}
 
       {/* --- People ----------------------------------------------------- */}
       <div style={card(theme)}>

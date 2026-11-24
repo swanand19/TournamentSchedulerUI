@@ -33,16 +33,29 @@ async function call(serviceRequestId, { routeParams, query, body } = {}) {
   const definedQuery = Object.fromEntries(Object.entries(query ?? {}).filter(([, v]) => v !== undefined && v !== null));
   const sealed = sealRequest(serviceRequestId, { routeParams, query: definedQuery, body });
 
-  let res;
-  let text;
-  try {
-    res = await fetch(GATEWAY_URL, {
+  // A phone on mobile data keeps an idle connection the carrier has already dropped; the first post
+  // down it fails before any answer, and browsers don't retry a POST by themselves. So one quick
+  // retry of the very same sealed request: safe even for scoring, because its requestUUID is
+  // single-use - if the first copy did arrive, the server refuses this one as a replay.
+  const post = () =>
+    fetch(GATEWAY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(sealed.envelope),
     });
+  let res;
+  let text;
+  try {
+    try {
+      res = await post();
+    } catch {
+      if (typeof navigator !== "undefined" && navigator.onLine === false) throw new Error("offline");
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      res = await post();
+    }
     text = await res.text();
   } catch {
+    sealed.contentKey.fill(0);
     throw unreachable();
   }
 
