@@ -4,10 +4,14 @@ import { getCricketMatch, getSetupOptions, setupCricketMatch } from "../api/cric
 import { claimScoring } from "../api/scoringApi";
 import ScoringBanner from "../ScoringBanner";
 import ErrorBanner from "../ErrorBanner";
+import Modal from "../Modal";
 
 // Everything a scorer sets before the first ball: the format, the toss, and the two XIs. The
 // format arrives as a preset and stays editable — the presets exist so the common case is two taps,
 // not so that a league that plays eight-ball overs is locked out.
+// Two steps, as on the phone (2026-11-24): 1 teams and rules, 2 the toss. Nothing is sent until
+// Start match; Back keeps everything. The toss happens on the field — this only records it, and
+// "Flip a coin" is a stand-in coin that decides nothing.
 
 /** The preset chip standing for "whatever the previous match in this tournament was played to". */
 const LAST_FORMAT = "__last__";
@@ -226,12 +230,81 @@ function SquadPicker({ team, selection, onChange, playersPerSide }) {
   );
 }
 
+const choice = (on) => ({
+  flex: 1,
+  minHeight: 72,
+  borderRadius: 12,
+  padding: "0.8rem 1rem",
+  textAlign: "left",
+  cursor: "pointer",
+  border: `1.5px solid ${on ? theme.deep : "#d8d4c8"}`,
+  background: on ? theme.deep : "transparent",
+  color: on ? theme.cream : theme.ink,
+});
+
+/** "Teams and rules · Toss": where the scorer is. */
+function Steps({ step }) {
+  return (
+    <div aria-label={`Step ${step} of 2`} style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      {["Teams and rules", "Toss"].map((label, i) => {
+        const reached = i + 1 <= step;
+        return (
+          <div key={label} style={{ flex: 1 }}>
+            <div style={{ height: 4, borderRadius: 2, background: reached ? theme.accent : theme.borderOnDark }} />
+            <div style={{ fontSize: 12, fontWeight: 600, marginTop: 6, color: reached ? theme.onDark : theme.onDarkMuted }}>
+              {i + 1 < step ? "✓" : i + 1} {label}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A stand-in coin for when nobody has one: it flips and lands; the scorer still records who won. */
+function FlipCoin({ onClose }) {
+  const [side, setSide] = useState(null); // "heads" | "tails"
+  const [round, setRound] = useState(0);
+  const [landed, setLanded] = useState(false);
+  const flip = () => {
+    setLanded(false);
+    setSide(Math.random() < 0.5 ? "heads" : "tails");
+    setRound((r) => r + 1);
+  };
+  return (
+    <Modal labelledBy="flip-title" onClose={onClose} panelStyle={{ ...card, marginBottom: 0, maxWidth: 380 }}>
+      <h4 id="flip-title" style={{ ...sectionTitle, margin: "0 0 4px" }}>FLIP A COIN</h4>
+      <p style={{ fontSize: 13, color: theme.muted, margin: 0 }}>For when nobody has one. Let the captains call first.</p>
+      <div className="coin-stage" aria-hidden="true">
+        <div key={round} className={`coin-spin ${side ?? ""}`} onAnimationEnd={() => setLanded(true)}>
+          <div className="coin"><b>H</b><small>HEADS</small></div>
+          <div className="coin tails"><b>T</b><small>TAILS</small></div>
+        </div>
+      </div>
+      <div aria-live="polite" style={{ textAlign: "center", minHeight: 52 }}>
+        {side && (landed || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) && (
+          <>
+            <div style={{ fontSize: 26, fontWeight: 700 }}>{side === "heads" ? "Heads" : "Tails"}</div>
+            <div style={{ fontSize: 13, color: theme.muted }}>Whoever called {side} won the toss.</div>
+          </>
+        )}
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <button onClick={flip} style={{ ...choice(false), minHeight: 0, textAlign: "center", fontWeight: 600 }}>{side ? "Flip again" : "Flip"}</button>
+        <button onClick={onClose} style={{ ...choice(true), minHeight: 0, textAlign: "center", fontWeight: 600 }}>Done</button>
+      </div>
+    </Modal>
+  );
+}
+
 export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
   const [options, setOptions] = useState(null);
   const [rules, setRules] = useState(null);
   const [preset, setPreset] = useState("T20");
   const [tossWinnerTeamId, setTossWinnerTeamId] = useState(null);
-  const [tossDecision, setTossDecision] = useState("Bat");
+  const [tossDecision, setTossDecision] = useState(null);
+  const [step, setStep] = useState(1);
+  const [flipping, setFlipping] = useState(false);
   const [squads, setSquads] = useState({});
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -247,7 +320,6 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
         const data = await getSetupOptions(matchId);
         if (cancelled) return;
         setOptions(data);
-        setTossWinnerTeamId(data.homeTeamId);
 
         // Start from the format the tournament has already been playing, if any match has been set
         // up; otherwise from a T20.
@@ -376,7 +448,26 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
   // Someone else is setting it up: the banner says who (Ask to score / Take over), not a form for nothing.
   const locked = !!scoring && !scoring.canScore;
 
+  const tossWinnerName = tossWinnerTeamId === options.homeTeamId ? options.homeTeamName : options.awayTeamName;
   const tossLoser = tossWinnerTeamId === options.homeTeamId ? options.awayTeamName : options.homeTeamName;
+  const tossReady = !!tossWinnerTeamId && !!tossDecision;
+  const captainOf = (team) => {
+    const id = Object.entries(squads[team.id] ?? {}).find(([, s]) => s.playing && s.captain)?.[0];
+    return team.players.find((p) => String(p.id) === id)?.name ?? null;
+  };
+  const pillButton = (on, enabled) => ({
+    width: "100%",
+    background: on ? theme.accent : "rgba(232,176,58,0.3)",
+    color: theme.accentInk,
+    border: "none",
+    borderRadius: 10,
+    padding: "0.9rem",
+    fontWeight: 400,
+    fontSize: 16,
+    fontFamily: font.display,
+    letterSpacing: "0.04em",
+    cursor: enabled ? "pointer" : "not-allowed",
+  });
   const battingFirst = tossDecision === "Bat"
     ? (tossWinnerTeamId === options.homeTeamId ? options.homeTeamName : options.awayTeamName)
     : tossLoser;
@@ -394,13 +485,83 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
         {options.homeTeamName.toUpperCase()} v {options.awayTeamName.toUpperCase()}
       </h2>
       <p style={{ color: theme.onDarkMuted, fontSize: 14, marginTop: 0, marginBottom: 18 }}>
-        Set the format, make the toss, and pick both XIs.
+        {step === 1 ? "Set the format and pick both XIs. The toss comes next." : "Record the toss, then start the match."}
       </p>
 
       <ErrorBanner message={error} />
       <ScoringBanner sport="cricket" matchId={matchId} scoring={scoring} onChange={setScoring} />
 
-      {!locked && (<>
+      {!locked && <Steps step={step} />}
+
+      {!locked && step === 2 && (<>
+      {/* --- Toss --------------------------------------------------- */}
+      <div style={card}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <div className="coin" aria-hidden="true"><b>H</b></div>
+          <p style={{ fontSize: 13, color: theme.muted, margin: 0, textAlign: "center" }}>Toss the coin on the field as usual, then record what happened.</p>
+          <button onClick={() => setFlipping(true)} style={{ background: "none", border: "none", color: theme.deep, fontWeight: 600, fontSize: 14, cursor: "pointer", padding: "0.4rem" }}>
+            No coin? Flip one here
+          </button>
+        </div>
+
+        <h4 id="toss-won" style={sectionTitle}>WHO WON THE TOSS?</h4>
+        <div role="radiogroup" aria-labelledby="toss-won" style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+          {[...options.teams].sort((x) => (x.id === options.homeTeamId ? -1 : 1)).map((team) => {
+            const on = tossWinnerTeamId === team.id;
+            const captain = captainOf(team);
+            return (
+              <button key={team.id} role="radio" aria-checked={on} onClick={() => setTossWinnerTeamId(team.id)} style={choice(on)}>
+                <div style={{ fontFamily: font.display, fontSize: 18 }}>{team.name.toUpperCase()}{on ? " ✓" : ""}</div>
+                {captain && <div style={{ fontSize: 12, opacity: 0.8 }}>Captain {captain}</div>}
+              </button>
+            );
+          })}
+        </div>
+
+        <h4 id="toss-chose" style={{ ...sectionTitle, opacity: tossWinnerTeamId ? 1 : 0.45 }}>ELECTED TO</h4>
+        <div role="radiogroup" aria-labelledby="toss-chose" style={{ display: "flex", gap: 10, opacity: tossWinnerTeamId ? 1 : 0.45 }}>
+          {[["Bat", "Bat first"], ["Bowl", "Bowl first"]].map(([value, label]) => (
+            <button
+              key={value}
+              role="radio"
+              aria-checked={tossDecision === value}
+              disabled={!tossWinnerTeamId}
+              onClick={() => setTossDecision(value)}
+              style={{ ...choice(tossDecision === value), minHeight: 0, textAlign: "center", fontWeight: 600, cursor: tossWinnerTeamId ? "pointer" : "not-allowed" }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tossReady && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontFamily: font.display, fontSize: 22 }}>{battingFirst.toUpperCase()} BAT FIRST</div>
+            <div style={{ fontSize: 13, color: theme.muted }}>{tossWinnerName} won the toss and chose to {tossDecision === "Bat" ? "bat" : "bowl"}.</div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button
+          onClick={() => setStep(1)}
+          style={{ background: theme.surfaceOnDark, color: theme.onDark, border: `1px solid ${theme.borderOnDark}`, borderRadius: 10, padding: "0.9rem 1.4rem", fontSize: 15, cursor: "pointer" }}
+        >
+          ← Back
+        </button>
+        <button onClick={handleSubmit} disabled={!tossReady || saving} style={{ ...pillButton(tossReady, tossReady && !saving), flex: 1 }}>
+          {saving ? "SAVING…" : "🏏 START MATCH"}
+        </button>
+      </div>
+      {!tossReady && (
+        <p style={{ color: theme.onDarkMuted, fontSize: 12, textAlign: "center", marginTop: 8 }}>
+          {tossWinnerTeamId ? "Choose to bat or bowl first." : "Record who won the toss to start."}
+        </p>
+      )}
+      {flipping && <FlipCoin onClose={() => setFlipping(false)} />}
+      </>)}
+
+      {!locked && step === 1 && (<>
       {/* --- Format ------------------------------------------------- */}
       <div style={card}>
         <h4 style={sectionTitle}>FORMAT</h4>
@@ -502,28 +663,6 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
         </div>
       </div>
 
-      {/* --- Toss --------------------------------------------------- */}
-      <div style={card}>
-        <h4 style={sectionTitle}>TOSS</h4>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
-          <Field label="Won by" width={180}>
-            <select style={input} value={tossWinnerTeamId ?? ""} onChange={(e) => setTossWinnerTeamId(Number(e.target.value))}>
-              <option value={options.homeTeamId}>{options.homeTeamName}</option>
-              <option value={options.awayTeamId}>{options.awayTeamName}</option>
-            </select>
-          </Field>
-          <Field label="Chose to" width={140}>
-            <select style={input} value={tossDecision} onChange={(e) => setTossDecision(e.target.value)}>
-              <option value="Bat">Bat</option>
-              <option value="Bowl">Bowl</option>
-            </select>
-          </Field>
-          <p style={{ fontSize: 12, color: theme.muted, margin: "0 0 6px" }}>
-            {battingFirst} bat first.
-          </p>
-        </div>
-      </div>
-
       {/* --- The XIs ------------------------------------------------ */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: 16, marginBottom: 16 }}>
         {options.teams.map((team) => (
@@ -538,23 +677,14 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
       </div>
 
       <button
-        onClick={handleSubmit}
-        disabled={!ready || saving}
-        style={{
-          width: "100%",
-          background: ready ? theme.accent : "rgba(232,176,58,0.3)",
-          color: theme.accentInk,
-          border: "none",
-          borderRadius: 10,
-          padding: "0.9rem",
-          fontWeight: 400,
-          fontSize: 16,
-          fontFamily: font.display,
-          letterSpacing: "0.04em",
-          cursor: ready && !saving ? "pointer" : "not-allowed",
+        onClick={() => {
+          setStep(2);
+          window.scrollTo({ top: 0 });
         }}
+        disabled={!ready}
+        style={pillButton(ready, ready)}
       >
-        {saving ? "SAVING…" : "🏏 CONFIRM AND GO TO THE MIDDLE"}
+        NEXT: THE TOSS →
       </button>
       {!ready && (
         <p style={{ color: theme.onDarkMuted, fontSize: 12, textAlign: "center", marginTop: 8 }}>

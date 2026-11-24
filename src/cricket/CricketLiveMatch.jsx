@@ -283,7 +283,7 @@ function BatterRow({ batter, striker }) {
  * next batter, `strike` adds who faces the next ball: pre-set to the end the engine left empty,
  * which the scorer can overrule (it replaces asking whether the batters crossed).
  */
-function PickPlayer({ title, players, onPick, busy, cta, animate = false, strike }) {
+function PickPlayer({ title, players, onPick, busy, cta, animate = false, strike, retiredHurtIds = [], onEndInnings }) {
   // Opt-in: a new batter (after a wicket) is rare enough to mark; the next bowler comes every over.
   const enter = animate ? "drop-in" : undefined;
   const [playerId, setPlayerId] = useState("");
@@ -308,6 +308,7 @@ function PickPlayer({ title, players, onPick, busy, cta, animate = false, strike
           {players.map((p) => (
             <option key={p.playerId} value={p.playerId}>
               {p.playerName}{p.isCaptain ? " (c)" : ""}{p.isWicketKeeper ? " (wk)" : ""}
+              {retiredHurtIds.includes(p.playerId) ? " · retired hurt, can come back" : ""}
             </option>
           ))}
         </select>
@@ -340,6 +341,17 @@ function PickPlayer({ title, players, onPick, busy, cta, animate = false, strike
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {onEndInnings && (
+        <div style={{ marginTop: 12 }}>
+          <p style={{ fontSize: 13, color: theme.muted, margin: "0 0 6px" }}>
+            Only batters who retired hurt are left. If none of them can come back, nobody is left to bat and the innings is over.
+          </p>
+          <button type="button" onClick={onEndInnings} disabled={busy} style={{ ...button("transparent", theme.ink), border: "1.5px solid #d8d4c8" }}>
+            Nobody can come back: end the innings
+          </button>
         </div>
       )}
     </div>
@@ -407,9 +419,110 @@ function StartInningsForm({ state, onStart, busy }) {
 }
 
 /** The wicket dialog: only the dismissals the engine says are on right now. */
-function WicketDialog({ state, onCancel, onConfirm, busy }) {
+// Where runs may come from in this match: the bat always, byes and leg byes if the rules allow them.
+const FROM_LABEL = { Bat: "Off the bat", Byes: "Byes", LegByes: "Leg byes" };
+const runSources = (rules) =>
+  ["Bat", "Byes", "LegByes"].filter((f) => f === "Bat" || (f === "Byes" ? rules.byesAllowed : rules.legByesAllowed));
+
+// The names a scorer says ("Caught and bowled", not "CaughtAndBowled").
+const DISMISSAL_LABEL = {
+  Bowled: "Bowled", Caught: "Caught", CaughtAndBowled: "Caught and bowled", LBW: "LBW", RunOut: "Run out",
+  Stumped: "Stumped", HitWicket: "Hit wicket", RetiredHurt: "Retired hurt", RetiredOut: "Retired out",
+  ObstructingTheField: "Obstructing the field", HitBallTwice: "Hit the ball twice", TimedOut: "Timed out",
+};
+const dismissalLabel = (d) => DISMISSAL_LABEL[d] ?? d.replace(/([a-z])([A-Z])/g, "$1 $2");
+
+// The engine's list for this kind of ball: off a wide or a no-ball fewer ways out are possible.
+const dismissalsFor = (actions, wide, noBall) =>
+  wide ? actions.possibleDismissalsOffWide ?? actions.possibleDismissals
+    : noBall ? actions.possibleDismissalsOffNoBall ?? actions.possibleDismissals
+      : actions.possibleDismissals;
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+// What a key records with the current toggles: "3 wides", "nb + 2lb", "2 byes". Empty for a plain run.
+function keyCaption(n, { wide, noBall, from, widePenalty }) {
+  if (wide) return n === 6 ? "can’t be hit" : plural(widePenalty + n, "wide", "wides");
+  if (noBall) {
+    if (n === 0) return "nb only";
+    return from === "Byes" ? `nb + ${n}b` : from === "LegByes" ? `nb + ${n}lb` : `nb + ${n}`;
+  }
+  if (from === "Byes") return n === 0 ? "" : plural(n, "bye", "byes");
+  if (from === "LegByes") return n === 0 ? "" : plural(n, "leg bye", "leg byes");
+  return "";
+}
+
+// "The runs came: Off the bat / Byes / Leg byes" - nothing to ask on a wide or when only the bat counts.
+function RunsFromChoice({ rules, wide, value, onChange }) {
+  const sources = runSources(rules);
+  if (wide || sources.length < 2) return null;
+  return (
+    <div role="radiogroup" aria-label="The runs came" style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+      <span style={{ fontSize: 11, color: theme.muted, marginRight: 4 }}>THE RUNS CAME</span>
+      {sources.map((f) => (
+        <button
+          key={f}
+          type="button"
+          role="radio"
+          aria-checked={value === f}
+          onClick={() => onChange(f)}
+          style={{
+            ...button(value === f ? theme.deep : "transparent", value === f ? theme.cream : theme.ink),
+            border: value === f ? "none" : "1.5px solid #d8d4c8",
+            padding: "0.4rem 0.7rem",
+            fontSize: 12,
+          }}
+        >
+          {FROM_LABEL[f]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// 7+: more runs off one ball than the keys hold (overthrows). On a wide they're all wides.
+function MoreRunsDialog({ state, wide, noBall, from: startFrom, busy, onCancel, onConfirm }) {
   const live = state.current;
-  const [type, setType] = useState(state.actions.possibleDismissals[0] ?? "Bowled");
+  const rules = state.rules;
+  const [runs, setRuns] = useState(7);
+  const [from, setFrom] = useState(wide ? "Bat" : startFrom);
+  const penalty = wide ? rules.widePenaltyRuns : noBall ? rules.noBallPenaltyRuns : 0;
+  const striker = live.striker?.playerName ?? "the batter";
+  const says = wide
+    ? `${runs + penalty} wides. Every run on a wide is a wide.`
+    : from === "Bat"
+      ? `${striker} gets ${runs}${noBall ? `, plus ${penalty} no ball` : ""}. Overthrows off the bat are the batter’s.`
+      : `Nothing to ${striker}: ${runs} ${from === "Byes" ? "byes" : "leg byes"}${noBall ? `, plus ${penalty} no ball` : ""}.`;
+  const valid = Number.isInteger(runs) && runs >= 1 && runs <= 15;
+  return (
+    <Modal labelledBy="more-runs-title" onClose={onCancel} panelStyle={{ ...lightPanel, marginBottom: 0 }}>
+      <h4 id="more-runs-title" style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 4px" }}>MORE RUNS</h4>
+      <p style={{ fontSize: 13, color: theme.muted, margin: "0 0 12px" }}>
+        {live.bowler?.playerName ?? "Bowler"} to {striker} · {wide ? "a wide" : noBall ? "a no ball" : "a legal ball"}
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <label style={{ fontSize: 12, color: theme.muted, display: "flex", flexDirection: "column", gap: 4 }}>
+          Runs off this ball (run, and overthrows)
+          <input type="number" min="1" max="15" value={runs} onChange={(e) => setRuns(Number(e.target.value))} style={{ ...select, minWidth: 0 }} />
+        </label>
+        <RunsFromChoice rules={rules} wide={wide} value={from} onChange={setFrom} />
+        <p style={{ fontSize: 12, color: theme.muted, margin: 0 }}>{says}</p>
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        <button onClick={() => onConfirm(runs, from)} disabled={busy || !valid} style={button(theme.deep, theme.cream)}>
+          Record {runs} ({live.runs + (valid ? runs : 0) + penalty}/{live.wickets})
+        </button>
+        <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid #ccc" }}>Cancel</button>
+      </div>
+    </Modal>
+  );
+}
+
+function WicketDialog({ state, wide, noBall, from: padFrom, onCancel, onConfirm, busy }) {
+  const live = state.current;
+  const dismissals = dismissalsFor(state.actions, wide, noBall);
+  const [type, setType] = useState(dismissals[0] ?? "Bowled");
+  const [from, setFrom] = useState(wide ? "Bat" : padFrom);
   const [dismissed, setDismissed] = useState(String(live.striker?.playerId ?? ""));
   const [fielder, setFielder] = useState("");
   // Run-outs: a direct hit involves one fielder; otherwise the thrower is credited and the
@@ -423,17 +536,27 @@ function WicketDialog({ state, onCancel, onConfirm, busy }) {
   const isRunOut = type === "RunOut";
   const twoFielders = isRunOut && !directHit;
   // Caught, bowled, LBW, stumped… only ever the batter facing. Mirrors DismissalRules.CanDismissNonStriker.
-  const eitherEnd = ["RunOut", "ObstructingTheField", "RetiredHurt", "RetiredOut"].includes(type);
+  const eitherEnd = ["RunOut", "ObstructingTheField", "RetiredHurt", "RetiredOut", "TimedOut"].includes(type);
   const outId = eitherEnd ? dismissed : String(live.striker?.playerId ?? "");
+  // A batter retires while the ball is dead (Law 25.4), so by default nothing is bowled; the scorer
+  // may write it onto the ball it happened on instead.
+  const retiring = type === "RetiredHurt" || type === "RetiredOut";
+  const [onTheBall, setOnTheBall] = useState(false);
+  // Timed out is always between balls (the server decides; the new batter never faced).
+  const timedOut = type === "TimedOut";
+  const betweenBalls = timedOut || (retiring && !onTheBall);
 
   return (
     <Modal labelledBy="wicket-title" onClose={onCancel} panelStyle={{ ...lightPanel, marginBottom: 0 }}>
-        <h4 id="wicket-title" style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 12px" }}>WICKET</h4>
+        <h4 id="wicket-title" style={{ fontFamily: font.display, fontSize: 18, margin: wide || noBall ? "0 0 4px" : "0 0 12px" }}>WICKET</h4>
+        {(wide || noBall) && (
+          <p style={{ fontSize: 13, color: theme.muted, margin: "0 0 12px" }}>Off a {wide ? "wide" : "no ball"} · only these are possible</p>
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <select aria-label="How out" style={select} value={type} onChange={(e) => setType(e.target.value)}>
-            {state.actions.possibleDismissals.map((d) => (
-              <option key={d} value={d}>{d.replace(/([a-z])([A-Z])/g, "$1 $2")}</option>
+            {dismissals.map((d) => (
+              <option key={d} value={d}>{dismissalLabel(d)}</option>
             ))}
           </select>
 
@@ -502,16 +625,54 @@ function WicketDialog({ state, onCancel, onConfirm, busy }) {
             </>
           )}
 
-          <label style={{ fontSize: 12, color: theme.muted, display: "flex", flexDirection: "column", gap: 4 }}>
-            Runs completed before the wicket
-            <input
-              type="number"
-              min="0"
-              value={runs}
-              onChange={(e) => setRuns(Number(e.target.value))}
-              style={{ ...select, minWidth: 0 }}
-            />
-          </label>
+          {retiring && (
+            <div>
+              <div id="retire-label" style={{ fontSize: 12, color: theme.muted, marginBottom: 6 }}>Does it count as a ball?</div>
+              <div role="radiogroup" aria-labelledby="retire-label" style={{ display: "flex", gap: 6 }}>
+                {[[false, "No, between balls"], [true, "Yes, on this ball"]].map(([value, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    role="radio"
+                    aria-checked={onTheBall === value}
+                    onClick={() => setOnTheBall(value)}
+                    style={{
+                      ...button(onTheBall === value ? theme.deep : "transparent", onTheBall === value ? theme.cream : theme.ink),
+                      border: onTheBall === value ? "none" : "1.5px solid #d8d4c8",
+                      flex: 1,
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: 12, color: theme.muted, margin: "6px 0 0" }}>
+                {onTheBall
+                  ? "Recorded on this ball: it counts for the bowler and the batter, with any runs off it."
+                  : "Nothing is bowled: no ball for the bowler or the batter, and the over carries on."}
+              </p>
+            </div>
+          )}
+
+          {timedOut && (
+            <p style={{ fontSize: 12, color: theme.muted, margin: 0 }}>
+              The new batter wasn’t ready in time. Nothing is bowled, and the bowler doesn’t get the wicket.
+            </p>
+          )}
+
+          {!betweenBalls && (
+            <label style={{ fontSize: 12, color: theme.muted, display: "flex", flexDirection: "column", gap: 4 }}>
+              {retiring ? "Runs off this ball" : wide ? "Runs completed before the wicket (all wides)" : "Runs completed before the wicket"}
+              <input
+                type="number"
+                min="0"
+                value={runs}
+                onChange={(e) => setRuns(Number(e.target.value))}
+                style={{ ...select, minWidth: 0 }}
+              />
+            </label>
+          )}
+          {!betweenBalls && runs > 0 && <RunsFromChoice rules={state.rules} wide={wide} value={from} onChange={setFrom} />}
 
         </div>
 
@@ -523,12 +684,15 @@ function WicketDialog({ state, onCancel, onConfirm, busy }) {
               fielderId: fielder ? Number(fielder) : null,
               isDirectHit: isRunOut && directHit,
               runOutReceiverId: twoFielders && receiver ? Number(receiver) : null,
-              runsOffBat: runs,
+              runsOffBat: betweenBalls ? 0 : runs,
+              runsFrom: from,
+              ...(retiring || timedOut ? { countsAsBall: !betweenBalls } : {}),
             })}
             disabled={busy || !outId}
-            style={button(theme.dangerSolid, "#fff")}
+            // Red is for wickets; retiring hurt costs none.
+            style={type === "RetiredHurt" ? button(theme.deep, theme.cream) : button(theme.dangerSolid, "#fff")}
           >
-            Confirm wicket
+            {type === "RetiredHurt" ? "Confirm retirement" : "Confirm wicket"}
           </button>
           <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid #ccc" }}>
             Cancel
@@ -547,6 +711,7 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
   const [noBall, setNoBall] = useState(false);
   const [attribution, setAttribution] = useState("Bat"); // Bat | Byes | LegByes
   const [showWicket, setShowWicket] = useState(false);
+  const [showMoreRuns, setShowMoreRuns] = useState(false);
   const [showReduce, setShowReduce] = useState(false);
   const [showReplace, setShowReplace] = useState(false);
 
@@ -605,7 +770,7 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
     act(() => completeCricketMatch(matchId, { awardWinnerTeamId: teamId }));
 
   // The delivery the toggles describe, with the runs attributed where the scorer said.
-  const buildBall = (runs, extra = {}) => {
+  const buildBall = (runs, extra = {}, from = attribution) => {
     const base = {
       runsOffBat: 0, isWide: wide, isNoBall: noBall,
       wideExtraRuns: 0, byes: 0, legByes: 0, penaltyRuns: 0,
@@ -613,8 +778,8 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
     };
 
     if (wide) return { ...base, wideExtraRuns: runs };
-    if (attribution === "Byes") return { ...base, byes: runs };
-    if (attribution === "LegByes") return { ...base, legByes: runs };
+    if (from === "Byes") return { ...base, byes: runs };
+    if (from === "LegByes") return { ...base, legByes: runs };
     return { ...base, runsOffBat: (extra.runsOffBat ?? 0) + runs };
   };
 
@@ -748,10 +913,15 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
               title="NEXT BATTER IN"
               animate
               players={actions.availableBatters}
+              retiredHurtIds={actions.retiredHurtBatterIds ?? []}
               busy={busy}
               cta="Send them out"
               strike={survivor ? { survivorName: survivor.playerName, newOnStrike: !live.striker } : undefined}
               onPick={(playerId, onStrike) => act(() => setBatter(matchId, playerId, onStrike))}
+              onEndInnings={actions.canEndInningsNoBatters
+                ? () => confirm(`Nobody who retired hurt can come back, so ${live.battingTeamName} are all out for ${live.runs}. End the innings?`)
+                    && act(() => endInnings(matchId, "AllOut"))
+                : undefined}
             />
           )}
 
@@ -810,46 +980,51 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
                   </button>
                 ))}
 
-                {!wide && (
-                  <div style={{ display: "flex", gap: 4, marginLeft: "auto", alignItems: "center" }}>
-                    <span style={{ fontSize: 11, color: theme.muted }}>RUNS FROM</span>
-                    {["Bat", "Byes", "LegByes"].map((a) => (
-                      <button
-                        key={a}
-                        onClick={() => setAttribution(a)}
-                        style={{
-                          ...button(attribution === a ? theme.deep : "transparent", attribution === a ? theme.cream : theme.ink),
-                          border: attribution === a ? "none" : "1.5px solid #d8d4c8",
-                          padding: "0.4rem 0.7rem",
-                          fontSize: 12,
-                        }}
-                      >
-                        {a === "LegByes" ? "Leg byes" : a}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {/* On a wide every run is a wide; otherwise say where the runs came from (only the bat's are the batter's). */}
+                <div style={{ marginLeft: "auto" }}>
+                  <RunsFromChoice rules={state.rules} wide={wide} value={attribution} onChange={setAttribution} />
+                </div>
               </div>
 
-              {/* Always one row of seven: wrapping to 5 + 2 on a phone put 5 and 6 somewhere new. */}
-              <div className="num" style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 6 }}>
-                {[0, 1, 2, 3, 4, 5, 6].map((runs) => (
-                  <button
-                    key={runs}
-                    onClick={() => act(() => recordBall(matchId, buildBall(runs)))}
-                    disabled={busy}
-                    style={{
-                      ...button(runs === 4 || runs === 6 ? theme.accent : theme.deep,
-                                runs === 4 || runs === 6 ? theme.accentInk : theme.cream),
-                      padding: "0.9rem 0",
-                      fontSize: 18,
-                      fontFamily: font.display,
-                      fontWeight: 400, // Anton has one weight; the helper's 700 would be faked
-                    }}
-                  >
-                    {runs}
-                  </button>
-                ))}
+              {/* Always one row of eight: wrapping on a phone put 5 and 6 somewhere new. */}
+              <div className="num" style={{ display: "grid", gridTemplateColumns: "repeat(8, minmax(0, 1fr))", gap: 6 }}>
+                {[0, 1, 2, 3, 4, 5, 6].map((runs) => {
+                  // A no-ball hit for four is still a four; byes to the rope and wides aren't boundaries.
+                  const boundary = (runs === 4 || runs === 6) && !wide && attribution === "Bat";
+                  const impossible = wide && runs === 6; // a wide can't be hit
+                  const caption = keyCaption(runs, { wide, noBall, from: attribution, widePenalty: state.rules.widePenaltyRuns });
+                  return (
+                    <button
+                      key={runs}
+                      onClick={() => act(() => recordBall(matchId, buildBall(runs)))}
+                      disabled={busy || impossible}
+                      aria-label={caption ? `${runs}, ${caption}` : `${runs}`}
+                      style={{
+                        ...button(boundary ? theme.accent : theme.deep, boundary ? theme.accentInk : theme.cream),
+                        padding: caption ? "0.55rem 0 0.45rem" : "0.9rem 0",
+                        fontSize: 18,
+                        fontFamily: font.display,
+                        fontWeight: 400, // Anton has one weight; the helper's 700 would be faked
+                        opacity: impossible ? 0.35 : 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 2,
+                      }}
+                    >
+                      {runs}
+                      {caption && <span style={{ fontFamily: font.body, fontSize: 10, fontWeight: 600, whiteSpace: "nowrap" }}>{caption}</span>}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setShowMoreRuns(true)}
+                  disabled={busy}
+                  aria-label="More than 6 runs"
+                  style={{ ...button("transparent", theme.ink), border: "1.5px solid #d8d4c8", padding: "0.9rem 0", fontSize: 18, fontFamily: font.display, fontWeight: 400 }}
+                >
+                  7+
+                </button>
               </div>
 
               <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
@@ -969,15 +1144,37 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
         />
       )}
 
+      {showMoreRuns && live && (
+        <MoreRunsDialog
+          state={state}
+          wide={wide}
+          noBall={noBall}
+          from={attribution}
+          busy={busy}
+          onCancel={() => setShowMoreRuns(false)}
+          onConfirm={(runs, from) => {
+            setShowMoreRuns(false);
+            return act(() => recordBall(matchId, buildBall(runs, {}, from)));
+          }}
+        />
+      )}
+
       {showWicket && live && (
         <WicketDialog
           state={state}
+          wide={wide}
+          noBall={noBall}
+          from={attribution}
           busy={busy}
           onCancel={() => setShowWicket(false)}
           onConfirm={(wicket) => {
             setShowWicket(false);
-            const { runsOffBat, ...rest } = wicket;
-            return act(() => recordBall(matchId, buildBall(runsOffBat, rest)));
+            const { runsOffBat, runsFrom, ...rest } = wicket;
+            // Between balls nothing was bowled, so the wide / no-ball / byes choice doesn't apply to it.
+            const body = wicket.countsAsBall === false
+              ? { runsOffBat: 0, isWide: false, isNoBall: false, wideExtraRuns: 0, byes: 0, legByes: 0, penaltyRuns: 0, ...rest }
+              : buildBall(runsOffBat, rest, runsFrom);
+            return act(() => recordBall(matchId, body));
           }}
         />
       )}
