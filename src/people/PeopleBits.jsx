@@ -10,7 +10,7 @@ import { pictureSrc } from "../pictures";
 
 const initials = (name) => {
   const w = name.trim().split(/\s+/).filter(Boolean);
-  return w.length === 0 ? "?" : w.length === 1 ? w[0].slice(0, 2).toUpperCase() : (w[0][0] + w[1][0]).toUpperCase();
+  return w.length === 0 ? "?" : w.length === 1 ? w[0].slice(0, 2) : (w[0][0] + w[1][0]);
 };
 
 const pill = (on, theme) => ({
@@ -23,7 +23,7 @@ const pill = (on, theme) => ({
   flex: "none",
   border: on ? `1.5px solid ${theme.deep}` : "none",
   background: on ? "transparent" : theme.deep,
-  color: on ? theme.deep : theme.cream,
+  color: on ? theme.accent : theme.cream,
 });
 
 /** Follow / Following / Follow back. Clicking Following stops following. */
@@ -81,7 +81,7 @@ export function Avatar({ name, photoUrl, theme, size = 40 }) {
 export function PersonRow({ person, theme, onOpen, onRemove, removing }) {
   const sub = [person.followsMe && !person.isFollowing ? "Follows you" : null, person.line].filter(Boolean).join(" · ");
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: `1px solid ${theme.cardDivider ?? "#e5e2d8"}` }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: `1px solid ${theme.cardDivider ?? "var(--hair)"}` }}>
       <button
         type="button"
         onClick={onOpen}
@@ -98,7 +98,7 @@ export function PersonRow({ person, theme, onOpen, onRemove, removing }) {
       </button>
       {!person.isMe && <FollowButton userId={person.userId} name={person.name} state={person} theme={theme} />}
       {onRemove && (
-        <button type="button" onClick={onRemove} disabled={removing} style={{ ...pill(true, theme), borderColor: "#c9c4b6", color: theme.muted }}>
+        <button type="button" onClick={onRemove} disabled={removing} style={{ ...pill(true, theme), borderColor: "var(--line)", color: theme.muted }}>
           {removing ? "Removing…" : "Remove"}
         </button>
       )}
@@ -139,11 +139,11 @@ export function FollowListDialog({ userId, initialTab, theme, onClose, onOpenPer
     }
   };
 
-  const tabStyle = (on) => ({ flex: 1, minHeight: 44, background: "none", border: "none", borderBottom: `2px solid ${on ? theme.deep : "transparent"}`, fontWeight: on ? 700 : 500, color: on ? theme.ink : theme.muted, cursor: "pointer", font: "inherit" });
+  const tabStyle = (on) => ({ flex: 1, minHeight: 44, background: "none", border: "none", borderBottom: `2px solid ${on ? theme.accent : "transparent"}`, fontWeight: on ? 700 : 500, color: on ? theme.ink : theme.muted, cursor: "pointer", font: "inherit" });
   return (
     <Modal labelledBy="follow-list-title" onClose={onClose} panelStyle={{ background: theme.cream, color: theme.ink, borderRadius: 14, padding: "1.2rem", display: "flex", flexDirection: "column", gap: 10, width: "min(480px, 100%)", maxHeight: "85vh", overflow: "auto" }}>
       <h2 id="follow-list-title" style={{ margin: 0, fontSize: 18 }}>{list?.name ?? "…"}</h2>
-      <div role="tablist" style={{ display: "flex", borderBottom: "1px solid #e5e2d8" }}>
+      <div role="tablist" style={{ display: "flex", borderBottom: "1px solid var(--hair)" }}>
         {["followers", "following"].map((t) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} style={tabStyle(tab === t)}>
             {t === "followers" ? "Followers" : "Following"}

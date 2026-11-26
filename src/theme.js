@@ -1,89 +1,95 @@
-// One place for the look of the app.
+// One place for the look of the app (2026-11-26: the phone app's two themes).
 //
-// Before this existed, eight components each redeclared the same `font` object and pasted the same
-// hex codes inline. Cricket needs its own palette so the two sections are tellable apart at a
-// glance, which made the duplication untenable — hence a single module both sports read from.
+// Every token is a CSS variable (theme.css) rather than a colour, so the same inline style draws the
+// dark "Liquid Glass" theme or the light "Sight-screen" one, whichever <html data-mode> says; nothing
+// re-renders when the theme changes. Each sport reads its own prefixed set (--fb-*, --ck-*), so a page
+// that shows both sports still colours each one right. Because tokens are var(...) strings, never
+// glue an alpha onto one (`${theme.ink}33`): use the `rgba(var(--fg-rgb), a)` form or a token.
 
 export const font = {
-  display: "'Anton', sans-serif",
-  body: "'Inter', sans-serif",
-  condensed: "'Teko', sans-serif",
+  /** Inter in dark, Outfit in light. */
+  body: "var(--font-body)",
+  /** Titles and figures: Inter Bold in dark, Outfit Light in light (weight set in ui.css). */
+  display: "var(--font-display)",
+  /** Labels that used to be condensed capitals: Inter SemiBold / Outfit Medium, sentence case. */
+  condensed: "var(--font-condensed)",
 };
 
-/** Loaded once in index.html; components should not inject their own <link>. */
-export const FONT_HREF =
-  "https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=Teko:wght@500;600&display=swap";
+const v = (name) => `var(--${name})`;
 
-const shared = {
-  cream: "#F7F5EF",
-  ink: "#1B1B1B",
-  /** Secondary text on cream. 5.2:1 on cream, 4.7:1 on the #EDEAE0 chips (was #8a8677, 3.4:1). */
-  muted: "#6b675b",
-  danger: "#e24b4a",
-  success: "#639922",
-  successInk: "#3b6d11",
-  /** Fills behind white button labels: 6.2:1 and 5.1:1. The lighter success/danger stay for tints. */
-  successSolid: "#3b6d11",
-  dangerSolid: "#c63b3a",
-  /** Warm brown for "needs attention" text on cream: live status, warnings, the second group. */
-  warnInk: "#8a4b1b",
-  tintAlt: "#F5E4CE",
-  /** The ground under pages that belong to no sport (the profile's side column on a phone). */
-  night: "#101B17",
-  /** Booking colours on a stat tile — distinct from the amber accent. */
-  yellowCard: "#F4C430",
-  redCard: "#E24B4A",
-  /** A live tournament, on dark. */
-  liveOnDark: "#9FD36B",
-};
+/** The shared tokens, then the sport's own under its prefix. */
+function makeTheme(prefix, extra) {
+  return {
+    cream: v(`${prefix}-cream`),
+    ink: v("ink"),
+    muted: v(`${prefix}-muted`),
+    danger: v("danger"),
+    success: v("success"),
+    successInk: v("success-ink"),
+    successSolid: v("success-solid"),
+    dangerSolid: v("danger-solid"),
+    dangerInk: v("danger-ink"),
+    dangerTint: v("danger-tint"),
+    successTint: v("success-tint"),
+    warnInk: v("warn-ink"),
+    tintAlt: v("tint-alt"),
+    night: v("nt-wall"),
+    yellowCard: v("yellow-card"),
+    redCard: v("red-card"),
+    liveOnDark: v("live"),
+    chip: v("chip"),
+    hair: v("hair"),
+    line: v("line"),
+    field: v("field"),
+    cardDivider: v("hair"),
+    accent: v(`${prefix}-accent`),
+    accentInk: v(`${prefix}-accent-ink`),
+    /** Accent words and icons (a darker ink of the accent in light). */
+    deep: v(`${prefix}-deep`),
+    /** A selected item on a pane. */
+    tint: v(`${prefix}-tint`),
+    accentSoft: v(`${prefix}-tint`),
+    ring: v(`${prefix}-ring`),
+    accentGradient: v(`${prefix}-grad`),
+    background: v(`${prefix}-wall`),
+    page: v(`${prefix}-page`),
+    onDark: v("on-page"),
+    onDarkMuted: v(`${prefix}-muted`),
+    surfaceOnDark: "rgba(var(--fg-rgb), 0.07)",
+    borderOnDark: v("line"),
+    deck: v(`${prefix}-deck`),
+    deckRaised: v("chip"),
+    stripes: [v(`${prefix}-deck`), v(`${prefix}-deck`)],
+    ...extra,
+  };
+}
 
-/** Football: a floodlit pitch — dark green stripes, amber accents. */
-export const footballTheme = {
-  ...shared,
+/** Football: sea-glass teal in dark, leaf green in light. */
+export const footballTheme = makeTheme("fb", {
   key: "Football",
   label: "Football",
   icon: "⚽",
-  accent: "#F2A93B",
-  accentInk: "#1B1B1B",
-  deep: "#1B4332",
-  /** A selected item on a cream card. */
-  tint: "#E3EEE6",
-  accentSoft: "rgba(242,169,59,0.15)",
-  background:
-    "repeating-linear-gradient(180deg, #1B4332 0px, #1B4332 60px, #17402E 60px, #17402E 120px)",
-  onDark: "#F7F5EF",
-  onDarkMuted: "rgba(247,245,239,0.6)",
-  surfaceOnDark: "rgba(247,245,239,0.06)",
-  borderOnDark: "rgba(247,245,239,0.15)",
   placeholder: "e.g. Summer Cup 2026",
-  /** The scoreboard panel floating above the pitch, and the stripes as two colours (the profile's sport cards). */
-  deck: "#0F291E",
-  deckRaised: "#1D3A2D",
-  stripes: ["#1B4532", "#173F2D"],
-};
+});
 
-/** Cricket: a dusk-blue ground under lights, with a gold accent (red is kept for wickets). */
-export const cricketTheme = {
-  ...shared,
+/** Cricket: periwinkle in dark, sky blue in light. */
+export const cricketTheme = makeTheme("ck", {
   key: "Cricket",
   label: "Cricket",
   icon: "🏏",
-  accent: "#E8B03A",
-  accentInk: "#12243B",
-  deep: "#12243B",
-  tint: "#E1E8F2",
-  accentSoft: "rgba(232,176,58,0.15)",
-  background:
-    "repeating-linear-gradient(180deg, #12243B 0px, #12243B 60px, #0F1F34 60px, #0F1F34 120px)",
-  onDark: "#F7F5EF",
-  onDarkMuted: "rgba(247,245,239,0.6)",
-  surfaceOnDark: "rgba(247,245,239,0.06)",
-  borderOnDark: "rgba(247,245,239,0.15)",
   placeholder: "e.g. Premier League T20",
-  deck: "#0A1627",
-  deckRaised: "#1A2C45",
-  stripes: ["#132640", "#0F1F35"],
-};
+});
+
+/**
+ * Pages that belong to no sport (Home's frame, sign-in, the profile, the inbox): the neutral
+ * wallpaper in dark, football's palette in light, as on the phone. Still answers to football's key.
+ */
+export const neutralTheme = makeTheme("nt", {
+  key: "Football",
+  label: "Football",
+  icon: "⚽",
+  placeholder: "e.g. Summer Cup 2026",
+});
 
 export const SPORTS = [footballTheme, cricketTheme];
 
@@ -92,7 +98,8 @@ export function themeFor(sport) {
   return sport === "Cricket" ? cricketTheme : footballTheme;
 }
 
-/** Lets global CSS (focus rings, the page colour behind overscroll) follow the open sport. */
+/** Lets global CSS (focus rings, the page behind overscroll, the unprefixed tokens) follow the open
+ *  sport; "None" for a page that belongs to no sport. */
 export function syncDocumentSport(sport) {
-  document.documentElement.dataset.sport = themeFor(sport).key;
+  document.documentElement.dataset.sport = sport === "None" ? "None" : themeFor(sport).key;
 }

@@ -3,7 +3,7 @@ import { followTournament, searchPublicTournaments } from "./api/publicApi";
 import { searchPeople } from "./api/peopleApi";
 import { PersonRow } from "./people/PeopleBits";
 import ErrorBanner from "./ErrorBanner";
-import { font, themeFor } from "./theme";
+import { themeFor } from "./theme";
 
 // Finding a public tournament to follow (6E): by its name (3 letters or more), or its code or link.
 // Every tournament is public, but found by name only once its schedule or knockout stage is set. Several may share a name, so each shows its
@@ -52,7 +52,6 @@ export default function FindTournament({ onBack, onOpen, onOpenPerson }) {
     else run("search", async () => setResults(await searchPublicTournaments(query.trim())));
   };
   const peopleShort = tab === "people" && query.trim().length < 3;
-  const tabStyle = (on) => ({ flex: 1, minHeight: 44, borderRadius: 999, border: "none", cursor: "pointer", fontWeight: on ? 700 : 500, fontSize: 15, background: on ? theme.cream : "transparent", color: on ? theme.ink : theme.onDark });
 
   const follow = (r) =>
     run(`f-${r.tournamentId}`, async () => {
@@ -61,20 +60,18 @@ export default function FindTournament({ onBack, onOpen, onOpenPerson }) {
     });
 
   return (
-    <div style={{ minHeight: "100vh", background: theme.background, fontFamily: font.body, color: theme.onDark, paddingBottom: "4rem" }}>
-      <header style={{ padding: "2.5rem clamp(1rem, 4vw, 2rem) 2rem", borderBottom: `3px solid ${theme.borderOnDark}` }}>
-        <div style={{ maxWidth: 640, margin: "0 auto" }}>
-          <button onClick={onBack} style={{ background: "none", border: "none", color: theme.onDarkMuted, cursor: "pointer", fontSize: 14, padding: 0, minHeight: 44 }}>
-            ← Your tournaments
-          </button>
-          <h1 style={{ fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 3rem)", margin: "0.2rem 0 0", lineHeight: 1 }}>FIND</h1>
-        </div>
-      </header>
+    <div style={{ color: theme.onDark, paddingBottom: "4rem" }}>
+      <div style={{ maxWidth: 640, margin: "0 auto", padding: "14px clamp(1rem, 4vw, 2rem) 0" }}>
+        <button type="button" className="kc-link" onClick={onBack} style={{ minHeight: 40, fontWeight: 500 }}>
+          ← Your tournaments
+        </button>
+        <h1 className="kc-title" style={{ margin: "0.5rem 0 0" }}>Find</h1>
+      </div>
 
-      <main style={{ maxWidth: 640, margin: "0 auto", padding: "2rem clamp(1rem, 4vw, 2rem)" }}>
-        <div role="tablist" aria-label="Find" style={{ display: "flex", gap: 4, padding: 4, borderRadius: 999, border: `1px solid ${theme.borderOnDark}`, marginBottom: 16 }}>
+      <main style={{ maxWidth: 640, margin: "0 auto", padding: "1.25rem clamp(1rem, 4vw, 2rem)" }}>
+        <div role="tablist" aria-label="Find" className="kc-seg" style={{ marginBottom: 18 }}>
           {[["tournaments", "Tournaments"], ["people", "People"]].map(([key, label]) => (
-            <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)} style={tabStyle(tab === key)}>
+            <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>
               {label}
             </button>
           ))}
@@ -92,7 +89,7 @@ export default function FindTournament({ onBack, onOpen, onOpenPerson }) {
               autoComplete="off"
               spellCheck={false}
               disabled={!!busy}
-              style={{ flex: "1 1 220px", padding: "0.6rem 0.8rem", borderRadius: 8, border: "1.5px solid #d8d4c8", fontSize: 16 }}
+              style={{ flex: "1 1 220px", padding: "0.6rem 0.8rem", borderRadius: 8, border: "1.5px solid var(--line)", fontSize: 16 }}
             />
             <button type="submit" disabled={!query.trim() || peopleShort || !!busy} style={{ ...button, background: theme.accent, color: theme.accentInk, opacity: query.trim() && !peopleShort ? 1 : 0.5 }}>
               {busy === "search" ? "Searching…" : "Search"}
@@ -137,7 +134,7 @@ export default function FindTournament({ onBack, onOpen, onOpenPerson }) {
                     <div style={{ fontSize: 13, color: t.muted, marginTop: 2 }}>{line}</div>
                     {opens && <div style={{ fontSize: 12, color: t.muted, marginTop: 2 }}>{r.isMine ? "Already on your list" : "You follow it"}</div>}
                   </div>
-                  <button onClick={() => follow(r)} disabled={!!busy} style={{ ...button, background: opens ? "transparent" : t.deep, color: opens ? t.deep : t.cream, border: opens ? `1.5px solid ${t.deep}` : "none" }}>
+                  <button onClick={() => follow(r)} disabled={!!busy} style={{ ...button, background: opens ? "transparent" : t.accent, color: opens ? t.accent : t.cream, border: opens ? `1.5px solid ${t.deep}` : "none" }}>
                     {busy === `f-${r.tournamentId}` ? "Opening…" : opens ? "Open" : "Follow"}
                   </button>
                 </div>

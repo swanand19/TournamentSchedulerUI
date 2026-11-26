@@ -4,10 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b1020" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Inter for the dark theme, Outfit (200-500) for the light one, as on the phone. -->
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=Teko:wght@500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@200;300;400;500&display=swap"
     />
+    <!-- Dark or light before the first paint: the profile's choice in this browser, else the device's
+         (appearance.js keeps it in step afterwards). -->
+    <script>
+      (function () {
+        var mode = "dark";
+        try {
+          var c = localStorage.getItem("tournamentScheduler.appearance");
+          mode = c === "dark" || c === "light" ? c : window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        } catch (e) {}
+        document.documentElement.dataset.mode = mode;
+      })();
+    </script>
     <title>KickCricket</title>
   </head>
   <body>

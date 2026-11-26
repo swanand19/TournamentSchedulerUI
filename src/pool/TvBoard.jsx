@@ -109,8 +109,8 @@ function AuctionBoard({ t, s, now }) {
       {sold ? (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <section className="stamp" style={{ width: "65vw", borderRadius: "1.7vw", padding: "3.3vw 3.8vw", display: "flex", flexDirection: "column", alignItems: "center", gap: "1.4vw", textAlign: "center",
-            background: sold.sold ? "linear-gradient(180deg, color-mix(in srgb, var(--acc) 22%, transparent), color-mix(in srgb, var(--acc) 6%, transparent))" : "rgba(247,245,239,.05)",
-            border: `3px solid ${sold.sold ? "var(--acc)" : "rgba(247,245,239,.25)"}`, boxShadow: sold.sold ? "0 0 6vw color-mix(in srgb, var(--acc) 30%, transparent)" : "none" }}>
+            background: sold.sold ? "linear-gradient(180deg, color-mix(in srgb, var(--acc) 22%, transparent), color-mix(in srgb, var(--acc) 6%, transparent))" : "rgba(var(--fg-rgb), .05)",
+            border: `3px solid ${sold.sold ? "var(--acc)" : "rgba(var(--fg-rgb), .25)"}`, boxShadow: sold.sold ? "0 0 6vw color-mix(in srgb, var(--acc) 30%, transparent)" : "none" }}>
             <div className={`disp${sold.sold ? " gold" : ""}`} style={{ fontSize: "10vw", lineHeight: "9.4vw", letterSpacing: ".06em" }}>{sold.sold ? "Sold" : "Unsold"}</div>
             <div className="disp" style={{ fontSize: "4.4vw", lineHeight: "4.4vw" }}>{sold.playerName}</div>
             {sold.sold && (
@@ -150,7 +150,7 @@ function AuctionBoard({ t, s, now }) {
             </div>
             {leftMs != null && (
               <div className="panel" style={{ padding: "1.1vw 2vw", display: "flex", flexDirection: "column", gap: ".6vw" }}>
-                <div className="between"><span className="lab">{s.status === "Paused" ? "Paused" : "Going in"}</span><span className="teko num" style={{ fontSize: "4.2vw", lineHeight: "3.4vw", color: leftMs <= 3000 && s.status !== "Paused" ? "#ffb4b3" : undefined }}>{Math.ceil(leftMs / 1000)}s</span></div>
+                <div className="between"><span className="lab">{s.status === "Paused" ? "Paused" : "Going in"}</span><span className="teko num" style={{ fontSize: "4.2vw", lineHeight: "3.4vw", color: leftMs <= 3000 && s.status !== "Paused" ? "var(--danger-ink)" : undefined }}>{Math.ceil(leftMs / 1000)}s</span></div>
                 <div className="bar"><i style={{ transform: `scaleX(${Math.min(1, leftMs / full)})` }} /></div>
                 <div className="soft" style={{ fontSize: "1.25vw" }}>Next bid {amount(lot.nextBid)}</div>
               </div>
@@ -183,7 +183,7 @@ function Teams({ s }) {
     <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(s.teams.length, 6)}, minmax(0, 1fr))`, gap: "1.25vw" }}>
       {s.teams.map((t) => (
         <div key={t.teamId} className={`tile${t.isHighest ? " lit" : ""}`}>
-          <div className="between"><span className="disp ellipsis" style={{ fontSize: "2vw" }}>{t.name}</span>{t.isHighest && <span className="gold" style={{ fontSize: "1vw", fontWeight: 700 }}>HIGHEST</span>}</div>
+          <div className="between"><span className="disp ellipsis" style={{ fontSize: "2vw" }}>{t.name}</span>{t.isHighest && <span className="gold" style={{ fontSize: "1vw", fontWeight: 700 }}>Highest</span>}</div>
           <div className="between"><span className="teko num" style={{ fontSize: "3.3vw", lineHeight: "2.9vw" }}>{amount(t.purseLeft)}</span><span className="soft" style={{ fontSize: "1.15vw" }}>{t.players} of {set.minSquad}–{set.maxSquad}</span></div>
           <div className="soft" style={{ fontSize: "1vw" }}>{set.unit} left</div>
         </div>
@@ -217,7 +217,7 @@ function DrawBoard({ t, d, now, reload, offset }) {
             <div className="lab">Pot · {d.pot.name}</div>
             <div className="soft" style={{ fontSize: "1.15vw" }}>{d.pot.players.length} in the pot</div>
             {d.pot.players.slice(0, 9).map((p) => (
-              <div key={p.poolPlayerId} className="ellipsis" style={{ fontSize: "1.35vw", padding: ".6vw .9vw", borderRadius: ".6vw", background: "rgba(247,245,239,.06)" }}>{p.name}</div>
+              <div key={p.poolPlayerId} className="ellipsis" style={{ fontSize: "1.35vw", padding: ".6vw .9vw", borderRadius: ".6vw", background: "rgba(var(--fg-rgb), .06)" }}>{p.name}</div>
             ))}
             {d.pot.players.length > 9 && <div className="soft" style={{ fontSize: "1.1vw" }}>and {d.pot.players.length - 9} more</div>}
             {d.pot.nextName && <div className="soft" style={{ fontSize: "1.05vw", marginTop: "auto" }}>Then {d.pot.nextName}: {d.pot.nextCount} players</div>}

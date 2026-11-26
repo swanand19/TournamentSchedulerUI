@@ -7,7 +7,10 @@ import LegalPage from "./legal/LegalPage.jsx";
 import TvBoard from "./pool/TvBoard.jsx";
 import PublicTeam from "./clubs/PublicTeam.jsx";
 import PublicLeague from "./leagues/PublicLeague.jsx";
+import "./theme.css";
 import "./styles.css";
+import "./ui.css";
+import "./appearance.js";
 
 // Browsers step a focused number field when the mouse wheel turns over it. On a long form that
 // means scrolling past a field you just typed into silently rewrites it — which is how a cricket

@@ -10,26 +10,9 @@
 :root {
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* @kind other */
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* @kind other */
-  /* Overwritten per sport via <html data-sport>; see syncDocumentSport in theme.js. */
-  --accent: #f2a93b;
-  --page: #17402e;
 }
 
-html[data-sport="Cricket"] {
-  --accent: #e8b03a;
-  --page: #0f1f34;
-}
-
-/* Without this the browser's 8px body margin framed the floodlit pitch in white, and overscroll
- * past the page flashed white too. */
-body {
-  margin: 0;
-  /* Set here as well as on the app shell, because dialogs render straight into <body>. */
-  font-family: "Inter", sans-serif;
-  background: var(--page);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* The theme's colours, type and page ground are in theme.css and ui.css (2026-11-26). */
 
 /* Form controls don't inherit the page font by default, so every button that set a size but no
  * family was rendering in the system font instead of Inter. */
@@ -70,27 +53,9 @@ button:disabled {
   transition: opacity 150ms ease 250ms;
 }
 
-/* The amber ring alone is 1.8:1 against the cream cards, so a band of the pitch colour sits under
- * it: it reads as dark-on-cream on the cards and amber-on-dark everywhere else. */
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px var(--page);
-}
-
-/* Every heading is set in Anton, which ships one weight. The browser default bold made it fake a
- * heavier cut, which smeared the letterforms. */
-h1,
-h2,
-h3,
-h4 {
-  font-weight: 400;
-  text-wrap: balance;
-}
-
 @media (hover: hover) and (pointer: fine) {
   .pressable:hover {
-    box-shadow: 0 0 0 2px var(--accent);
+    box-shadow: 0 0 0 2px var(--ring);
   }
 }
 

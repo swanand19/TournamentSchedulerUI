@@ -18,7 +18,7 @@ import {
 import { formatStopwatch, parseUtc, periodMinutes, priorPeriodsMinutes } from "./footballClock";
 import { LIVE_POLL_MS, useLive } from "./realtime/useLive";
 
-const YELLOW_CARD = "#F4C430";
+const YELLOW_CARD = "var(--yellow-card)";
 
 const EVENT_LABEL = {
   Goal: "Goal", YellowCard: "Yellow card", RedCard: "Red card",
@@ -80,7 +80,7 @@ const pickRow = {
 };
 
 // Secondary text on the pitch: 5.9:1 (the 0.5–0.55 alphas it replaces were 3.8:1).
-const ON_DARK_SOFT = "rgba(247,245,239,0.7)";
+const ON_DARK_SOFT = "rgba(var(--fg-rgb), 0.7)";
 
 function getHalfLabel(currentHalf) {
   if (currentHalf <= 2) return `HALF ${currentHalf}`;
@@ -385,8 +385,8 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
     }
   };
 
-  if (loading) return <p style={{ color: "rgba(247,245,239,0.6)" }}>Loading match…</p>;
-  if (!match) return <p style={{ color: "rgba(247,245,239,0.6)" }}>Match not found.</p>;
+  if (loading) return <p style={{ color: "rgba(var(--fg-rgb), 0.6)" }}>Loading match…</p>;
+  if (!match) return <p style={{ color: "rgba(var(--fg-rgb), 0.6)" }}>Match not found.</p>;
 
   // Guard: without a completed setup there is no half, clock or squad to control.
   if (match.status === "NotStarted") {
@@ -394,11 +394,11 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
       <div>
         <button
           onClick={onBack}
-          style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16 }}
+          style={{ background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16 }}
         >
           ← Back to matches
         </button>
-        <p style={{ color: "rgba(247,245,239,0.7)", fontSize: 14 }}>
+        <p style={{ color: "rgba(var(--fg-rgb), 0.7)", fontSize: 14 }}>
           {match.homeTeamName} vs {match.awayTeamName} hasn't kicked off yet — use “Start match” on the matches list to set up the squads first.
         </p>
       </div>
@@ -469,7 +469,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
     <div>
       <button
         onClick={onBack}
-        style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16 }}
+        style={{ background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16 }}
       >
         ← Back to matches
       </button>
@@ -478,24 +478,24 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
       <ScoringBanner sport="football" matchId={matchId} scoring={match.scoring} onChange={(scoring) => setMatch((m) => ({ ...m, scoring }))} onWatch={onWatch} />
 
       {timeIsUp && (
-        <div className="drop-in" style={{ background: "rgba(242,169,59,0.15)", border: "1px solid #F2A93B", color: "#F7F5EF", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
+        <div className="drop-in" style={{ background: "color-mix(in srgb, var(--fb-accent) 15%, transparent)", border: "1px solid var(--fb-accent)", color: "var(--on-page)", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
           <TimerIcon /> {getHalfLabel(match.currentHalf)} has run its full time. The clock keeps going until you
           blow the whistle — add stoppage time, or end {getHalfLabel(match.currentHalf)}.
         </div>
       )}
       {stoppedMidPeriod && !timeIsUp && (
-        <div className="drop-in" style={{ background: "rgba(66,133,244,0.12)", border: "1px solid rgba(66,133,244,0.4)", color: "#F7F5EF", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
+        <div className="drop-in" style={{ background: "color-mix(in srgb, var(--live) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--live) 40%, transparent)", color: "var(--on-page)", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
           <PauseIcon /> Play is stopped — {getHalfLabel(match.currentHalf)} is still running. Resume when play restarts.
         </div>
       )}
       {periodEnded && canStartNextPeriod && (
-        <div className="drop-in" style={{ background: "rgba(66,133,244,0.12)", border: "1px solid rgba(66,133,244,0.4)", color: "#F7F5EF", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
+        <div className="drop-in" style={{ background: "color-mix(in srgb, var(--live) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--live) 40%, transparent)", color: "var(--on-page)", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
           <StopIcon /> {getHalfLabel(match.currentHalf)} is over{match.currentHalf === 2 ? " — level at full time" : ""}.
           {" "}Next up: {getHalfLabel(match.currentHalf + 1)}.
         </div>
       )}
       {periodEnded && !canStartNextPeriod && (
-        <div className="drop-in" style={{ background: "rgba(242,169,59,0.15)", border: "1px solid #F2A93B", color: "#F7F5EF", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
+        <div className="drop-in" style={{ background: "color-mix(in srgb, var(--fb-accent) 15%, transparent)", border: "1px solid var(--fb-accent)", color: "var(--on-page)", padding: "0.8rem 1rem", borderRadius: 8, marginBottom: 16, fontSize: 14 }}>
           <FlagIcon /> {maxPeriods > 2 ? "End of extra time" : "Full time"} — {match.homeTeamName} {match.homeScore}-{match.awayScore} {match.awayTeamName}.
           {canStartPenalties && " Level with no draw allowed, so a shootout decides it."}
         </div>
@@ -504,11 +504,11 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
       {/* Scoreboard */}
       <div style={{ background: theme.cream, color: theme.ink, borderRadius: 14, padding: "1.5rem clamp(1rem, 4vw, 1.5rem)", marginBottom: 20, textAlign: "center" }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: isDone ? theme.successInk : theme.warnInk, letterSpacing: "0.08em", marginBottom: 12 }}>
-          {isDone ? "FULL TIME — MATCH SUMMARY"
-            : isPenaltyShootout ? <><TargetIcon size={14} /> PENALTY SHOOTOUT</>
-            : periodEnded ? (canStartNextPeriod ? <><StopIcon size={14} /> END OF {getHalfLabel(match.currentHalf)}</> : <><FlagIcon size={14} /> FULL TIME</>)
-            : stoppedMidPeriod ? <><PauseIcon size={14} /> STOPPED — {getHalfLabel(match.currentHalf)}</>
-            : <><span className="live-dot" />LIVE — {getHalfLabel(match.currentHalf)}</>}
+          {isDone ? "Full time — match summary"
+            : isPenaltyShootout ? <><TargetIcon size={14} /> Penalty shootout</>
+            : periodEnded ? (canStartNextPeriod ? <><StopIcon size={14} /> END OF {getHalfLabel(match.currentHalf)}</> : <><FlagIcon size={14} /> Full time</>)
+            : stoppedMidPeriod ? <><PauseIcon size={14} /> Stopped — {getHalfLabel(match.currentHalf)}</>
+            : <><span className="live-dot" />Live — {getHalfLabel(match.currentHalf)}</>}
         </div>
         <div className="scorebug">
           {[
@@ -541,7 +541,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
         )}
 
         {match.forfeitWinnerTeamId && (
-          <div style={{ fontSize: 14, color: "#a33", fontWeight: 700, marginTop: 6 }}>
+          <div style={{ fontSize: 14, color: "var(--danger-ink)", fontWeight: 700, marginTop: 6 }}>
             <BanIcon size={14} /> Match abandoned — {match.forfeitWinnerTeamId === match.homeTeamId ? match.homeTeamName : match.awayTeamName} win by forfeit
           </div>
         )}
@@ -550,7 +550,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
           <div style={{ marginTop: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               {/* The match clock as a broadcast bug: light digits on the pitch colour. */}
-              <span className="num" style={{ fontFamily: font.condensed, fontSize: 28, lineHeight: 1, color: theme.cream, background: stoppedMidPeriod ? theme.muted : theme.deep, transition: "background-color 200ms ease", borderRadius: 6, padding: "5px 12px 1px", letterSpacing: "0.05em" }}>
+              <span className="num" style={{ fontFamily: font.condensed, fontSize: 28, lineHeight: 1, color: theme.accentInk, background: stoppedMidPeriod ? theme.muted : theme.deep, transition: "background-color 200ms ease", borderRadius: 10, padding: "5px 12px 1px", letterSpacing: "0.05em" }}>
                 {formatStopwatch(baseClockSeconds)}
               </span>
               {addedMinutesThisHalf > 0 && (
@@ -561,7 +561,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
                     fontSize: 18,
                     fontWeight: 600, // Teko is loaded at 500/600; 700 was being faked
                     color: theme.warnInk,
-                    background: "rgba(242,169,59,0.25)",
+                    background: "color-mix(in srgb, var(--fb-accent) 25%, transparent)",
                     padding: "2px 8px",
                     borderRadius: 6,
                   }}
@@ -588,8 +588,8 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
         <>
           {/* The period is over: this is the one decision to make, so it comes first. */}
           {periodEnded && (
-            <div className="drop-in" style={{ background: "rgba(247,245,239,0.06)", border: "1px solid rgba(247,245,239,0.18)", borderRadius: 10, padding: "1rem", marginBottom: 20 }}>
-              <p style={{ fontSize: 14, color: "rgba(247,245,239,0.85)", margin: "0 0 12px" }}>
+            <div className="drop-in" style={{ background: "rgba(var(--fg-rgb), 0.06)", border: "1px solid rgba(var(--fg-rgb), 0.18)", borderRadius: 10, padding: "1rem", marginBottom: 20 }}>
+              <p style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.85)", margin: "0 0 12px" }}>
                 {canStartNextPeriod
                   ? `${getHalfLabel(match.currentHalf)} is complete. Kick off ${getHalfLabel(match.currentHalf + 1)} when both teams are ready.`
                   : canStartPenalties
@@ -611,14 +611,14 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
               </div>
 
               {canStartPenalties && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(247,245,239,0.15)", display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(var(--fg-rgb), 0.15)", display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
                   <label style={{ fontSize: 14, color: ON_DARK_SOFT }}>
                     Takers per side (max {maxTakers})
                     <input
                       type="number" min={1} max={maxTakers}
                       value={effectivePenaltyTakers}
                       onChange={(e) => setPenaltyTakers(Math.min(maxTakers, Math.max(1, Number(e.target.value) || 1)))}
-                      style={{ display: "block", width: 70, marginTop: 4, padding: "0.4rem", borderRadius: 6, border: "1.5px solid rgba(247,245,239,0.3)", background: "rgba(247,245,239,0.1)", color: theme.cream }}
+                      style={{ display: "block", width: 70, marginTop: 4, padding: "0.4rem", borderRadius: 6, border: "1.5px solid rgba(var(--fg-rgb), 0.3)", background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)" }}
                     />
                   </label>
                   <button onClick={() => handleStartPenalties(effectivePenaltyTakers)} disabled={startingPenalties || busy} style={{ ...btnStyle(theme.accent), color: theme.accentInk, fontWeight: 700 }}>
@@ -637,7 +637,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
               onClick={() => openModal("Goal")}
               disabled={busy || periodEnded}
               title={periodEnded ? "The ball is out of play between periods" : ""}
-              style={{ ...eventBtnStyle, background: theme.accent, color: theme.accentInk, borderColor: "transparent" }}
+              style={{ ...eventBtnStyle, background: theme.accentGradient, color: theme.accentInk, borderColor: "transparent" }}
             >
               <BallIcon size={18} /> Goal
             </button>
@@ -677,9 +677,9 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
                     aria-label="Minutes of stoppage time to add"
                     value={addTimeMinutes}
                     onChange={(e) => setAddTimeMinutes(Math.max(1, Number(e.target.value) || 1))}
-                    style={{ width: 50, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(247,245,239,0.3)", background: "rgba(247,245,239,0.1)", color: theme.cream, fontSize: 14, textAlign: "center" }}
+                    style={{ width: 50, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(var(--fg-rgb), 0.3)", background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", fontSize: 14, textAlign: "center" }}
                   />
-                  <button onClick={handleAddTime} disabled={busy || stoppageRemaining <= 0} style={btnStyle("#555")}>
+                  <button onClick={handleAddTime} disabled={busy || stoppageRemaining <= 0} style={btnStyle("var(--muted)")}>
                     <TimerIcon /> Add time
                   </button>
                 </div>
@@ -688,7 +688,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
                   <button
                     onClick={() => handleEndPeriod(!timeIsUp)}
                     disabled={busy}
-                    style={btnStyle(timeIsUp ? theme.successSolid : "#555")}
+                    style={btnStyle(timeIsUp ? theme.successSolid : "var(--muted)")}
                   >
                     <StopIcon /> End {getHalfLabel(match.currentHalf).toLowerCase()}
                     {!timeIsUp && " early"}
@@ -706,8 +706,8 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
 
           {/* Always available, always deliberate — and last, set apart from the scoring pad,
               because it ends the match. */}
-          <div style={{ borderTop: "1px solid rgba(247,245,239,0.15)", paddingTop: 16, marginBottom: 28 }}>
-            <button onClick={() => setShowAbandon(true)} disabled={busy} style={{ ...btnStyle("transparent"), border: "1px solid rgba(226,75,74,0.6)", color: "#F4A3A3" }}>
+          <div style={{ borderTop: "1px solid rgba(var(--fg-rgb), 0.15)", paddingTop: 16, marginBottom: 28 }}>
+            <button onClick={() => setShowAbandon(true)} disabled={busy} style={{ ...btnStyle("transparent"), border: "1px solid color-mix(in srgb, var(--danger) 60%, transparent)", color: "var(--danger-ink)" }}>
               <BanIcon /> Abandon match…
             </button>
           </div>
@@ -717,7 +717,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
 
       {showAbandon && (
         <Modal labelledBy="abandon-title" onClose={() => setShowAbandon(false)} panelStyle={modalPanel}>
-          <h3 id="abandon-title" style={{ fontFamily: font.display, fontSize: 20, margin: "0 0 6px" }}>ABANDON MATCH</h3>
+          <h3 id="abandon-title" style={{ fontFamily: font.display, fontSize: 20, margin: "0 0 6px" }}>Abandon match</h3>
           <p style={{ fontSize: 14, color: theme.muted, margin: "0 0 16px", lineHeight: 1.5 }}>
             For a match that can't finish normally — called off, a walkover, or a side that can't
             continue. This closes the match and can't be undone.
@@ -728,7 +728,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
                 key={teamId}
                 onClick={() => handleAbandon(teamId)}
                 disabled={busy}
-                style={{ background: theme.deep, color: theme.cream, border: "none", borderRadius: 8, padding: "0.75rem", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
+                style={{ background: theme.accent, color: theme.accentInk, border: "none", borderRadius: 8, padding: "0.75rem", fontSize: 14, fontWeight: 700, cursor: "pointer" }}
               >
                 Award the match to {findTeamName(teamId)}
               </button>
@@ -737,13 +737,13 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
               onClick={() => handleAbandon(null)}
               disabled={busy}
               className="num"
-              style={{ background: "#EDEAE0", color: theme.ink, border: "none", borderRadius: 8, padding: "0.75rem", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              style={{ background: "var(--chip)", color: theme.ink, border: "none", borderRadius: 8, padding: "0.75rem", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
             >
               Keep the score as it stands ({match.homeScore}–{match.awayScore})
             </button>
             <button
               onClick={() => setShowAbandon(false)}
-              style={{ background: "transparent", color: theme.ink, border: "1px solid #ccc", borderRadius: 8, padding: "0.6rem", fontSize: 14, cursor: "pointer", marginTop: 4 }}
+              style={{ background: "transparent", color: theme.ink, border: "1px solid var(--line)", borderRadius: 8, padding: "0.6rem", fontSize: 14, cursor: "pointer", marginTop: 4 }}
             >
               Keep playing
             </button>
@@ -754,7 +754,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
       {actionModal && (
         <Modal labelledBy="event-title" onClose={closeModal} panelStyle={modalPanel}>
             <h3 id="event-title" style={{ fontFamily: font.display, fontSize: 20, margin: "0 0 14px", display: "flex", alignItems: "center", gap: 8 }}>
-              {eventIcon({ eventType: actionModal })} {EVENT_LABEL[actionModal].toUpperCase()}
+              {eventIcon({ eventType: actionModal })} {EVENT_LABEL[actionModal]}
             </h3>
 
             <p style={{ fontSize: 12, color: theme.muted, marginBottom: 6 }}>Team</p>
@@ -771,8 +771,8 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
                       flex: 1, padding: "0.5rem", borderRadius: 8, fontSize: 14, fontWeight: 600,
                       cursor: disabled ? "not-allowed" : "pointer",
                       opacity: disabled ? 0.4 : 1,
-                      background: selectedTeamId === t.id ? "#1B4332" : "#EDEAE0",
-                      color: selectedTeamId === t.id ? "#F7F5EF" : "#1B1B1B",
+                      background: selectedTeamId === t.id ? "var(--fb-accent)" : "var(--chip)",
+                      color: selectedTeamId === t.id ? "var(--on-page)" : "var(--ink)",
                       border: "none",
                     }}
                   >
@@ -802,7 +802,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
                       }}
                       style={{
                         ...pickRow,
-                        background: selectedPlayerId === p.id ? theme.tint : "#EDEAE0",
+                        background: selectedPlayerId === p.id ? theme.tint : "var(--chip)",
                         border: selectedPlayerId === p.id ? `1.5px solid ${theme.deep}` : "1.5px solid transparent",
                         display: "flex", alignItems: "center", justifyContent: "space-between",
                       }}
@@ -830,7 +830,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
                       onClick={() => setSelectedIncomingId(p.id)}
                       style={{
                         ...pickRow,
-                        background: selectedIncomingId === p.id ? theme.tint : "#EDEAE0",
+                        background: selectedIncomingId === p.id ? theme.tint : "var(--chip)",
                         border: selectedIncomingId === p.id ? `1.5px solid ${theme.deep}` : "1.5px solid transparent",
                       }}
                     >
@@ -853,8 +853,8 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
                     onClick={() => setSelectedIncomingId(null)}
                     style={{
                       padding: "0.4rem 0.7rem", borderRadius: 6, fontSize: 12, cursor: "pointer",
-                      background: selectedIncomingId == null ? "#1B4332" : "#EDEAE0",
-                      color: selectedIncomingId == null ? "#F7F5EF" : "#1B1B1B",
+                      background: selectedIncomingId == null ? "var(--fb-accent)" : "var(--chip)",
+                      color: selectedIncomingId == null ? "var(--on-page)" : "var(--ink)",
                       border: "none", fontWeight: 600,
                     }}
                   >
@@ -868,8 +868,8 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
                         onClick={() => setSelectedIncomingId(p.id)}
                         style={{
                           padding: "0.4rem 0.7rem", borderRadius: 6, fontSize: 12, cursor: "pointer",
-                          background: selectedIncomingId === p.id ? "#F2A93B" : "#EDEAE0",
-                          color: "#1B1B1B", border: "none",
+                          background: selectedIncomingId === p.id ? "var(--fb-accent)" : "var(--chip)",
+                          color: "var(--ink)", border: "none",
                           fontWeight: selectedIncomingId === p.id ? 700 : 400,
                         }}
                       >
@@ -881,7 +881,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
             )}
 
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <button onClick={closeModal} style={{ flex: 1, padding: "0.6rem", borderRadius: 8, background: "transparent", border: "1px solid #ccc", cursor: "pointer", fontSize: 14 }}>
+              <button onClick={closeModal} style={{ flex: 1, padding: "0.6rem", borderRadius: 8, background: "transparent", border: "1px solid var(--line)", cursor: "pointer", fontSize: 14 }}>
                 Cancel
               </button>
               <button
@@ -899,7 +899,7 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
       )}
 
       <h3 style={{ fontFamily: font.display, fontSize: 20, marginBottom: 12 }}>
-        {isDone ? "MATCH REVIEW" : "MATCH TIMELINE"}
+        {isDone ? "Match review" : "Match timeline"}
       </h3>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {events
@@ -932,13 +932,14 @@ export default function LiveMatch({ matchId, onBack, onCompleted, onWatch }) {
 
 const btnStyle = (color) => ({
   display: "inline-flex", alignItems: "center", gap: 6,
-  background: color, color: theme.cream, border: "none", borderRadius: 8,
+  background: color, color: "var(--on-page)", border: "none", borderRadius: 8,
   padding: "0.6rem 1rem", fontSize: 14, fontWeight: 600, cursor: "pointer",
 });
 
-// Cards and substitutions are neutral; the Goal button overrides the fill as the one primary.
+// The phone's pad: cards and substitutions are plain keys; the Goal key overrides the fill as the one
+// primary. Primary scoring buttons are at least 64 high (cross-cutting rule 5).
 const eventBtnStyle = {
-  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-  background: "rgba(247,245,239,0.1)", color: theme.cream, border: "1px solid rgba(247,245,239,0.25)",
-  borderRadius: 10, padding: "0.9rem 0.6rem", fontSize: 16, fontWeight: 700, cursor: "pointer",
+  display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 64,
+  background: "var(--chip)", color: "var(--ink)", border: "1px solid var(--glass-line)",
+  borderRadius: 18, padding: "0.9rem 0.6rem", fontSize: 16, fontWeight: "var(--w-strong)", cursor: "pointer",
 };

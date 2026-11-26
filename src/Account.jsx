@@ -41,7 +41,7 @@ const button = {
   cursor: "pointer",
 };
 
-const field = { padding: "0.6rem 0.8rem", borderRadius: 8, border: "1.5px solid #d8d4c8", fontSize: 14, background: "#fff", color: "#1B1B1B" };
+const field = { padding: "0.6rem 0.8rem", borderRadius: 8, border: "1.5px solid var(--line)", fontSize: 14, background: "var(--field)", color: "var(--ink)" };
 const card = { background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1.2rem", marginBottom: 16 };
 const label = { display: "block", fontSize: 14, fontWeight: 600, color: theme.muted, marginBottom: 8 };
 
@@ -143,17 +143,15 @@ export default function Account({ onBack, backLabel = "Your tournaments" }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: theme.background, fontFamily: font.body, color: theme.onDark, paddingBottom: "4rem" }}>
-      <header style={{ padding: "2.5rem clamp(1rem, 4vw, 2rem) 2rem", borderBottom: `3px solid ${theme.borderOnDark}` }}>
-        <div style={{ maxWidth: 560, margin: "0 auto" }}>
-          <button onClick={onBack} style={{ background: "none", border: "none", color: theme.onDarkMuted, cursor: "pointer", fontSize: 14, padding: 0, minHeight: 44 }}>
-            ← {backLabel}
-          </button>
-          <h1 style={{ fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 3rem)", margin: "0.2rem 0 0", lineHeight: 1 }}>ACCOUNT</h1>
-        </div>
-      </header>
+    <div style={{ color: theme.onDark, paddingBottom: "4rem" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "14px clamp(1rem, 4vw, 2rem) 0" }}>
+        <button type="button" className="kc-link" onClick={onBack} style={{ minHeight: 40, fontWeight: 500 }}>
+          ← {backLabel}
+        </button>
+        <h1 className="kc-title" style={{ margin: "0.5rem 0 0" }}>Account</h1>
+      </div>
 
-      <main style={{ maxWidth: 560, margin: "0 auto", padding: "2rem clamp(1rem, 4vw, 2rem)" }}>
+      <main style={{ maxWidth: 560, margin: "0 auto", padding: "1.25rem clamp(1rem, 4vw, 2rem)" }}>
         <ErrorBanner message={error} />
 
         {!account && !error && <p style={{ color: theme.onDarkMuted }}>Loading…</p>}
@@ -261,7 +259,7 @@ export default function Account({ onBack, backLabel = "Your tournaments" }) {
 
             {deletion && (
               <form onSubmit={confirmDelete} style={{ ...card, borderLeft: `4px solid ${theme.dangerSolid}` }}>
-                <h2 style={{ fontFamily: font.display, fontSize: 22, margin: "0 0 8px" }}>DELETE YOUR ACCOUNT</h2>
+                <h2 style={{ fontFamily: font.display, fontSize: 22, margin: "0 0 8px" }}>Delete your account</h2>
                 <p style={{ fontSize: 14, margin: "0 0 8px", lineHeight: 1.5 }}>This can't be undone. Deleting it:</p>
                 <ul style={{ fontSize: 14, margin: "0 0 12px", paddingLeft: 20, lineHeight: 1.6 }}>
                   {deletion.tournamentsDeleted.map((t) => (
@@ -390,7 +388,7 @@ function SignInMethods({ account, onSaved }) {
       {!editing && <ErrorBanner message={error} />}
 
       {rows.map((row) => (
-        <div key={row.kind} style={{ borderTop: "1px solid #e4dfd2", padding: "10px 0" }}>
+        <div key={row.kind} style={{ borderTop: "1px solid var(--hair)", padding: "10px 0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ flex: "1 1 180px", minWidth: 0 }}>
               <div style={{ fontSize: 12, color: theme.muted, fontWeight: 600 }}>{row.label}</div>
@@ -399,11 +397,11 @@ function SignInMethods({ account, onSaved }) {
             {editing !== row.kind && (
               <div style={{ display: "flex", gap: 8 }}>
                 {row.canRemove && (
-                  <button type="button" onClick={() => remove(row.kind, row.value)} disabled={busy} style={{ ...small, background: "transparent", color: theme.muted, border: "1.5px solid #d8d4c8" }}>
+                  <button type="button" onClick={() => remove(row.kind, row.value)} disabled={busy} style={{ ...small, background: "transparent", color: theme.muted, border: "1.5px solid var(--line)" }}>
                     Remove
                   </button>
                 )}
-                <button type="button" onClick={() => open(row.kind)} disabled={busy} style={{ ...small, background: theme.ink, color: theme.cream }}>
+                <button type="button" onClick={() => open(row.kind)} disabled={busy} style={{ ...small, background: theme.accent, color: theme.accentInk }}>
                   {row.value ? "Change" : "Add"}
                 </button>
               </div>

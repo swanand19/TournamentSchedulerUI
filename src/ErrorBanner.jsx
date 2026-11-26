@@ -11,11 +11,11 @@ export default function ErrorBanner({ message, style }) {
       className="drop-in"
       role="alert"
       style={{
-        background: "rgba(226,75,74,0.15)",
-        border: "1px solid #e24b4a",
-        color: "#F7F5EF",
+        background: "color-mix(in srgb, var(--danger) 15%, transparent)",
+        border: "1px solid var(--danger)",
+        color: "var(--ink)",
         padding: "0.8rem 1rem",
-        borderRadius: 8,
+        borderRadius: 14,
         marginBottom: 16,
         fontSize: 14,
         lineHeight: 1.5,

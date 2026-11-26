@@ -118,18 +118,16 @@ export default function Notifications({ onBack, onOpen }) {
   const unread = items ? items.filter((n) => !n.isRead).length : 0;
 
   return (
-    <div style={{ minHeight: "100vh", background: theme.background, fontFamily: font.body, color: theme.onDark, paddingBottom: "4rem" }}>
-      <header style={{ padding: "2.5rem clamp(1rem, 4vw, 2rem) 2rem", borderBottom: `3px solid ${theme.borderOnDark}` }}>
-        <div style={{ maxWidth: 560, margin: "0 auto" }}>
-          <button onClick={onBack} style={{ background: "none", border: "none", color: theme.onDarkMuted, cursor: "pointer", fontSize: 14, padding: 0, minHeight: 44 }}>
-            ← Your tournaments
-          </button>
-          <h1 style={{ fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 3rem)", margin: "0.2rem 0 0", lineHeight: 1 }}>NOTIFICATIONS</h1>
-        </div>
-      </header>
+    <div style={{ color: theme.onDark, paddingBottom: "4rem" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "14px clamp(1rem, 4vw, 2rem) 0" }}>
+        <button type="button" className="kc-link" onClick={onBack} style={{ minHeight: 40, fontWeight: 500 }}>
+          ← Your tournaments
+        </button>
+        <h1 className="kc-title" style={{ margin: "0.5rem 0 0" }}>Notifications</h1>
+      </div>
 
-      <main style={{ maxWidth: 560, margin: "0 auto", padding: "2rem clamp(1rem, 4vw, 2rem)", display: "flex", flexDirection: "column", gap: 12 }}>
-        <div role="tablist" aria-label="Kinds of notification" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+      <main style={{ maxWidth: 560, margin: "0 auto", padding: "1.25rem clamp(1rem, 4vw, 2rem)", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div role="tablist" aria-label="Kinds of notification" className="kc-chips" style={{ flexWrap: "nowrap", overflowX: "auto", paddingBottom: 2 }}>
           {CHIPS.map((c) => {
             const on = c === chip;
             const n = counts?.[c] ?? 0;
@@ -143,10 +141,11 @@ export default function Notifications({ onBack, onOpen }) {
                   setItems(null);
                   setChip(c);
                 }}
-                style={{ flex: "none", minHeight: 40, borderRadius: 999, padding: "0 14px", display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14, fontWeight: on ? 700 : 500, border: `1px solid ${on ? theme.accent : theme.borderOnDark}`, background: on ? theme.cream : "transparent", color: on ? theme.ink : theme.onDark }}
+                className="kc-chip"
+                style={{ flex: "none" }}
               >
                 {c}
-                {n > 0 && <span style={{ minWidth: 20, height: 20, borderRadius: 10, padding: "0 6px", display: "inline-grid", placeItems: "center", fontSize: 12, fontWeight: 700, background: theme.accent, color: theme.accentInk }}>{n}</span>}
+                {n > 0 && <span style={{ minWidth: 20, height: 20, borderRadius: 10, padding: "0 6px", display: "inline-grid", placeItems: "center", fontSize: 12, fontWeight: 600, background: theme.accent, color: theme.accentInk }}>{n}</span>}
               </button>
             );
           })}
@@ -159,7 +158,7 @@ export default function Notifications({ onBack, onOpen }) {
         )}
 
         {!items ? (
-          !error && [0, 1, 2].map((i) => <div key={i} style={{ height: 72, borderRadius: 12, background: theme.surfaceOnDark }} />)
+          !error && [0, 1, 2].map((i) => <div key={i} style={{ height: 72, borderRadius: 18, background: "var(--chip)" }} />)
         ) : items.length === 0 ? (
           <div style={{ border: `1.5px dashed ${theme.borderOnDark}`, borderRadius: 14, padding: "2rem 1.2rem", textAlign: "center" }}>
             <p style={{ fontWeight: 700, fontSize: 18, margin: "0 0 6px" }}>Nothing yet</p>
@@ -181,7 +180,7 @@ export default function Notifications({ onBack, onOpen }) {
               </button>
             )}
             {items.map((n) => (
-              <div key={n.notificationId} style={{ borderRadius: 12, background: n.isRead ? "#EDEAE0" : theme.cream, color: theme.ink }}>
+              <div key={n.notificationId} style={{ borderRadius: 12, background: n.isRead ? "var(--chip)" : theme.cream, color: theme.ink }}>
               <button
                 className="pressable"
                 onClick={() => open(n)}
@@ -218,7 +217,7 @@ export default function Notifications({ onBack, onOpen }) {
                   {SYMBOLS[n.kind] ?? "•"}
                 </span>
                 <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                  {chip === "All" && <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, color: theme.deep, textTransform: "uppercase" }}>{n.category}</span>}
+                  {chip === "All" && <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, color: theme.deep }}>{n.category}</span>}
                   <span style={{ fontSize: 15, fontWeight: n.isRead ? 500 : 700, overflowWrap: "anywhere" }}>{n.title}</span>
                   <span style={{ fontSize: 13, color: theme.muted, overflowWrap: "anywhere" }}>{n.body}</span>
                   <span style={{ fontSize: 12, color: theme.muted }}>{ago(n.createdAt)}</span>
@@ -228,7 +227,7 @@ export default function Notifications({ onBack, onOpen }) {
               {n.kind === "Social" && (n.matchId != null || n.profileUserId != null) && (
                 <div style={{ padding: "0 1rem 0.9rem 64px", display: "flex", gap: 8 }}>
                   {n.matchId != null ? (
-                    <button type="button" onClick={() => open(n)} style={{ ...button, minHeight: 36, padding: "0 14px", borderRadius: 999, background: theme.deep, color: theme.cream }}>
+                    <button type="button" onClick={() => open(n)} style={{ ...button, minHeight: 36, padding: "0 14px", borderRadius: 999, background: theme.accent, color: theme.accentInk }}>
                       ▶ Watch live
                     </button>
                   ) : (

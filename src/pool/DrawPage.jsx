@@ -288,7 +288,7 @@ function Drawn({ d, sport, act, action }) {
               <div key={p.pickId} className={`between small${p.isMe ? " lit-row" : ""}`}>
                 <span className="stack" style={{ minWidth: 0 }}>
                   <span>{p.name}{p.role ? <span className="muted"> · {p.role}</span> : null}</span>
-                  {p.movedFromTeamName && <span style={{ fontSize: 12, color: "#8a4b1b" }}>Moved from {p.movedFromTeamName}</span>}
+                  {p.movedFromTeamName && <span style={{ fontSize: 12, color: "var(--warn-ink)" }}>Moved from {p.movedFromTeamName}</span>}
                 </span>
                 {a.canMove && <button className="btn ghost sm" onClick={() => setMoving(p)} aria-label={`Move or swap ${p.name}`}>⇄</button>}
               </div>

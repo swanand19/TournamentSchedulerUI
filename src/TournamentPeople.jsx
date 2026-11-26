@@ -16,10 +16,10 @@ import { formatPhone, useAuthOptions } from "./useAuthOptions";
 
 const card = (theme) => ({ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1.2rem", marginBottom: 16 });
 const heading = { fontFamily: font.display, fontSize: 18, margin: "0 0 10px", letterSpacing: "0.02em" };
-const input = { width: "100%", boxSizing: "border-box", padding: "0.55rem 0.7rem", borderRadius: 8, border: "1.5px solid #d8d4c8", fontSize: 14 };
+const input = { width: "100%", boxSizing: "border-box", padding: "0.55rem 0.7rem", borderRadius: 8, border: "1.5px solid var(--line)", fontSize: 14 };
 const button = (bg, fg, extra = {}) => ({
-  minHeight: 44, background: bg, color: fg, border: "none", borderRadius: 8, padding: "0.55rem 1.1rem",
-  fontWeight: 700, fontSize: 14, cursor: "pointer", ...extra,
+  minHeight: 44, background: bg, color: fg, border: "none", borderRadius: 999, padding: "0.55rem 1.1rem",
+  fontWeight: 600, fontSize: 14, cursor: "pointer", ...extra,
 });
 
 /** "16 Oct 2026" from a UTC timestamp the API may send without its Z. */
@@ -144,7 +144,7 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
 
   return (
     <div className="view-in">
-      <button onClick={onBack} style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16, minHeight: 44 }}>
+      <button onClick={onBack} style={{ background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16, minHeight: 44 }}>
         ← Back
       </button>
 
@@ -152,7 +152,7 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
 
       {/* --- The tournament itself ------------------------------------ */}
       <form onSubmit={saveDetails} style={card(theme)}>
-        <h2 style={heading}>TOURNAMENT</h2>
+        <h2 style={heading}>Tournament</h2>
         <p style={{ fontSize: 14, margin: "0 0 12px", color: theme.muted }}>{STATUS_TEXT[tournament.status] ?? ""}</p>
         {access.canEdit ? (
           <>
@@ -184,7 +184,7 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
         )}
 
         {access.canComplete && (
-          <div style={{ borderTop: "1px solid #e4e0d4", marginTop: 16, paddingTop: 14 }}>
+          <div style={{ borderTop: "1px solid var(--hair)", marginTop: 16, paddingTop: 14 }}>
             <button type="button" onClick={complete} disabled={!!busy} style={button(theme.successSolid, "#fff")}>
               {busy === "complete" ? "Completing…" : "Mark tournament complete"}
             </button>
@@ -200,7 +200,7 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
       {/* --- Pictures (HLD P-26): a logo beside the name, a banner across the top ---------- */}
       {access.canEdit && (
         <section style={card(theme)} aria-labelledby="pictures-title">
-          <h2 id="pictures-title" style={heading}>PICTURES</h2>
+          <h2 id="pictures-title" style={heading}>Pictures</h2>
           {[
             { kind: "logo", label: "Logo", shape: "square", hint: "Square. Shown beside the name on everyone's Home.", link: tournament.logoUrl },
             { kind: "banner", label: "Banner", shape: "banner", hint: "Landscape, 16:9. Shown across the top of the tournament, and on its public page.", link: tournament.bannerUrl },
@@ -224,7 +224,7 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
       {/* --- Public live scores (6E) ----------------------------------- */}
       {/* Every tournament is public (2026-11-23); only an admin can hide one, which takes the link away. */}
         <div style={card(theme)}>
-          <h2 style={heading}>PUBLIC LIVE SCORES</h2>
+          <h2 style={heading}>Public live scores</h2>
           <p style={{ fontSize: 14, color: theme.muted, margin: 0 }}>
             {tournament.isPublic
               ? "Anyone can watch this tournament with its link: scores, tables, stats and knockouts, no account needed. People can also find it by name once its schedule or knockout stage is set. No emails or numbers are shown."
@@ -237,10 +237,10 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
                 <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...input, marginTop: 4 }} />
               </label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-                <button type="button" onClick={copyLink} style={button(theme.deep, theme.cream)}>
+                <button type="button" onClick={copyLink} style={button(theme.accent, theme.accentInk)}>
                   {copied ? "Copied" : "Copy link"}
                 </button>
-                <a href={link} target="_blank" rel="noreferrer" style={{ ...button("transparent", theme.deep, { border: `1.5px solid ${theme.deep}` }), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
+                <a href={link} target="_blank" rel="noreferrer" style={{ ...button("transparent", "var(--ink)", { border: "1px solid var(--glass-line)" }), display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                   Open
                 </a>
               </div>
@@ -251,7 +251,7 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
 
       {/* --- People ----------------------------------------------------- */}
       <div style={card(theme)}>
-        <h2 style={heading}>OWNERS AND SCORERS</h2>
+        <h2 style={heading}>Owners and scorers</h2>
         <p style={{ fontSize: 13, color: theme.muted, margin: "0 0 12px" }}>
           Owners run the tournament. Scorers can only set up and score matches.
         </p>
@@ -260,7 +260,7 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
         {people && (
           <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {people.members.map((m) => (
-              <li key={m.userId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.6rem 0", borderTop: "1px solid #ece8dc" }}>
+              <li key={m.userId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.6rem 0", borderTop: "1px solid var(--hair)" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 15, overflowWrap: "anywhere" }}>
                     {m.name}{m.isMe && <span style={{ color: theme.muted, fontWeight: 400 }}> (you)</span>}
@@ -269,11 +269,11 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
                     <div style={{ fontSize: 12, color: theme.muted, overflowWrap: "anywhere" }}>{[m.email, formatPhone(m.phone)].filter(Boolean).join(" · ")}</div>
                   )}
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, background: m.role === "Scorer" ? "#EDEAE0" : theme.tint, whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, background: m.role === "Scorer" ? "var(--chip)" : theme.tint, whiteSpace: "nowrap" }}>
                   {m.role === "Creator" ? "Creator · Owner" : m.role}
                 </span>
                 {m.canRemove && (
-                  <button onClick={() => remove(m)} disabled={!!busy} aria-label={`Remove ${m.name}`} style={button("transparent", theme.ink, { border: "1.5px solid #d8d4c8", padding: "0.4rem 0.8rem" })}>
+                  <button onClick={() => remove(m)} disabled={!!busy} aria-label={`Remove ${m.name}`} style={button("transparent", theme.ink, { border: "1.5px solid var(--line)", padding: "0.4rem 0.8rem" })}>
                     Remove
                   </button>
                 )}
@@ -287,7 +287,7 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
             <h3 style={{ fontSize: 13, fontWeight: 700, color: theme.muted, margin: "0 0 4px" }}>Invited, no account yet</h3>
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {people.invites.map((i) => (
-                <li key={i.inviteId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.6rem 0", borderTop: "1px solid #ece8dc", flexWrap: "wrap" }}>
+                <li key={i.inviteId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.6rem 0", borderTop: "1px solid var(--hair)", flexWrap: "wrap" }}>
                   <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 15, overflowWrap: "anywhere" }}>{shown(i)}</div>
                     <div style={{ fontSize: 12, color: i.isExpired ? theme.warnInk : theme.muted }}>
@@ -295,10 +295,10 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => cancel(i)} disabled={!!busy} style={button("transparent", theme.muted, { border: "1.5px solid #d8d4c8", padding: "0.4rem 0.8rem" })}>
+                    <button onClick={() => cancel(i)} disabled={!!busy} style={button("transparent", theme.muted, { border: "1.5px solid var(--line)", padding: "0.4rem 0.8rem" })}>
                       Cancel
                     </button>
-                    <button onClick={() => resend(i)} disabled={!!busy} style={button("transparent", theme.ink, { border: "1.5px solid #d8d4c8", padding: "0.4rem 0.8rem" })}>
+                    <button onClick={() => resend(i)} disabled={!!busy} style={button("transparent", theme.ink, { border: "1.5px solid var(--line)", padding: "0.4rem 0.8rem" })}>
                       {busy === `resend-${i.inviteId}` ? "Sending…" : "Send again"}
                     </button>
                   </div>
@@ -315,7 +315,7 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
         )}
 
         {access.canManageMembers && (
-          <form onSubmit={add} style={{ borderTop: "1px solid #e4e0d4", marginTop: 12, paddingTop: 14, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <form onSubmit={add} style={{ borderTop: "1px solid var(--hair)", marginTop: 12, paddingTop: 14, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
             <label style={{ flex: "2 1 220px", fontSize: 13, fontWeight: 600, color: theme.muted }}>
               {options.phone ? "Add someone by email or mobile number" : "Add someone by email"}
               <input
@@ -334,7 +334,7 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
                 <option value="Owner">Owner</option>
               </select>
             </label>
-            <button type="submit" disabled={!!busy || !contact.trim()} style={button(theme.deep, theme.cream)}>
+            <button type="submit" disabled={!!busy || !contact.trim()} style={button(theme.accent, theme.accentInk)}>
               {busy === "add" ? "Adding…" : "Add"}
             </button>
             <p style={{ flex: "1 1 100%", fontSize: 12, color: theme.muted, margin: 0 }}>
@@ -346,12 +346,12 @@ export default function TournamentPeople({ tournament, sport, onBack, onChanged,
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {access.canLeave && (
-          <button onClick={leave} disabled={!!busy} style={button("transparent", "#F7F5EF", { border: "1px solid rgba(247,245,239,0.35)" })}>
+          <button onClick={leave} disabled={!!busy} style={button("transparent", "var(--ink)", { border: "1px solid rgba(var(--fg-rgb), 0.35)" })}>
             {busy === "leave" ? "Leaving…" : "Leave this tournament"}
           </button>
         )}
         {access.isFollowing && (
-          <button onClick={unfollow} disabled={!!busy} style={button("transparent", "#F7F5EF", { border: "1px solid rgba(247,245,239,0.35)" })}>
+          <button onClick={unfollow} disabled={!!busy} style={button("transparent", "var(--ink)", { border: "1px solid rgba(var(--fg-rgb), 0.35)" })}>
             {busy === "unfollow" ? "Stopping…" : "Stop following"}
           </button>
         )}

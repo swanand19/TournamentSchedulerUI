@@ -39,7 +39,7 @@ export default function BringBack({ tournamentId, league, theme, onDone }) {
   return (
     <section style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1rem 1.2rem", display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
       <strong>Season {league.season} of {league.name}</strong>
-      {r.error && <p role="alert" style={{ margin: 0, color: "#8a1c14" }}>{r.error}</p>}
+      {r.error && <p role="alert" style={{ margin: 0, color: "var(--danger-ink)" }}>{r.error}</p>}
       {notice && <p style={{ margin: 0, fontSize: 14 }}>{notice}</p>}
       {!options ? (
         <button type="button" onClick={open} disabled={!!r.busy} style={{ ...button(theme, "secondary"), alignSelf: "flex-start" }}>Bring back teams</button>
@@ -55,7 +55,7 @@ export default function BringBack({ tournamentId, league, theme, onDone }) {
                 type="button"
                 aria-pressed={shown?.number === s.number}
                 onClick={() => setSeason(s.number)}
-                style={{ minHeight: 36, borderRadius: 999, padding: "0.3rem 0.9rem", cursor: "pointer", fontWeight: 600, border: `1px solid ${theme.ink}33`, background: shown?.number === s.number ? theme.accent : "transparent", color: shown?.number === s.number ? theme.accentInk : theme.ink }}
+                style={{ minHeight: 36, borderRadius: 999, padding: "0.3rem 0.9rem", cursor: "pointer", fontWeight: 600, border: "1px solid var(--line)", background: shown?.number === s.number ? theme.accent : "transparent", color: shown?.number === s.number ? theme.accentInk : theme.ink }}
               >
                 {s.name}
               </button>

@@ -38,6 +38,9 @@ import { followTournament } from "./api/publicApi";
 import { joinClubByLink } from "./api/clubsApi";
 import { joinTeamByLink } from "./api/teamsApi";
 import { pictureSrc } from "./pictures";
+import TopBar from "./ui/TopBar";
+import { dateRange } from "./ui/format";
+import { BracketIcon, PeopleIcon, PoolIcon, CalendarIcon, ListIcon, RingIcon, BarsIcon, TeamsIcon } from "./ui/icons";
 
 // A stored schedule keeps only the fixtures, so the per-team totals shown for a freshly generated
 // schedule are recomputed here rather than lost on reload.
@@ -143,7 +146,7 @@ export default function App() {
   const [activeMatchId, setActiveMatchId] = useState(null);
   const [liveMatchId, setLiveMatchId] = useState(null);
   const [watchMatchId, setWatchMatchId] = useState(null);
-  const [matchesTab, setMatchesTab] = useState("matches"); // matches | stats
+  const [matchesTab, setMatchesTab] = useState("matches"); // matches | table | summary | stats
   // Bumped whenever a match finishes, so the stats tab refetches instead of showing stale numbers.
   const [statsRefreshKey, setStatsRefreshKey] = useState(0);
 
@@ -158,9 +161,11 @@ export default function App() {
   const historyStarted = useRef(false);
   const baseStage = useRef("setup"); // the tournament's own page (setup / groups / schedule / matches / waiting)
 
-  // Home syncs its own tab, so only the tournament view owns <html data-sport>.
+  // <html data-sport> picks the wallpaper and the unprefixed colours: the tournament's sport inside
+  // one, the neutral ground on pages that belong to no sport. A team's or league's page sets its own.
   useEffect(() => {
     if (view === "tournament") syncDocumentSport(sport);
+    else if (view !== "club" && view !== "league") syncDocumentSport("None");
   }, [view, sport]);
 
   const groupLabel = (i) => String.fromCharCode(65 + i); // A, B, C...
@@ -861,9 +866,11 @@ export default function App() {
         setPrePoolStage(landing);
         setStage(route.screen);
         return;
+      case "table":
+      case "summary":
       case "stats":
         if (!started) return backToLanding();
-        setMatchesTab("stats");
+        setMatchesTab(route.screen);
         setStage("matches");
         return;
       case "match":
@@ -926,8 +933,16 @@ export default function App() {
     });
   }, []);
 
+  // The frame every signed-in page shares (2026-11-26): the top bar above the screen.
+  const framed = (content, crumb = []) => (
+    <div className="kc-page">
+      <TopBar crumb={crumb} onHome={goHome} onFind={() => setView("find")} onInbox={() => setView("notifications")} onProfile={() => openProfile({})} />
+      {content}
+    </div>
+  );
+
   if (view === "home") {
-    return (
+    return framed(
       <Home
         notice={homeNotice}
         onSelectTournament={handleSelectTournament}
@@ -944,11 +959,11 @@ export default function App() {
 
   if (view === "league") {
     if (league?.screen === "new")
-      return <NewLeague key={`new-${league.sport}`} sport={league.sport ?? "Cricket"} onBack={goHome} onCreated={(id) => openLeague(id)} />;
+      return framed(<NewLeague key={`new-${league.sport}`} sport={league.sport ?? "Cricket"} onBack={goHome} onCreated={(id) => openLeague(id)} />, [{ label: "New league" }]);
     if (league?.id && league.screen === "settings")
-      return <LeagueSettings key={`settings-${league.id}`} leagueId={league.id} onBack={() => openLeague(league.id)} onDeleted={goHome} />;
+      return framed(<LeagueSettings key={`settings-${league.id}`} leagueId={league.id} onBack={() => openLeague(league.id)} onDeleted={goHome} />, [{ label: "League settings" }]);
     if (league?.id && leagueReads)
-      return (
+      return framed(
         <LeaguePage
           key={`league-${league.id}`}
           source={leagueReads}
@@ -962,13 +977,14 @@ export default function App() {
           onOpenSeason={openSeason}
           onCreated={(t) => openJoinedTournament({ tournamentId: t.id })}
           onOpenPlayer={(r) => openProfile(r.userId != null ? { userId: r.userId } : { playerId: r.playerId })}
-        />
+        />,
+        [{ label: "League" }]
       );
     return null;
   }
 
   if (view === "profile") {
-    return (
+    return framed(
       <Profile
         who={profileWho}
         onBack={() => setView(profileReturn)}
@@ -981,28 +997,30 @@ export default function App() {
         onWatchMatch={async (tournamentId, matchId) => {
           if (await openJoinedTournament({ tournamentId })) openWatch(matchId);
         }}
-      />
+      />,
+      [{ label: profileWho?.userId || profileWho?.playerId ? "Profile" : "Your profile" }]
     );
   }
 
   if (view === "account") {
-    return (
+    return framed(
       <Account
         backLabel={accountReturn === "profile" ? "Your profile" : "Your tournaments"}
         onBack={() => {
           setView(accountReturn);
           setAccountReturn("home");
         }}
-      />
+      />,
+      [{ label: "Your profile", onClick: () => openProfile({}) }, { label: "Account" }]
     );
   }
 
   if (view === "join") {
-    return <JoinTeam onBack={() => setView("home")} onJoined={openJoinedTournament} onJoinedClub={(id) => openClub(id)} />;
+    return framed(<JoinTeam onBack={() => setView("home")} onJoined={openJoinedTournament} onJoinedClub={(id) => openClub(id)} />, [{ label: "Join a team" }]);
   }
 
   if (view === "club" && club?.id) {
-    return club.screen === "enter" ? (
+    return framed(club.screen === "enter" ? (
       <EnterTournament
         key={`enter-${club.id}-${club.entryId ?? 0}`}
         clubId={club.id}
@@ -1020,155 +1038,117 @@ export default function App() {
         onOpenTournament={(tournamentId) => openJoinedTournament({ tournamentId })}
         onEnter={(entryId) => openClub(club.id, { screen: "enter", entryId })}
       />
-    );
+    ), [{ label: club.screen === "enter" ? "Enter a tournament" : "Team" }]);
   }
 
   if (view === "enter" && club?.code) {
-    return <EnterTournament code={club.code} onBack={goHome} onOpenTournament={(tournamentId) => openJoinedTournament({ tournamentId })} />;
+    return framed(<EnterTournament code={club.code} onBack={goHome} onOpenTournament={(tournamentId) => openJoinedTournament({ tournamentId })} />, [{ label: "Enter a tournament" }]);
   }
 
   if (view === "find") {
-    return <FindTournament onBack={() => setView("home")} onOpen={(tournamentId) => openJoinedTournament({ tournamentId })} onOpenPerson={(userId) => openProfile({ userId })} />;
+    return framed(<FindTournament onBack={() => setView("home")} onOpen={(tournamentId) => openJoinedTournament({ tournamentId })} onOpenPerson={(userId) => openProfile({ userId })} />, [{ label: "Find" }]);
   }
 
   if (view === "notifications") {
-    return <Notifications onBack={() => setView("home")} onOpen={openFromNotification} />;
+    return framed(<Notifications onBack={() => setView("home")} onOpen={openFromNotification} />, [{ label: "Inbox" }]);
   }
 
+  // The tournament's tabs once it has started (the phone hub's five): Teams is its own stage.
+  const tabNow = stage === "manageTeams" ? "teams" : stage === "matches" ? matchesTab : null;
+  const showTabs = tournamentStarted && tabNow !== null;
+  const pickTab = (key) => {
+    if (key === "teams") {
+      if (stage !== "manageTeams") openManageTeams();
+      return;
+    }
+    if (stage === "manageTeams") {
+      setStage("matches");
+      loadAvailableTeams(tournamentId);
+    }
+    setMatchesTab(key);
+  };
+  const leagueLine = tournamentInfo?.league;
+  const range = dateRange(tournamentInfo);
+  const fullHead = !compactHeader;
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: theme.background,
-        fontFamily: font.body,
-        color: theme.onDark,
-        paddingBottom: "4rem",
-      }}
-    >
-      <header
-        style={{
-          // Match screens are about the match, so the header steps back to a single line there.
-          padding: compactHeader ? "1.25rem clamp(1rem, 4vw, 2rem)" : "2.5rem clamp(1rem, 4vw, 2rem) 2rem",
-          borderBottom: `3px solid ${theme.borderOnDark}`,
-          position: "relative",
-          overflow: "hidden",
-          // The owners' banner (HLD P-26) behind the name, under a wash that keeps the light text readable.
-          ...(banner && {
-            backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url("${banner}")`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }),
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: "-60px",
-            right: "-60px",
-            width: "220px",
-            height: "220px",
-            borderRadius: "50%",
-            border: "3px solid rgba(247,245,239,0.08)",
-          }}
-        />
-        <div style={{ maxWidth: 920, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <button
-              onClick={goHome}
-              style={{ background: "none", border: "none", color: theme.accent, fontSize: 14, cursor: "pointer", padding: 0, marginBottom: 8, fontWeight: 600 }}
-            >
-              ← All tournaments
-            </button>
-            {!compactHeader && (
-              <p
-                style={{
-                  fontFamily: font.condensed,
-                  fontSize: 18,
-                  // Wide tracking is the look; on a phone it would push the line onto two.
-                  letterSpacing: "clamp(0.12em, 0.9vw, 0.35em)",
-                  color: theme.accent,
-                  margin: 0,
-                  fontWeight: 600,
-                }}
-              >
-                {theme.label.toUpperCase()} · KICKCRICKET
-              </p>
-            )}
-            <h1
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                fontFamily: font.display,
-                fontSize: compactHeader ? "clamp(1.4rem, 5vw, 1.9rem)" : "clamp(2rem, 8vw, 3rem)",
-                margin: "0.2rem 0 0",
-                letterSpacing: "0.02em",
-                lineHeight: 1.05,
-                textTransform: "uppercase",
-                overflowWrap: "anywhere",
-              }}
-            >
-              {logo && <img src={logo} alt="" width={56} height={56} style={{ width: compactHeader ? 40 : 56, height: compactHeader ? 40 : 56, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />}
-              <span>{tournamentName || "Tournament scheduler"}</span>
-            </h1>
-            {/* A league's season (2026-11-24): "Season 3 of Corporate Premier League", opening the league. */}
-            {!compactHeader && tournamentInfo?.league && (
-              <button
-                type="button"
-                onClick={() => openLeague(tournamentInfo.league.leagueId)}
-                style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, background: "rgba(247,245,239,0.1)", color: theme.onDark, border: "1px solid rgba(247,245,239,0.25)", borderRadius: 10, padding: "0.5rem 0.9rem", cursor: "pointer", textAlign: "left", minHeight: 44 }}
-              >
-                <span>
-                  <strong style={{ display: "block", fontSize: 14 }}>Season {tournamentInfo.league.season} of {tournamentInfo.league.name}</strong>
-                  {tournamentInfo.league.line && <span style={{ fontSize: 13, color: theme.onDarkMuted }}>{tournamentInfo.league.line}</span>}
-                </span>
-                <span aria-hidden="true">→</span>
-              </button>
+    <div className={`kc-page${showTabs ? " kc-tabbed" : ""}`}>
+      <TopBar
+        crumb={[{ label: tournamentName || "Tournament" }]}
+        onHome={goHome}
+        onFind={() => setView("find")}
+        onInbox={() => setView("notifications")}
+        onProfile={() => openProfile({})}
+      />
+      {fullHead && (
+        <div className="kc-wrap kc-thead">
+          {/* The owners' banner (HLD P-26) above the name. */}
+          {banner && (stage === "matches" ? matchesTab === "matches" : ["setup", "groups", "schedule", "waiting"].includes(stage)) && <img className="kc-banner" src={banner} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
+            {logo && <img className="kc-logo" src={logo} alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: 14 }} onError={(e) => (e.currentTarget.style.display = "none")} />}
+            <div className="kc-grow" style={{ flexBasis: 280 }}>
+              <h1 className="kc-title">{tournamentName || "Tournament"}</h1>
+              <div className="kc-sub" style={{ marginTop: 6 }}>
+                {[range, theme.label].filter(Boolean).join(" · ")}
+                {/* A league's season (2026-11-24): "Season 3 of Corporate Premier League", opening the league. */}
+                {leagueLine && (
+                  <>
+                    {" · "}
+                    <button type="button" className="kc-link" onClick={() => openLeague(leagueLine.leagueId)}>
+                      Season {leagueLine.season} of {leagueLine.name}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+            {!["matchSetup", "people", "knockout", "pool", "auction", "draw"].includes(stage) && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {tournamentInfo && (access.canEdit || tournamentStarted) && stage !== "waiting" && (
+                  <button type="button" className="kc-btn sm sec" onClick={openKnockouts}>
+                    <BracketIcon size={18} /> Knockouts
+                  </button>
+                )}
+                {tournamentInfo && (
+                  <button type="button" className="kc-btn sm sec" onClick={openPool}>
+                    <PoolIcon size={18} /> Player pool
+                  </button>
+                )}
+                {tournamentInfo && !tournamentStarted && stage !== "manageTeams" && (
+                  <button type="button" className="kc-btn sm sec" onClick={openManageTeams}>
+                    <TeamsIcon size={18} /> {access.canEdit ? "Manage teams" : "Teams"}
+                  </button>
+                )}
+                <button type="button" className="kc-btn sm sec" onClick={openPeople}>
+                  <PeopleIcon size={18} /> People and settings
+                </button>
+              </div>
             )}
           </div>
-          {!["manageTeams", "matchSetup", "people", "knockout", "pool", "auction", "draw"].includes(stage) && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                onClick={openPeople}
-                style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.6rem 1.1rem", fontSize: 14, cursor: "pointer", minHeight: 44 }}
-              >
-                People & settings
-              </button>
-              {tournamentInfo && (
-                <button
-                  onClick={openPool}
-                  style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.6rem 1.1rem", fontSize: 14, cursor: "pointer", minHeight: 44 }}
-                >
-                  Player pool
+          {showTabs && (
+            <nav className="kc-tabs kc-float" aria-label="Tournament">
+              {[
+                ["matches", "Matches", CalendarIcon],
+                ["table", "Table", ListIcon],
+                ["summary", "Summary", RingIcon],
+                ["stats", "Stats", BarsIcon],
+                ["teams", "Teams", TeamsIcon],
+              ].map(([key, label, Icon]) => (
+                <button key={key} type="button" aria-current={tabNow === key ? "page" : undefined} onClick={() => pickTab(key)}>
+                  <Icon />
+                  <span>{label}</span>
                 </button>
-              )}
-              {tournamentInfo && (access.canEdit || tournamentStarted) && stage !== "waiting" && (
-                <button
-                  onClick={openKnockouts}
-                  style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.6rem 1.1rem", fontSize: 14, cursor: "pointer", minHeight: 44 }}
-                >
-                  Knockouts
-                </button>
-              )}
-              {tournamentInfo && (
-                <button
-                  onClick={openManageTeams}
-                  style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.6rem 1.1rem", fontSize: 14, cursor: "pointer", minHeight: 44 }}
-                >
-                  {access.canEdit ? "Manage teams" : "Teams"}
-                </button>
-              )}
-            </div>
+              ))}
+            </nav>
           )}
         </div>
-      </header>
+      )}
 
       {stage === "manageTeams" ? (
-        <div className="view-in">
-          <TeamManagement tournamentId={tournamentId} onBack={closeManageTeams} sport={sport} canEdit={!!access.canEdit} started={tournamentStarted} league={tournamentInfo?.league ?? null} onLeftTeam={afterLeavingTeam} onOpenPlayer={(playerId) => openProfile({ playerId })} onOpenClub={(id) => openClub(id)} />
+        <div className="kc-wrap kc-main view-in">
+          <TeamManagement tournamentId={tournamentId} onBack={tournamentStarted ? null : closeManageTeams} sport={sport} canEdit={!!access.canEdit} started={tournamentStarted} league={tournamentInfo?.league ?? null} onLeftTeam={afterLeavingTeam} onOpenPlayer={(playerId) => openProfile({ playerId })} onOpenClub={(id) => openClub(id)} />
         </div>
       ) : stage === "people" && tournamentInfo ? (
-        <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>
+        <main className="kc-wrap kc-main">
           <TournamentPeople
             tournament={tournamentInfo}
             sport={sport}
@@ -1178,7 +1158,7 @@ export default function App() {
           />
         </main>
       ) : stage === "knockout" && tournamentInfo ? (
-        <main className="view-in" style={{ maxWidth: 1040, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>
+        <main className="kc-wrap kc-main view-in">
           <ErrorBanner message={error} />
           <Knockouts
             key={String(tournamentStarted)}
@@ -1199,7 +1179,7 @@ export default function App() {
           />
         </main>
       ) : ["pool", "auction", "draw"].includes(stage) && tournamentInfo ? (
-        <main style={{ maxWidth: 1376, margin: "0 auto", padding: "2rem clamp(1rem, 3vw, 2rem) 3.5rem" }}>
+        <main className="kc-wrap kc-main">
           {stage === "pool" ? (
             <PoolPage
               tournamentId={tournamentId}
@@ -1216,10 +1196,10 @@ export default function App() {
           )}
         </main>
       ) : stage === "waiting" ? (
-        <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>
+        <main className="kc-wrap kc-main">
           <ErrorBanner message={error} />
           <div style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1.5rem" }}>
-            <h2 style={{ fontFamily: font.display, fontSize: 22, margin: "0 0 8px" }}>NOT STARTED YET</h2>
+            <h2 style={{ fontFamily: font.display, fontSize: 22, margin: "0 0 8px" }}>Not started yet</h2>
             <p style={{ fontSize: 14, margin: 0, lineHeight: 1.5 }}>
               The tournament's owners are still setting up its teams and fixtures. Once they start it, its
               matches appear here{access.canScore ? " and you can score them" : " to follow"}.
@@ -1227,19 +1207,19 @@ export default function App() {
           </div>
         </main>
       ) : !tournamentId ? (
-        <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem 2rem", textAlign: "center" }}>
-          <p style={{ color: "rgba(247,245,239,0.7)", marginBottom: 16 }}>
+        <main className="kc-wrap kc-main" style={{ textAlign: "center" }}>
+          <p style={{ color: "rgba(var(--fg-rgb), 0.7)", marginBottom: 16 }}>
             No tournament selected.
           </p>
           <button
             onClick={goHome}
-            style={{ background: theme.accent, color: "#1B1B1B", border: "none", borderRadius: 8, padding: "0.7rem 1.4rem", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+            style={{ background: theme.accent, color: "var(--ink)", border: "none", borderRadius: 8, padding: "0.7rem 1.4rem", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
           >
             ← Go to tournaments
           </button>
         </main>
       ) : (
-        <main style={{ maxWidth: 920, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)" }}>
+        <main className="kc-wrap kc-main">
           {["setup", "groups", "schedule"].includes(stage) && (
             <div style={{ display: "flex", gap: 8, marginBottom: "2.5rem" }}>
               {["setup", "groups", "schedule"].map((s, i) => (
@@ -1254,7 +1234,7 @@ export default function App() {
                       justifyContent: "center",
                       fontSize: 14,
                       fontWeight: 700,
-                      background: stage === s ? theme.accent : "rgba(247,245,239,0.12)",
+                      background: stage === s ? theme.accent : "rgba(var(--fg-rgb), 0.12)",
                       color: stage === s ? theme.accentInk : theme.onDark,
                     }}
                   >
@@ -1262,16 +1242,14 @@ export default function App() {
                   </div>
                   <span
                     style={{
-                      fontSize: 14,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.08em",
-                      color: stage === s ? theme.accent : "rgba(247,245,239,0.7)",
-                      fontWeight: 600,
+                      fontSize: 15,
+                      color: stage === s ? "var(--ink)" : "var(--muted)",
+                      fontWeight: stage === s ? "var(--w-strong)" : 400,
                     }}
                   >
-                    {s}
+                    {{ setup: "Teams", groups: "Groups", schedule: "Schedule" }[s]}
                   </span>
-                  {i < 2 && <div style={{ width: 30, height: 2, background: "rgba(247,245,239,0.15)" }} />}
+                  {i < 2 && <div style={{ width: 30, height: 2, background: "rgba(var(--fg-rgb), 0.15)" }} />}
                 </div>
               ))}
             </div>
@@ -1280,7 +1258,7 @@ export default function App() {
           <ErrorBanner message={error} />
 
           {loading && stage === "setup" && !groups.length && (
-            <p style={{ color: "rgba(247,245,239,0.6)", marginBottom: 16 }}>Loading…</p>
+            <p style={{ color: "rgba(var(--fg-rgb), 0.6)", marginBottom: 16 }}>Loading…</p>
           )}
 
           {stage === "setup" && (
@@ -1293,9 +1271,9 @@ export default function App() {
                   </button>
                 </p>
               )}
-              <div style={{ background: "#F7F5EF", color: "#1B1B1B", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem" }}>
+              <div style={{ background: "var(--cream)", color: "var(--ink)", borderRadius: 12, padding: "1.5rem", marginBottom: "1.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: 10 }}>
-                  <h2 style={{ fontFamily: font.display, fontSize: 22, margin: 0 }}>SELECT TEAMS</h2>
+                  <h2 style={{ fontFamily: font.display, fontSize: 22, margin: 0 }}>Select teams</h2>
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     {availableTeams.length > 0 && (
                       <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 500, cursor: "pointer", userSelect: "none" }}>
@@ -1341,7 +1319,7 @@ export default function App() {
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
-                          background: selected ? theme.tint : "#EDEAE0",
+                          background: selected ? theme.tint : "var(--chip)",
                           border: selected ? `1.5px solid ${theme.deep}` : "1.5px solid transparent",
                           padding: "0.5rem 0.8rem",
                           borderRadius: 8,
@@ -1358,11 +1336,11 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ background: "rgba(247,245,239,0.06)", border: "1px solid rgba(247,245,239,0.15)", borderRadius: 12, padding: "1.5rem" }}>
+              <div style={{ background: "rgba(var(--fg-rgb), 0.06)", border: "1px solid rgba(var(--fg-rgb), 0.15)", borderRadius: 12, padding: "1.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-                  <span style={{ fontSize: 14, color: "rgba(247,245,239,0.7)" }}>{teams.length} team{teams.length !== 1 ? "s" : ""} selected</span>
+                  <span style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.7)" }}>{teams.length} team{teams.length !== 1 ? "s" : ""} selected</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <label htmlFor="group-count" style={{ fontSize: 14, color: "rgba(247,245,239,0.7)" }}>Number of groups</label>
+                    <label htmlFor="group-count" style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.7)" }}>Number of groups</label>
                     <input
                       id="group-count"
                       type="number"
@@ -1370,7 +1348,7 @@ export default function App() {
                       max={Math.max(1, Math.floor(teams.length / 2) || 1)}
                       value={groupCount}
                       onChange={(e) => setGroupCount(Math.max(1, Number(e.target.value) || 1))}
-                      style={{ width: 60, padding: "0.4rem", borderRadius: 6, border: "1.5px solid rgba(247,245,239,0.3)", background: "rgba(247,245,239,0.1)", color: "#F7F5EF", fontSize: 14, textAlign: "center" }}
+                      style={{ width: 60, padding: "0.4rem", borderRadius: 6, border: "1.5px solid rgba(var(--fg-rgb), 0.3)", background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", fontSize: 14, textAlign: "center" }}
                     />
                   </div>
                 </div>
@@ -1386,7 +1364,7 @@ export default function App() {
                   <button
                     disabled={teams.length < minTeamsNeeded || loading}
                     onClick={goManual}
-                    style={{ flex: 1, background: "transparent", color: "#F7F5EF", border: "1.5px solid rgba(247,245,239,0.4)", borderRadius: 8, padding: "0.8rem", fontWeight: 700, fontSize: 14, cursor: teams.length < minTeamsNeeded ? "not-allowed" : "pointer" }}
+                    style={{ flex: 1, background: "transparent", color: "var(--on-page)", border: "1.5px solid rgba(var(--fg-rgb), 0.4)", borderRadius: 8, padding: "0.8rem", fontWeight: 700, fontSize: 14, cursor: teams.length < minTeamsNeeded ? "not-allowed" : "pointer" }}
                   >
                     ✋ Divide manually
                   </button>
@@ -1405,17 +1383,17 @@ export default function App() {
               <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
                 <button
                   onClick={() => setStage("setup")}
-                  style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer" }}
+                  style={{ background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer" }}
                 >
                   ← Back to teams
                 </button>
                 <button
                   onClick={doRandomize}
-                  style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer" }}
+                  style={{ background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer" }}
                 >
                   🎲 Re-shuffle
                 </button>
-                <span style={{ fontSize: 14, color: "rgba(247,245,239,0.6)" }}>
+                <span style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.6)" }}>
                   {Object.keys(manualPick).length > 0
                     ? "Drag a team into a different group (or tap it to cycle groups)"
                     : "Groups randomly assigned"}
@@ -1438,8 +1416,8 @@ export default function App() {
                     onDrop={(e) => handleDrop(e, g.name)}
                     style={{
                       "--i": gi,
-                      background: dragOverGroup === g.name ? "#FFF3DD" : "#F7F5EF",
-                      color: "#1B1B1B",
+                      background: dragOverGroup === g.name ? "var(--tint-alt)" : "var(--cream)",
+                      color: "var(--ink)",
                       borderRadius: 12,
                       padding: "1.2rem",
                       border: dragOverGroup === g.name ? `2px dashed ${theme.accent}` : "2px dashed transparent",
@@ -1496,9 +1474,9 @@ export default function App() {
                 ))}
               </div>
 
-              <div style={{ background: "rgba(247,245,239,0.06)", border: "1px solid rgba(247,245,239,0.15)", borderRadius: 12, padding: "1.2rem", marginBottom: 16 }}>
+              <div style={{ background: "rgba(var(--fg-rgb), 0.06)", border: "1px solid rgba(var(--fg-rgb), 0.15)", borderRadius: 12, padding: "1.2rem", marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                  <label htmlFor="matches-per-team" style={{ fontSize: 14, color: "rgba(247,245,239,0.8)" }}>Matches per team</label>
+                  <label htmlFor="matches-per-team" style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.8)" }}>Matches per team</label>
                   <input
                     id="matches-per-team"
                     type="number"
@@ -1506,11 +1484,11 @@ export default function App() {
                     max={allowRepeatFixtures ? 60 : Math.max(1, maxWithoutRepeats)}
                     value={matchesPerTeam}
                     onChange={(e) => setMatchesPerTeam(Math.max(1, Number(e.target.value) || 1))}
-                    style={{ width: 70, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(247,245,239,0.3)", background: "rgba(247,245,239,0.1)", color: "#F7F5EF", fontSize: 14, textAlign: "center" }}
+                    style={{ width: 70, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(var(--fg-rgb), 0.3)", background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", fontSize: 14, textAlign: "center" }}
                   />
                 </div>
 
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 14, color: "rgba(247,245,239,0.85)", cursor: "pointer", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(247,245,239,0.12)" }}>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 14, color: "rgba(var(--fg-rgb), 0.85)", cursor: "pointer", marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(var(--fg-rgb), 0.12)" }}>
                   <input
                     type="checkbox"
                     checked={allowRepeatFixtures}
@@ -1519,7 +1497,7 @@ export default function App() {
                   />
                   <span>
                     Let a team face the same opponent more than once
-                    <span style={{ display: "block", fontSize: 12, color: "rgba(247,245,239,0.7)", marginTop: 2 }}>
+                    <span style={{ display: "block", fontSize: 12, color: "rgba(var(--fg-rgb), 0.7)", marginTop: 2 }}>
                       Off: each pair meets at most once, so a group of {smallestGroup || "n"} tops out at{" "}
                       {maxWithoutRepeats} match{maxWithoutRepeats === 1 ? "" : "es"} per team.
                       {" "}On: everyone plays everyone first, then the remaining matches are drawn against random opponents.
@@ -1530,7 +1508,7 @@ export default function App() {
                 {scheduleHints.length > 0 && (
                   <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
                     {scheduleHints.map((hint, i) => (
-                      <p key={i} style={{ fontSize: 12, color: hint.tone === "warn" ? theme.accent : "rgba(247,245,239,0.65)", margin: 0 }}>
+                      <p key={i} style={{ fontSize: 12, color: hint.tone === "warn" ? theme.accent : "rgba(var(--fg-rgb), 0.65)", margin: 0 }}>
                         {hint.tone === "warn" ? "⚠ " : "• "}{hint.text}
                       </p>
                     ))}
@@ -1552,21 +1530,21 @@ export default function App() {
             <div className="view-in">
               <button
                 onClick={() => setStage("groups")}
-                style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16 }}
+                style={{ background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16 }}
               >
                 ← Back to groups
               </button>
               <button
                 onClick={openHistory}
-                style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16, marginLeft: 8 }}
+                style={{ background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16, marginLeft: 8 }}
               >
                 🕐 View schedule history
               </button>
 
               {showHistory && (
-                <div className="drop-in" style={{ background: "#F7F5EF", color: "#1B1B1B", borderRadius: 12, padding: "1.2rem", marginBottom: 24 }}>
+                <div className="drop-in" style={{ background: "var(--cream)", color: "var(--ink)", borderRadius: 12, padding: "1.2rem", marginBottom: 24 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <h3 style={{ fontFamily: font.display, fontSize: 18, margin: 0 }}>SCHEDULE HISTORY</h3>
+                    <h3 style={{ fontFamily: font.display, fontSize: 18, margin: 0 }}>Schedule history</h3>
                     <button
                       onClick={() => setShowHistory(false)}
                       style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: theme.muted }}
@@ -1586,7 +1564,7 @@ export default function App() {
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
-                          background: h.isActive ? theme.tint : "#EDEAE0",
+                          background: h.isActive ? theme.tint : "var(--chip)",
                           border: h.isActive ? `1.5px solid ${theme.deep}` : "1.5px solid transparent",
                           padding: "0.7rem 0.9rem",
                           borderRadius: 8,
@@ -1596,7 +1574,7 @@ export default function App() {
                           <div style={{ fontSize: 14, fontWeight: 600 }}>
                             {new Date(h.createdAt).toLocaleString()}
                             {h.isActive && (
-                              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "#3b6d11", background: "rgba(99,153,34,0.15)", padding: "2px 8px", borderRadius: 6 }}>
+                              <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "var(--success-ink)", background: "color-mix(in srgb, var(--success) 15%, transparent)", padding: "2px 8px", borderRadius: 6 }}>
                                 ACTIVE
                               </span>
                             )}
@@ -1609,7 +1587,7 @@ export default function App() {
                           <button
                             onClick={() => handleActivate(h.id)}
                             disabled={activatingId === h.id}
-                            style={{ background: theme.deep, color: "#F7F5EF", border: "none", borderRadius: 6, padding: "0.4rem 0.8rem", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                            style={{ background: theme.accent, color: theme.accentInk, border: "none", borderRadius: 6, padding: "0.4rem 0.8rem", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                           >
                             {activatingId === h.id ? "Activating…" : "Activate"}
                           </button>
@@ -1632,14 +1610,14 @@ export default function App() {
                 }}
               >
                 {scheduleData.groups.map((g) => (
-                  <div key={g.groupName} style={{ background: "rgba(247,245,239,0.08)", border: "1px solid rgba(247,245,239,0.18)", borderRadius: 10, padding: "1rem", textAlign: "center" }}>
+                  <div key={g.groupName} style={{ background: "rgba(var(--fg-rgb), 0.08)", border: "1px solid rgba(var(--fg-rgb), 0.18)", borderRadius: 10, padding: "1rem", textAlign: "center" }}>
                     <div style={{ fontFamily: font.display, fontSize: 32, color: theme.accent }}>{g.fixtures.length}</div>
-                    <div style={{ fontSize: 12, color: "rgba(247,245,239,0.65)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Group {g.groupName}</div>
+                    <div style={{ fontSize: 12, color: "rgba(var(--fg-rgb), 0.65)", letterSpacing: "0.06em" }}>Group {g.groupName}</div>
                   </div>
                 ))}
                 <div style={{ background: theme.accentSoft, border: `1px solid ${theme.accent}`, borderRadius: 10, padding: "1rem", textAlign: "center" }}>
                   <div style={{ fontFamily: font.display, fontSize: 32, color: theme.accent }}>{totalMatches}</div>
-                  <div style={{ fontSize: 12, color: "rgba(247,245,239,0.65)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Total matches</div>
+                  <div style={{ fontSize: 12, color: "rgba(var(--fg-rgb), 0.65)", letterSpacing: "0.06em" }}>Total matches</div>
                 </div>
               </div>
 
@@ -1647,7 +1625,7 @@ export default function App() {
                 <div style={{ background: theme.accentSoft, border: `1px solid ${theme.accent}`, borderRadius: 10, padding: "1rem", marginBottom: 24 }}>
                   <p style={{ fontSize: 14, fontWeight: 700, color: theme.accent, margin: "0 0 8px" }}>How this schedule was built</p>
                   {scheduleWarnings.map((w, i) => (
-                    <p key={i} style={{ fontSize: 12, color: "rgba(247,245,239,0.85)", margin: "0 0 6px", lineHeight: 1.5 }}>• {w}</p>
+                    <p key={i} style={{ fontSize: 12, color: "rgba(var(--fg-rgb), 0.85)", margin: "0 0 6px", lineHeight: 1.5 }}>• {w}</p>
                   ))}
                 </div>
               )}
@@ -1657,7 +1635,7 @@ export default function App() {
                 const perTeam = g.matchesByTeam || {};
                 return (
                   <div key={g.groupName} style={{ marginBottom: 28 }}>
-                    <h3 style={{ fontFamily: font.display, fontSize: 22, marginBottom: 6 }}>GROUP {g.groupName} FIXTURES</h3>
+                    <h3 style={{ fontFamily: font.display, fontSize: 22, marginBottom: 6 }}>Group {g.groupName} FIXTURES</h3>
 
                     {Object.keys(perTeam).length > 0 && (
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
@@ -1671,9 +1649,9 @@ export default function App() {
                                 title={isShort ? "One match fewer — an odd total can't be split evenly" : `${count} matches`}
                                 style={{
                                   fontSize: 12, padding: "0.25rem 0.6rem", borderRadius: 6,
-                                  background: isShort ? "rgba(242,169,59,0.2)" : "rgba(247,245,239,0.1)",
-                                  color: isShort ? theme.accent : "rgba(247,245,239,0.75)",
-                                  border: isShort ? "1px solid rgba(242,169,59,0.5)" : "1px solid transparent",
+                                  background: isShort ? "color-mix(in srgb, var(--fb-accent) 20%, transparent)" : "rgba(var(--fg-rgb), 0.1)",
+                                  color: isShort ? theme.accent : "rgba(var(--fg-rgb), 0.75)",
+                                  border: isShort ? "1px solid color-mix(in srgb, var(--fb-accent) 50%, transparent)" : "1px solid transparent",
                                 }}
                               >
                                 {team} · {count}
@@ -1686,13 +1664,13 @@ export default function App() {
                     {rounds.map(([roundNo, fixtures]) => (
                       <div key={roundNo} style={{ marginBottom: 14 }}>
                         {roundNo > 0 && (
-                          <p style={{ fontFamily: "'Teko', sans-serif", fontSize: 14, letterSpacing: "0.12em", color: "rgba(247,245,239,0.7)", margin: "0 0 6px", fontWeight: 600 }}>
+                          <p style={{ fontFamily: "'Teko', sans-serif", fontSize: 14, letterSpacing: "0.12em", color: "rgba(var(--fg-rgb), 0.7)", margin: "0 0 6px", fontWeight: 600 }}>
                             MATCHDAY {roundNo}
                           </p>
                         )}
                         <div className="stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
                           {fixtures.map((f, i) => (
-                            <div key={f.id} style={{ "--i": i, background: "#F7F5EF", color: "#1B1B1B", borderRadius: 8, padding: "0.7rem 0.9rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div key={f.id} style={{ "--i": i, background: "var(--cream)", color: "var(--ink)", borderRadius: 8, padding: "0.7rem 0.9rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                               <span style={{ fontFamily: "'Teko', sans-serif", fontSize: 14, color: theme.muted, fontWeight: 600, minWidth: 28 }}>
                                 M{String(f.id).padStart(2, "0")}
                               </span>
@@ -1712,9 +1690,9 @@ export default function App() {
                 <>
                   <div
                     style={{
-                      background: "rgba(99,153,34,0.15)",
-                      border: "1px solid #639922",
-                      color: "#F7F5EF",
+                      background: "color-mix(in srgb, var(--success) 15%, transparent)",
+                      border: "1px solid var(--success)",
+                      color: "var(--on-page)",
                       padding: "1rem",
                       borderRadius: 10,
                       fontSize: 14,
@@ -1725,7 +1703,7 @@ export default function App() {
                   </div>
                   <button
                     onClick={goToMatches}
-                    style={{ width: "100%", marginTop: 12, background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 10, padding: "0.9rem", fontWeight: 400, fontSize: 16, cursor: "pointer", fontFamily: font.display, letterSpacing: "0.03em" }}
+                    style={{ width: "100%", marginTop: 12, background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 10, padding: "0.9rem", fontWeight: 400, fontSize: 16, cursor: "pointer", fontFamily: font.display, letterSpacing: "0.03em" }}
                   >
                     🏟️ GO TO MATCHES →
                   </button>
@@ -1744,7 +1722,7 @@ export default function App() {
                           value={value}
                           onChange={(e) => setDateDraft((d) => ({ ...d, [key]: e.target.value }))}
                           disabled={approving}
-                          style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 4, padding: "0.55rem 0.7rem", borderRadius: 8, border: "1.5px solid #d8d4c8", fontSize: 14 }}
+                          style={{ display: "block", width: "100%", boxSizing: "border-box", marginTop: 4, padding: "0.55rem 0.7rem", borderRadius: 8, border: "1.5px solid var(--line)", fontSize: 14 }}
                         />
                       </label>
                     ))}
@@ -1759,7 +1737,7 @@ export default function App() {
                   style={{
                     width: "100%",
                     background: theme.successSolid,
-                    color: "#F7F5EF",
+                    color: "var(--on-page)",
                     border: "none",
                     borderRadius: 10,
                     padding: "1rem",
@@ -1780,7 +1758,7 @@ export default function App() {
           {stage === "matches" && (
             <>
               {closed && (
-                <div style={{ background: "rgba(247,245,239,0.08)", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 10, padding: "0.8rem 1rem", marginBottom: 16, fontSize: 14 }}>
+                <div style={{ background: "rgba(var(--fg-rgb), 0.08)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 10, padding: "0.8rem 1rem", marginBottom: 16, fontSize: 14 }}>
                   {tournamentInfo.status === "Completed"
                     ? "This tournament is completed. Its results and stats stay here; nothing more can be played or changed."
                     : "This tournament was cancelled: it never started and its dates have passed."}
@@ -1788,48 +1766,16 @@ export default function App() {
               )}
               {/* Asked once, when the last match finishes. */}
               {access.allMatchesPlayed && access.canComplete && !completePromptDismissed && (
-                <div className="drop-in" role="status" style={{ background: "rgba(242,169,59,0.15)", border: "1px solid #F2A93B", borderRadius: 10, padding: "0.8rem 1rem", marginBottom: 16, fontSize: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <div className="drop-in" role="status" style={{ background: "color-mix(in srgb, var(--fb-accent) 15%, transparent)", border: "1px solid var(--fb-accent)", borderRadius: 10, padding: "0.8rem 1rem", marginBottom: 16, fontSize: 14, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   <span style={{ flex: "1 1 220px" }}>All matches played. Mark the tournament complete?</span>
                   <button onClick={markComplete} style={{ minHeight: 44, background: theme.accent, color: theme.accentInk, border: "none", borderRadius: 8, padding: "0.5rem 1rem", fontWeight: 700, cursor: "pointer" }}>
                     Mark complete
                   </button>
-                  <button onClick={() => setCompletePromptDismissed(true)} style={{ minHeight: 44, background: "transparent", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.35)", borderRadius: 8, padding: "0.5rem 1rem", cursor: "pointer" }}>
+                  <button onClick={() => setCompletePromptDismissed(true)} style={{ minHeight: 44, background: "transparent", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.35)", borderRadius: 8, padding: "0.5rem 1rem", cursor: "pointer" }}>
                     Not yet
                   </button>
                 </div>
               )}
-              {/* Matches and Stats live side by side on the tournament's landing page. */}
-              {tournamentStarted && (
-                <div style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: "1px solid rgba(247,245,239,0.15)" }}>
-                  {[
-                    { key: "matches", label: "Matches", icon: "🏟️" },
-                    { key: "stats", label: "Stats", icon: "📊" },
-                  ].map((t) => {
-                    const active = matchesTab === t.key;
-                    return (
-                      <button
-                        key={t.key}
-                        onClick={() => setMatchesTab(t.key)}
-                        style={{
-                          background: "transparent",
-                          color: active ? theme.accent : "rgba(247,245,239,0.6)",
-                          border: "none",
-                          borderBottom: active ? `3px solid ${theme.accent}` : "3px solid transparent",
-                          padding: "0.6rem 1rem",
-                          fontSize: 14,
-                          fontWeight: 400,
-                          cursor: "pointer",
-                          fontFamily: font.display,
-                          letterSpacing: "0.04em",
-                        }}
-                      >
-                        {t.icon} {t.label.toUpperCase()}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
               {(!tournamentStarted || matchesTab === "matches") && (
                 <div className="view-in">
                 <MatchList
@@ -1850,12 +1796,13 @@ export default function App() {
                 </div>
               )}
 
-              {tournamentStarted && matchesTab === "stats" && (
-                <div className="view-in">
+              {/* Table · Summary · Stats: one stats page, three views (as the phone hub's tabs). */}
+              {tournamentStarted && matchesTab !== "matches" && (
+                <div className="view-in" key={matchesTab}>
                 {isCricket ? (
-                  <CricketStats tournamentId={tournamentId} refreshKey={statsRefreshKey} onOpenPlayer={(playerId) => openProfile({ playerId })} />
+                  <CricketStats tournamentId={tournamentId} view={matchesTab} refreshKey={statsRefreshKey} onOpenPlayer={(playerId) => openProfile({ playerId })} />
                 ) : (
-                  <TournamentStats tournamentId={tournamentId} refreshKey={statsRefreshKey} onOpenPlayer={(playerId) => openProfile({ playerId })} />
+                  <TournamentStats tournamentId={tournamentId} view={matchesTab} refreshKey={statsRefreshKey} onOpenPlayer={(playerId) => openProfile({ playerId })} />
                 )}
                 </div>
               )}

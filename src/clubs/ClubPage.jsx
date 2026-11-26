@@ -30,9 +30,9 @@ import { button, input, label, plural, useRun } from "./style";
 // (`canManage`). A change that touches live squads comes back with `question` (step 4), asked in one dialog.
 
 const SECTIONS = [
-  { key: "live", title: "BEING PLAYED" },
-  { key: "upcoming", title: "STILL TO PLAY" },
-  { key: "past", title: "PLAYED" },
+  { key: "live", title: "Being played" },
+  { key: "upcoming", title: "Still to play" },
+  { key: "past", title: "Played" },
 ];
 
 export default function ClubPage({ clubId, ask, onBack, onOpenTournament, onEnter, onGone }) {
@@ -107,7 +107,7 @@ export default function ClubPage({ clubId, ask, onBack, onOpenTournament, onEnte
         ))}
       </Card>
 
-      <div role="tablist" aria-label="Team" style={{ display: "flex", gap: 24, borderBottom: `1px solid ${theme.borderOnDark}` }}>
+      <div role="tablist" aria-label="Team" className="kc-seg">
         {[
           ["tournaments", `Tournaments · ${club.tournaments.length}`],
           ["players", `Players · ${club.players.length}`],
@@ -117,7 +117,7 @@ export default function ClubPage({ clubId, ask, onBack, onOpenTournament, onEnte
             role="tab"
             aria-selected={tab === key}
             onClick={() => setTab(key)}
-            style={{ background: "none", border: "none", borderBottom: `3px solid ${tab === key ? theme.accent : "transparent"}`, color: tab === key ? theme.onDark : theme.onDarkMuted, fontSize: 15, fontWeight: 600, padding: "0.6rem 0", marginBottom: -1, cursor: "pointer", minHeight: 44 }}
+            type="button"
           >
             {text}
           </button>
@@ -160,7 +160,7 @@ export default function ClubPage({ clubId, ask, onBack, onOpenTournament, onEnte
                             {t.line}
                           </span>
                         </span>
-                        {tag && <span style={{ fontSize: 12, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, background: "#EDEAE0", color: theme.muted, whiteSpace: "nowrap" }}>{tag}</span>}
+                        {tag && <span style={{ fontSize: 12, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, background: "var(--chip)", color: theme.muted, whiteSpace: "nowrap" }}>{tag}</span>}
                         {open && <span aria-hidden="true">→</span>}
                       </button>
                     );
@@ -195,7 +195,7 @@ export default function ClubPage({ clubId, ask, onBack, onOpenTournament, onEnte
               className={club.canManage ? "pressable" : undefined}
               style={{ display: "flex", alignItems: "center", gap: 12, background: theme.cream, color: theme.ink, border: "none", borderRadius: 10, padding: "0.7rem 1rem", textAlign: "left", cursor: club.canManage ? "pointer" : "default" }}
             >
-              <Logo link={p.photoUrl} name={p.name} size={36} theme={{ ...theme, onDark: theme.ink, surfaceOnDark: "#EDEAE0", borderOnDark: "#e0dccf" }} />
+              <Logo link={p.photoUrl} name={p.name} size={36} theme={{ ...theme, onDark: theme.ink, surfaceOnDark: "var(--hair)", borderOnDark: "var(--hair)" }} />
               <span style={{ flex: 1, minWidth: 0 }}>
                 <strong style={{ fontWeight: 600 }}>
                   {p.jerseyNumber != null ? `#${p.jerseyNumber} ` : ""}
@@ -209,7 +209,7 @@ export default function ClubPage({ clubId, ask, onBack, onOpenTournament, onEnte
                 </span>
               </span>
               {(p.isCaptain || p.isAdmin) && (
-                <span style={{ fontSize: 12, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, background: "#EDEAE0", color: theme.muted }}>{p.isCaptain ? "Captain" : "Admin"}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, background: "var(--chip)", color: theme.muted }}>{p.isCaptain ? "Captain" : "Admin"}</span>
               )}
             </button>
           ))}
@@ -403,7 +403,7 @@ function Settings({ club, theme, onChanged, onGone }) {
 
   return (
     <>
-      <Heading theme={theme}>TEAM SETTINGS</Heading>
+      <Heading theme={theme}>Team settings</Heading>
       <Errors message={r.error} />
       <Card theme={theme}>
         <form onSubmit={save} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>

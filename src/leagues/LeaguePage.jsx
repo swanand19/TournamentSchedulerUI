@@ -11,9 +11,9 @@ import { button, input, label, useRun } from "../clubs/style";
 // `source`; there a season links to its live scores. Organisers get "Start Season N" and the settings.
 
 const SECTIONS = [
-  { key: "live", title: "BEING PLAYED" },
-  { key: "upcoming", title: "STILL TO PLAY" },
-  { key: "past", title: "PLAYED" },
+  { key: "live", title: "Being played" },
+  { key: "upcoming", title: "Still to play" },
+  { key: "past", title: "Played" },
 ];
 
 export default function LeaguePage({ source, back, onBack, onOpenSeason, onSettings, onOpenPlayer, onCreated, onGone }) {
@@ -75,7 +75,7 @@ export default function LeaguePage({ source, back, onBack, onOpenSeason, onSetti
         </button>
       )}
 
-      <div role="tablist" aria-label="League" style={{ display: "flex", gap: 24, borderBottom: `1px solid ${theme.borderOnDark}` }}>
+      <div role="tablist" aria-label="League" className="kc-seg">
         {[
           ["seasons", "Seasons"],
           ["stats", "Stats"],
@@ -86,7 +86,7 @@ export default function LeaguePage({ source, back, onBack, onOpenSeason, onSetti
             role="tab"
             aria-selected={tab === key}
             onClick={() => setTab(key)}
-            style={{ background: "none", border: "none", borderBottom: `3px solid ${tab === key ? theme.accent : "transparent"}`, color: tab === key ? theme.onDark : theme.onDarkMuted, fontWeight: 600, fontSize: 15, padding: "0.6rem 0", marginBottom: -1, cursor: "pointer", minHeight: 44 }}
+            type="button"
           >
             {text}
           </button>
@@ -152,8 +152,8 @@ function Seasons({ league, theme, source, onOpenSeason, onCreated }) {
                 const href = source.isPublic && s.liveCode ? `/live/${s.liveCode}` : null;
                 const body = (
                   <>
-                    <span aria-hidden="true" style={{ width: 52, height: 52, borderRadius: 14, border: `1px ${s.section === "upcoming" ? "dashed" : "solid"} ${s.section === "live" ? theme.accent : "#d8d4c8"}`, display: "inline-flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <span style={{ fontSize: 9, letterSpacing: "0.08em", color: theme.muted, fontWeight: 600 }}>SEASON</span>
+                    <span aria-hidden="true" style={{ width: 52, height: 52, borderRadius: 14, border: `1px ${s.section === "upcoming" ? "dashed" : "solid"} ${s.section === "live" ? theme.accent : "var(--line)"}`, display: "inline-flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: 9, letterSpacing: "0.08em", color: theme.muted, fontWeight: 600 }}>Season</span>
                       <span style={{ fontSize: 20, fontWeight: 700 }}>{s.number}</span>
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
@@ -161,7 +161,7 @@ function Seasons({ league, theme, source, onOpenSeason, onCreated }) {
                       <span style={{ fontSize: 13, color: theme.muted }}>{s.hidden ? `${s.line} · hidden by KickCricket` : s.line}</span>
                     </span>
                     {s.section === "live" ? (
-                      <span style={{ fontSize: 12, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, background: "#d93c3c", color: "#fff" }}>LIVE</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, background: "var(--danger)", color: "#fff" }}>Live</span>
                     ) : s.championName ? (
                       <span style={{ fontSize: 12, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, background: theme.accent, color: theme.accentInk }}>🏆 Won</span>
                     ) : null}
@@ -207,9 +207,9 @@ function Stats({ league, theme, source, onOpenPlayer }) {
     minHeight: 36,
     whiteSpace: "nowrap",
     flexShrink: 0,
-    background: on ? theme.accent : "rgba(247,245,239,0.1)",
+    background: on ? theme.accent : "rgba(var(--fg-rgb), 0.1)",
     color: on ? theme.accentInk : theme.onDark,
-    border: on ? `1px solid ${theme.accent}` : "1px solid rgba(247,245,239,0.22)",
+    border: on ? `1px solid ${theme.accent}` : "1px solid rgba(var(--fg-rgb), 0.22)",
     borderRadius: 999,
     padding: "0.35rem 0.9rem",
     fontSize: 14,
@@ -233,7 +233,7 @@ function Stats({ league, theme, source, onOpenPlayer }) {
         !error && <p style={{ color: theme.onDarkMuted }}>Loading…</p>
       ) : (
         <>
-          <div role="tablist" aria-label="Stats" style={{ display: "flex", gap: 6, background: "rgba(247,245,239,0.08)", borderRadius: 999, padding: 4 }}>
+          <div role="tablist" aria-label="Stats" className="kc-seg">
             {stats.groups.map((g) => (
               <button
                 key={g.key}
@@ -243,7 +243,7 @@ function Stats({ league, theme, source, onOpenPlayer }) {
                   setGroupKey(g.key);
                   setAll(false);
                 }}
-                style={{ flex: 1, minHeight: 40, borderRadius: 999, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, background: group?.key === g.key ? "rgba(247,245,239,0.22)" : "transparent", color: theme.onDark }}
+                type="button"
               >
                 {g.title}
               </button>
@@ -286,7 +286,7 @@ function Stats({ league, theme, source, onOpenPlayer }) {
                     <span style={{ fontFamily: font.display, fontSize: 22 }}>{r.value}</span>
                   </>
                 );
-                const style = { display: "flex", alignItems: "center", gap: 12, padding: "0.6rem 0", background: "none", border: "none", borderTop: "1px solid #e4e0d4", width: "100%", boxSizing: "border-box", color: theme.ink, fontSize: 15 };
+                const style = { display: "flex", alignItems: "center", gap: 12, padding: "0.6rem 0", background: "none", border: "none", borderTop: "1px solid var(--hair)", width: "100%", boxSizing: "border-box", color: theme.ink, fontSize: 15 };
                 return onOpenPlayer ? (
                   <button key={`${r.playerId}-${i}`} type="button" onClick={() => onOpenPlayer(r)} style={{ ...style, cursor: "pointer" }}>{content}</button>
                 ) : (
@@ -315,7 +315,7 @@ function Teams({ league, theme, source }) {
   }, [source]);
   const seasonsLine = league.totals.seasons === 1 ? "Season 1" : league.totals.seasons > 1 ? `Seasons 1–${league.totals.seasons}` : "";
   const th = { textAlign: "right", fontSize: 12, color: theme.muted, fontWeight: 600, padding: "0 0 8px 6px" };
-  const td = { textAlign: "right", padding: "10px 0 10px 6px", borderTop: "1px solid #e4e0d4", fontVariantNumeric: "tabular-nums" };
+  const td = { textAlign: "right", padding: "10px 0 10px 6px", borderTop: "1px solid var(--hair)", fontVariantNumeric: "tabular-nums" };
 
   if (!teams) return error ? <Errors message={error} /> : <p style={{ color: theme.onDarkMuted }}>Loading…</p>;
   return (
@@ -324,7 +324,7 @@ function Teams({ league, theme, source }) {
         <Card theme={theme}>
           <strong style={{ fontSize: 17 }}>Titles</strong>
           {teams.titles.map((t) => (
-            <div key={t.name} style={{ display: "flex", alignItems: "center", gap: 12, borderTop: "1px solid #e4e0d4", paddingTop: 8 }}>
+            <div key={t.name} style={{ display: "flex", alignItems: "center", gap: 12, borderTop: "1px solid var(--hair)", paddingTop: 8 }}>
               <Logo name={t.name} link={null} size={36} theme={{ ...theme, surfaceOnDark: theme.accent, onDark: theme.accentInk }} />
               <span style={{ flex: 1 }}>
                 <strong style={{ display: "block", fontWeight: 600 }}>{t.name}</strong>

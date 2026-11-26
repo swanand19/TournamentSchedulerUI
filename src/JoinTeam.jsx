@@ -76,17 +76,15 @@ export default function JoinTeam({ onBack, onJoined, onJoinedClub }) {
     });
 
   return (
-    <div style={{ minHeight: "100vh", background: theme.background, fontFamily: font.body, color: theme.onDark, paddingBottom: "4rem" }}>
-      <header style={{ padding: "2.5rem clamp(1rem, 4vw, 2rem) 2rem", borderBottom: `3px solid ${theme.borderOnDark}` }}>
-        <div style={{ maxWidth: 560, margin: "0 auto" }}>
-          <button onClick={onBack} style={{ background: "none", border: "none", color: theme.onDarkMuted, cursor: "pointer", fontSize: 14, padding: 0, minHeight: 44 }}>
-            ← Your tournaments
-          </button>
-          <h1 style={{ fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 3rem)", margin: "0.2rem 0 0", lineHeight: 1 }}>JOIN A TEAM</h1>
-        </div>
-      </header>
+    <div style={{ color: theme.onDark, paddingBottom: "4rem" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", padding: "14px clamp(1rem, 4vw, 2rem) 0" }}>
+        <button type="button" className="kc-link" onClick={onBack} style={{ minHeight: 40, fontWeight: 500 }}>
+          ← Your tournaments
+        </button>
+        <h1 className="kc-title" style={{ margin: "0.5rem 0 0" }}>Join a team</h1>
+      </div>
 
-      <main style={{ maxWidth: 560, margin: "0 auto", padding: "2rem clamp(1rem, 4vw, 2rem)" }}>
+      <main style={{ maxWidth: 560, margin: "0 auto", padding: "1.25rem clamp(1rem, 4vw, 2rem)" }}>
         <ErrorBanner message={error} />
 
         {!preview ? (
@@ -105,7 +103,7 @@ export default function JoinTeam({ onBack, onJoined, onJoinedClub }) {
                 spellCheck={false}
                 maxLength={10}
                 disabled={!!busy}
-                style={{ flex: "1 1 180px", padding: "0.6rem 0.8rem", borderRadius: 8, border: "1.5px solid #d8d4c8", fontSize: 20, fontFamily: font.condensed, letterSpacing: "0.2em" }}
+                style={{ flex: "1 1 180px", padding: "0.6rem 0.8rem", borderRadius: 8, border: "1.5px solid var(--line)", fontSize: 20, fontFamily: font.condensed, letterSpacing: "0.2em" }}
               />
               <button type="submit" disabled={!code.trim() || !!busy} style={{ ...button, background: theme.accent, color: theme.accentInk, opacity: code.trim() ? 1 : 0.5 }}>
                 {busy === "look" ? "Looking…" : "Find team"}
@@ -115,7 +113,7 @@ export default function JoinTeam({ onBack, onJoined, onJoinedClub }) {
         ) : (
           <div style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1.2rem" }}>
             <p style={{ margin: 0, fontSize: 14, color: theme.muted }}>{theme.icon} {preview.tournamentName}</p>
-            <h2 style={{ fontFamily: font.display, fontSize: 26, margin: "0.2rem 0 1rem", overflowWrap: "anywhere" }}>{preview.teamName.toUpperCase()}</h2>
+            <h2 style={{ fontFamily: font.display, fontSize: 26, margin: "0.2rem 0 1rem", overflowWrap: "anywhere" }}>{preview.teamName}</h2>
 
             {preview.places.length > 0 && (
               <>
@@ -127,7 +125,7 @@ export default function JoinTeam({ onBack, onJoined, onJoinedClub }) {
                       className="pressable"
                       onClick={() => join(p.playerId, `p-${p.playerId}`)}
                       disabled={!!busy}
-                      style={{ ...button, background: "#EDEAE0", color: theme.ink, textAlign: "left", fontWeight: 600, display: "flex", justifyContent: "space-between", gap: 10 }}
+                      style={{ ...button, background: "var(--chip)", color: theme.ink, textAlign: "left", fontWeight: 600, display: "flex", justifyContent: "space-between", gap: 10 }}
                     >
                       <span style={{ overflowWrap: "anywhere" }}>
                         {p.name}

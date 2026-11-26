@@ -105,7 +105,7 @@ function WicketCard({ t, item }) {
       <span style={{ ...marker(t), color: t.muted }}>{item.marker}</span>
       <Chip t={t} label={item.chip ?? "W"} tone="wicket" />
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontFamily: font.condensed, fontSize: 18, letterSpacing: "0.12em", color: t.dangerSolid, lineHeight: 1 }}>WICKET</div>
+        <div style={{ fontFamily: font.condensed, fontSize: 18, letterSpacing: "0.12em", color: t.dangerSolid, lineHeight: 1 }}>Wicket</div>
         {item.detail && <div style={{ fontWeight: 600, fontSize: 16 }}>{item.detail}</div>}
         {who && <div style={{ fontSize: 12, color: t.muted }}>{who}</div>}
       </div>
@@ -118,7 +118,7 @@ function Milestone({ t, item }) {
     <div style={{ display: "flex", alignItems: "center", gap: 12, background: t.deck, border: `1.5px solid ${t.accent}`, borderRadius: 12, padding: "12px 14px" }}>
       <span aria-hidden="true" style={{ color: t.accent, fontSize: 20 }}>✦</span>
       <div>
-        <div style={{ fontFamily: font.display, fontSize: 20, color: t.accent, letterSpacing: "0.02em" }}>{item.text.toUpperCase()}</div>
+        <div style={{ fontFamily: font.display, fontSize: 20, color: t.accent, letterSpacing: "0.02em" }}>{item.text}</div>
         {item.detail && <div style={{ fontSize: 12, color: t.onDarkMuted }}>{item.detail}</div>}
       </div>
     </div>
@@ -133,7 +133,7 @@ function Rule({ t, item }) {
         <span style={hair} />
         <span style={{ fontFamily: font.condensed, fontSize: 18, letterSpacing: "0.12em", color: t.onDark, textAlign: "center" }}>
           {item.kind === "Period" && item.marker ? `${item.marker} · ` : ""}
-          {item.text.toUpperCase()}
+          {item.text}
         </span>
         <span style={hair} />
       </div>
@@ -147,7 +147,7 @@ function Result({ t, item }) {
     <div style={{ display: "flex", alignItems: "center", gap: 12, background: t.deck, border: `1px solid ${t.accentSoft}`, borderRadius: 16, padding: "16px 18px" }}>
       <TrophyIcon size={22} style={{ color: t.accent }} />
       <div>
-        <div style={{ fontFamily: font.display, fontSize: 22, color: t.accent }}>{item.text.toUpperCase()}</div>
+        <div style={{ fontFamily: font.display, fontSize: 22, color: t.accent }}>{item.text}</div>
         {item.detail && <div style={{ fontSize: 14, color: t.onDarkMuted }}>{item.detail}</div>}
       </div>
     </div>
@@ -165,7 +165,7 @@ function EventCard({ t, item }) {
   const { edge, icon } = looks[item.kind] ?? looks.Goal;
   return (
     <div style={card(t, edge)}>
-      <span className="num" style={{ minWidth: 52, background: t.ink, color: t.cream, borderRadius: 8, padding: "6px 8px", textAlign: "center", fontFamily: font.display, fontSize: 18 }}>
+      <span className="num" style={{ minWidth: 52, background: t.accent, color: t.accentInk, borderRadius: 8, padding: "6px 8px", textAlign: "center", fontFamily: font.display, fontSize: 18 }}>
         {item.marker}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>

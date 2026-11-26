@@ -1,0 +1,1532 @@
+/* The phone app's design for the web (2026-11-26, canvas "Proposal · The web app in the phone's
+ * design"). One set of classes for both themes: the variables in theme.css change the colours and
+ * type, and the [data-mode="light"] rules below change the surfaces (no panels, hairlines, outlined
+ * pills, underlined tabs). Rules from the phone: glass only on floating controls (bar buttons, tab
+ * and segment tracks, the scoring pad); content on frosted panes; one tinted primary per screen. */
+
+/* --- Page --------------------------------------------------------------------------------- */
+
+html {
+  background: var(--page);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* The wallpaper stays put behind the page as it scrolls, and fills the window however short the page. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--wall);
+  /* The layer itself is fixed; "fixed" on its gradients (for other uses of --wall) would size them by the window again, wrongly when zoomed. */
+  background-attachment: scroll;
+  pointer-events: none;
+}
+
+/* Outfit is loaded up to Medium; a bolder weight would be faked from it and smear. */
+:root[data-mode="light"] body {
+  font-synthesis-weight: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: var(--w-bold);
+  text-wrap: balance;
+}
+
+/* Text set in the display or label face (inline styles from theme.js): the theme's own weight and
+ * spacing, and sentence case — the old faces' capitals and letter-spacing don't belong to either. */
+[style*="var(--font-display)"] {
+  font-weight: var(--w-display);
+  letter-spacing: var(--track-display) !important;
+  text-transform: none !important;
+}
+[style*="var(--font-condensed)"] {
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+/* Content panes: frosted over the wallpaper in dark (the inline style sets the fill). */
+[style*="background: var(--fb-cream)"],
+[style*="background: var(--ck-cream)"],
+[style*="background: var(--nt-cream)"],
+[style*="background: var(--fb-deck)"],
+[style*="background: var(--ck-deck)"],
+[style*="background: var(--nt-deck)"],
+[style*="background: var(--cream)"] {
+  -webkit-backdrop-filter: var(--pane-blur);
+  backdrop-filter: var(--pane-blur);
+}
+
+input,
+select,
+textarea {
+  color: var(--ink);
+  background-color: var(--field);
+  border-color: var(--field-line);
+  font-family: inherit;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--placeholder);
+  opacity: 1;
+}
+select option {
+  background: var(--sheet);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.num {
+  font-variant-numeric: var(--figures);
+}
+
+a {
+  color: var(--deep);
+}
+
+/* --- Layout ------------------------------------------------------------------------------- */
+
+.kc-page {
+  min-height: 100vh;
+  min-height: 100svh;
+  font-family: var(--font-body);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 21px;
+}
+.kc-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 40px;
+  box-sizing: border-box;
+}
+.kc-wrap.narrow {
+  max-width: 920px;
+}
+.kc-main {
+  padding-top: 24px;
+  padding-bottom: 56px;
+}
+.kc-grow {
+  flex: 1;
+  min-width: 0;
+}
+.kc-grid2 {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+.kc-grid2 > .kc-col {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.kc-grid2 > .kc-aside {
+  flex: 0 0 360px;
+  min-width: 0;
+}
+
+/* --- Top bar ------------------------------------------------------------------------------ */
+
+.kc-bar {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 3;
+}
+:root[data-mode="light"] .kc-bar {
+  background: #fff;
+  border-bottom: 1px solid var(--hair);
+}
+.kc-bar .kc-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+.kc-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: var(--w-strong);
+  font-size: 17px;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+  border-radius: 10px;
+}
+.kc-mark {
+  display: inline-flex;
+  flex: none;
+}
+.kc-mark .on-light {
+  display: none;
+}
+:root[data-mode="light"] .kc-mark .on-dark {
+  display: none;
+}
+:root[data-mode="light"] .kc-mark .on-light {
+  display: block;
+}
+.kc-crumb {
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.kc-crumb b {
+  color: var(--ink);
+  font-weight: var(--w-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kc-crumb button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.kc-crumb button:hover {
+  color: var(--ink);
+}
+
+/* Glass: the floating controls layer. In light, outlined white. */
+.kc-glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+:root[data-mode="light"] .kc-glass {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+.kc-ib {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex: none;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+}
+.kc-ib .kc-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  box-sizing: border-box;
+  line-height: 18px;
+  background: var(--danger);
+  color: #fff;
+}
+:root[data-mode="light"] .kc-ib .kc-badge {
+  background: var(--accent);
+}
+.kc-find {
+  height: 44px;
+  border-radius: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  color: var(--muted);
+  width: 300px;
+  max-width: 34vw;
+  font-size: 15px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.kc-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: var(--w-strong);
+  background: var(--tint);
+  color: var(--deep);
+  overflow: hidden;
+  flex: none;
+}
+.kc-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* --- Type --------------------------------------------------------------------------------- */
+
+.kc-title {
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 46px;
+  font-weight: var(--w-display);
+  letter-spacing: -0.6px;
+  margin: 0;
+  /* break-word, not anywhere: a title keeps its words whole and pushes controls beside it onto the next line. */
+  overflow-wrap: break-word;
+}
+:root[data-mode="light"] .kc-title {
+  letter-spacing: -0.5px;
+}
+.kc-sub {
+  color: var(--muted);
+  font-size: 15px;
+}
+.kc-cap {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.kc-h2 {
+  font-size: 20px;
+  line-height: 25px;
+  font-weight: var(--w-bold);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+:root[data-mode="light"] .kc-h2 {
+  font-weight: 400;
+  font-size: 21px;
+  line-height: 27px;
+  letter-spacing: -0.2px;
+}
+.kc-sechd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 30px 0 12px;
+}
+.kc-figure {
+  font-variant-numeric: var(--figures);
+  font-weight: var(--w-figure);
+}
+.kc-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--deep);
+  font-weight: var(--w-strong);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.kc-link:hover {
+  text-decoration: underline;
+}
+
+/* A player's name that opens their profile: plain text until hovered. */
+.kc-name {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  text-underline-offset: 3px;
+}
+.kc-name:hover {
+  text-decoration: underline;
+}
+
+/* Older screens' buttons drawn inline with small square corners become the phone's pills. */
+button:is([style*="border-radius: 5px"], [style*="border-radius: 6px"], [style*="border-radius: 8px"]) {
+  border-radius: 999px !important;
+}
+
+/* --- Buttons ------------------------------------------------------------------------------ */
+
+.kc-btn {
+  height: 48px;
+  border-radius: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+  font-size: 16px;
+  font-weight: var(--w-strong);
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: var(--ink);
+  background: none;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+.kc-btn.sm {
+  height: 40px;
+  border-radius: 20px;
+  font-size: 15px;
+  padding: 0 16px;
+}
+.kc-btn.pri {
+  background-image: var(--grad);
+  color: var(--accent-ink);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 10px 26px var(--glow);
+}
+.kc-btn.sec {
+  background: var(--glass);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-rim);
+}
+.kc-btn.danger {
+  background-image: linear-gradient(180deg, #ee5a5e, #d63b40);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 26px rgba(229, 72, 77, 0.35);
+}
+:root[data-mode="light"] .kc-btn.pri {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+:root[data-mode="light"] .kc-btn.sec {
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-mode="light"] .kc-btn.danger {
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
+  box-shadow: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .kc-btn.sec:not(:disabled):hover,
+  .kc-ib:not(:disabled):hover,
+  .kc-find:hover {
+    background-color: var(--glass-on);
+  }
+  :root[data-mode="light"] .kc-btn.sec:not(:disabled):hover,
+  :root[data-mode="light"] .kc-ib:not(:disabled):hover,
+  :root[data-mode="light"] .kc-find:hover {
+    background-color: var(--press-hover);
+  }
+}
+
+/* --- Segments, filters and tabs ----------------------------------------------------------- */
+
+.kc-seg {
+  display: inline-flex;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-rim);
+  border-radius: 24px;
+  padding: 4px;
+  gap: 2px;
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.kc-seg > button {
+  flex: none;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kc-seg > button i {
+  font-style: normal;
+  color: var(--muted);
+  font-weight: 400;
+}
+.kc-seg > button[aria-selected="true"],
+.kc-seg > button[aria-pressed="true"],
+.kc-seg > button.on {
+  background: var(--glass-on);
+  box-shadow: inset 0 1px 0 var(--glass-rim);
+  font-weight: 600;
+}
+/* Light: underlined words on a hairline. */
+:root[data-mode="light"] .kc-seg {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  gap: 22px;
+  backdrop-filter: none;
+}
+:root[data-mode="light"] .kc-seg > button {
+  border-radius: 0;
+  padding: 0 0 12px;
+  height: auto;
+  color: var(--muted);
+  font-weight: 400;
+}
+:root[data-mode="light"] .kc-seg > button[aria-selected="true"],
+:root[data-mode="light"] .kc-seg > button[aria-pressed="true"],
+:root[data-mode="light"] .kc-seg > button.on {
+  background: none;
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+/* A filter: separate pills in light, the same glass track in dark. */
+:root[data-mode="light"] .kc-seg.filter {
+  border: 0;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+:root[data-mode="light"] .kc-seg.filter > button {
+  height: 38px;
+  padding: 0 15px;
+  border: 1px solid var(--glass-line);
+  border-radius: 19px;
+  color: var(--ink);
+}
+:root[data-mode="light"] .kc-seg.filter > button[aria-pressed="true"],
+:root[data-mode="light"] .kc-seg.filter > button[aria-selected="true"],
+:root[data-mode="light"] .kc-seg.filter > button.on {
+  background: var(--tint);
+  border-color: var(--ring);
+  color: var(--deep);
+  box-shadow: none;
+}
+
+.kc-tabs {
+  display: flex;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
+  border-radius: 28px;
+  padding: 4px;
+  max-width: 640px;
+  box-sizing: border-box;
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+}
+.kc-tabs > button {
+  flex: 1;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+  border-radius: 24px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 0 10px;
+}
+.kc-tabs > button[aria-current="page"] {
+  background: var(--glass-on);
+  box-shadow: inset 0 1px 0 var(--glass-rim);
+  color: var(--ink);
+}
+:root[data-mode="light"] .kc-tabs {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  gap: 26px;
+  max-width: none;
+  backdrop-filter: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+:root[data-mode="light"] .kc-tabs > button {
+  flex: none;
+  height: auto;
+  padding: 0 0 12px;
+  border-radius: 0;
+  font-weight: 400;
+}
+:root[data-mode="light"] .kc-tabs > button svg {
+  display: none;
+}
+:root[data-mode="light"] .kc-tabs > button[aria-current="page"] {
+  background: none;
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* --- Panes and rows ----------------------------------------------------------------------- */
+
+.kc-pane {
+  background: var(--cream);
+  border: 1px solid var(--pane-line);
+  border-radius: 24px;
+  -webkit-backdrop-filter: var(--pane-blur);
+  backdrop-filter: var(--pane-blur);
+}
+:root[data-mode="light"] .kc-pane {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+:root[data-mode="light"] .kc-pane.lined {
+  border-top: 1px solid var(--hair);
+}
+:root[data-mode="light"] .kc-pane.flush {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Older screens still draw their groups inline with the pane colour (theme.cream): in dark they get
+ * the pane's rim and rounder corners; in light they open up into sections under a hairline, as the
+ * light design has no panels. */
+:root:not([data-mode="light"]) :is([style*="background: var(--fb-cream)"], [style*="background: var(--ck-cream)"], [style*="background: var(--nt-cream)"], [style*="background: var(--cream)"]) {
+  box-shadow: inset 0 0 0 1px var(--pane-line);
+  border-radius: max(16px, 1px) !important;
+}
+:root[data-mode="light"] :is([style*="background: var(--fb-cream)"], [style*="background: var(--ck-cream)"], [style*="background: var(--nt-cream)"], [style*="background: var(--cream)"]):not(button) {
+  border-radius: 0 !important;
+  border-top: 1px solid var(--hair);
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.kc-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+:root[data-mode="light"] .kc-rows {
+  gap: 0;
+  border-top: 1px solid var(--hair);
+}
+.kc-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--cream);
+  border: 1px solid var(--pane-line);
+  border-radius: 22px;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  cursor: pointer;
+  -webkit-backdrop-filter: var(--pane-blur);
+  backdrop-filter: var(--pane-blur);
+}
+.kc-row .nm {
+  display: block;
+  font-size: 17px;
+  font-weight: var(--w-strong);
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+.kc-row > svg:last-child {
+  color: var(--muted);
+  flex: none;
+}
+:root[data-mode="light"] .kc-row {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .kc-row:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+  :root[data-mode="light"] .kc-row:hover {
+    background-color: var(--press-hover);
+  }
+}
+
+.kc-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex: none;
+}
+.kc-initials {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tint);
+  color: var(--deep);
+  font-size: 13px;
+  font-weight: var(--w-strong);
+  flex: none;
+}
+
+/* The count tiles (Home): three equal columns, each a filter. */
+.kc-counts {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+  background: var(--cream);
+  border: 1px solid var(--pane-line);
+  border-radius: 24px;
+  -webkit-backdrop-filter: var(--pane-blur);
+  backdrop-filter: var(--pane-blur);
+  overflow: hidden;
+}
+.kc-counts > button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 8px;
+  gap: 2px;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 20px;
+  margin: 4px;
+}
+.kc-counts > button b {
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: var(--w-figure);
+  font-variant-numeric: var(--figures);
+}
+.kc-counts > button span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.kc-counts > button[aria-pressed="true"] {
+  background: var(--glass-on);
+  box-shadow: inset 0 1px 0 var(--glass-rim);
+}
+.kc-counts > button[aria-pressed="true"] b,
+.kc-counts > button[aria-pressed="true"] span {
+  color: var(--deep);
+}
+:root[data-mode="light"] .kc-counts {
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+  border-radius: 0;
+}
+:root[data-mode="light"] .kc-counts > button {
+  margin: 0;
+  border-radius: 0;
+}
+:root[data-mode="light"] .kc-counts > button + button {
+  border-left: 1px solid var(--hair);
+}
+:root[data-mode="light"] .kc-counts > button b {
+  font-weight: 200;
+  font-size: 40px;
+  line-height: 46px;
+}
+:root[data-mode="light"] .kc-counts > button[aria-pressed="true"] {
+  background: none;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* A side list of links (Home's Join / Find / Your teams). */
+.kc-side {
+  padding: 6px 18px;
+}
+.kc-side > .si {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--hair);
+  width: 100%;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.kc-side > .si:first-child {
+  border-top: 0;
+}
+.kc-side > .si b {
+  display: block;
+  font-weight: var(--w-strong);
+}
+.kc-side .ico {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tint);
+  color: var(--deep);
+  flex: none;
+}
+.kc-side > .si > svg:last-child {
+  color: var(--muted);
+  flex: none;
+}
+:root[data-mode="light"] .kc-side {
+  padding: 0;
+  border-top: 1px solid var(--hair);
+}
+:root[data-mode="light"] .kc-side > .si:first-child {
+  border-top: 0;
+}
+:root[data-mode="light"] .kc-side > .si {
+  border-top: 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+/* --- Fields ------------------------------------------------------------------------------- */
+
+.kc-field {
+  height: 52px;
+  padding: 0 16px;
+  font-size: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--field-line);
+  background: var(--field);
+  color: var(--ink);
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+}
+:root[data-mode="light"] .kc-field {
+  border: 0;
+  border-bottom: 1px solid var(--field-line);
+  border-radius: 0;
+  padding-left: 0;
+}
+.kc-field:focus-visible {
+  outline: 0;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px var(--tint);
+}
+:root[data-mode="light"] .kc-field:focus-visible {
+  box-shadow: inset 0 -1px 0 var(--accent);
+  border-color: var(--accent);
+}
+.kc-field[aria-invalid="true"] {
+  border-color: var(--warn);
+}
+.kc-label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+/* --- Status ------------------------------------------------------------------------------- */
+
+.kc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--live);
+  box-shadow: 0 0 8px var(--live);
+  flex: none;
+  display: inline-block;
+}
+:root[data-mode="light"] .kc-dot {
+  box-shadow: none;
+}
+.kc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: var(--w-strong);
+  color: var(--live);
+  white-space: nowrap;
+}
+.kc-status.quiet {
+  color: var(--muted);
+}
+.kc-status.quiet .kc-dot {
+  background: var(--muted);
+  box-shadow: none;
+}
+.kc-status.warn {
+  color: var(--warn-ink);
+}
+.kc-status.warn .kc-dot {
+  background: var(--warn-ink);
+  box-shadow: none;
+}
+
+.kc-chips {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.kc-chip {
+  height: 38px;
+  border-radius: 19px;
+  padding: 0 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kc-chip[aria-pressed="true"],
+.kc-chip[aria-selected="true"] {
+  background: var(--glass-on);
+  border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-rim);
+}
+:root[data-mode="light"] .kc-chip {
+  background: #fff;
+  border-color: var(--glass-line);
+}
+:root[data-mode="light"] .kc-chip[aria-pressed="true"],
+:root[data-mode="light"] .kc-chip[aria-selected="true"] {
+  background: var(--tint);
+  border-color: var(--ring);
+  color: var(--deep);
+  box-shadow: none;
+}
+
+/* --- Tournament header -------------------------------------------------------------------- */
+
+.kc-thead {
+  padding-top: 28px;
+}
+.kc-thead .kc-tabs {
+  margin-top: 24px;
+}
+.kc-banner {
+  width: 100%;
+  aspect-ratio: 16 / 5;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 24px;
+  display: block;
+  margin-bottom: 22px;
+}
+:root[data-mode="light"] .kc-banner {
+  border-radius: 12px;
+}
+
+/* --- Match cards (a tournament's Matches tab) --------------------------------------------- */
+
+.kc-matches {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.kc-match {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--cream);
+  border: 1px solid var(--pane-line);
+  border-radius: 22px;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  box-sizing: border-box;
+  -webkit-backdrop-filter: var(--pane-blur);
+  backdrop-filter: var(--pane-blur);
+}
+:root[data-mode="light"] .kc-match {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+.kc-match .lab {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.kc-match .lab .res {
+  color: var(--deep);
+  font-weight: var(--w-strong);
+}
+.kc-side-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 16px;
+  line-height: 24px;
+}
+.kc-side-line b {
+  font-weight: var(--w-strong);
+  overflow-wrap: anywhere;
+}
+.kc-side-line .fig {
+  font-variant-numeric: var(--figures);
+  font-weight: var(--w-strong);
+  white-space: nowrap;
+}
+.kc-match .won {
+  font-size: 14px;
+  color: var(--deep);
+  font-weight: 500;
+  margin-top: 2px;
+}
+.kc-match.featured {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  padding: 22px 24px;
+}
+.kc-match.featured .kc-side-line {
+  font-size: 22px;
+  line-height: 32px;
+}
+:root[data-mode="light"] .kc-match.featured {
+  border-top: 1px solid var(--hair);
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* --- Tables (stats, scorecards) ----------------------------------------------------------- */
+
+.kc-tbl {
+  overflow-x: auto;
+}
+.kc-st {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.kc-st th {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  text-align: right;
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--hair);
+  white-space: nowrap;
+}
+.kc-st td {
+  padding: 13px 12px;
+  text-align: right;
+  border-bottom: 1px solid var(--hair);
+  font-variant-numeric: var(--figures);
+  white-space: nowrap;
+}
+.kc-st th.l,
+.kc-st td.l {
+  text-align: left;
+}
+.kc-st tr:last-child td {
+  border-bottom: 0;
+}
+
+/* --- Phone width -------------------------------------------------------------------------- */
+
+.kc-phone-only {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .kc-wrap {
+    padding: 0 16px;
+  }
+  .kc-bar {
+    height: 60px;
+  }
+  .kc-desk-only {
+    display: none !important;
+  }
+  .kc-phone-only {
+    display: block;
+  }
+  .kc-phone-only.kc-ib {
+    display: inline-flex;
+  }
+  .kc-title {
+    font-size: 32px;
+    line-height: 38px;
+  }
+  .kc-grid2 {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .kc-grid2 > .kc-aside {
+    flex: none;
+    width: 100%;
+  }
+  .kc-matches {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .kc-match.featured {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px 18px;
+  }
+  .kc-match.featured .kc-side-line {
+    font-size: 16px;
+    line-height: 24px;
+  }
+  /* Dark: the tournament's tabs float at the bottom, as on the phone. */
+  :root:not([data-mode="light"]) .kc-tabs.kc-float {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 20;
+    max-width: none;
+  }
+  :root:not([data-mode="light"]) .kc-tabs.kc-float > button {
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    height: 54px;
+    padding: 0 2px;
+  }
+  :root:not([data-mode="light"]) .kc-tabbed {
+    padding-bottom: 96px;
+  }
+  .kc-seg {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 1000px) {
+  .kc-wrap {
+    padding: 0 24px;
+  }
+  .kc-matches {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .kc-grid2 > .kc-aside {
+    flex-basis: 300px;
+  }
+}
+
+/* --- Live scoring (both sports) ----------------------------------------------------------- */
+
+.kc-livegrid {
+  gap: 36px;
+}
+.kc-livegrid > .kc-padcol {
+  flex-basis: 440px;
+}
+.kc-score {
+  font-size: 112px;
+  line-height: 112px;
+  font-weight: var(--w-score);
+  font-variant-numeric: var(--figures);
+  letter-spacing: -2px;
+}
+:root[data-mode="light"] .kc-score {
+  font-family: var(--font-display);
+}
+.kc-slash {
+  color: var(--accent);
+}
+:root[data-mode="light"] .kc-slash {
+  color: var(--muted);
+}
+.kc-need {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+  border-radius: 22px;
+  padding: 0 18px;
+  font-size: 15px;
+  margin-top: 14px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-rim);
+}
+:root[data-mode="light"] .kc-need {
+  background: var(--tint);
+  border-color: transparent;
+  color: var(--deep);
+}
+.kc-bt th:not(:first-child),
+.kc-bt td:not(:first-child) {
+  width: 11%;
+}
+.kc-bt th,
+.kc-bt td {
+  padding-left: 8px;
+  padding-right: 0;
+}
+.kc-bt th:first-child,
+.kc-bt td:first-child {
+  padding-left: 0;
+}
+.kc-ball {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: var(--w-strong);
+  border: 1px solid rgba(var(--fg-rgb), 0.28);
+}
+.kc-ball.four {
+  border-color: var(--ring);
+  background: var(--tint);
+  color: var(--deep);
+}
+.kc-ball.w {
+  border-color: var(--danger);
+  background: var(--danger-tint);
+  color: var(--danger-ink);
+}
+.kc-ball.extra {
+  background: var(--chip);
+  border-color: transparent;
+  color: var(--muted);
+}
+.kc-ball.fh {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.kc-pad {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 var(--glass-rim), 0 20px 50px rgba(0, 0, 0, 0.35);
+  border-radius: 32px;
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+}
+:root[data-mode="light"] .kc-pad {
+  background: #fff;
+  border: 0;
+  border-top: 1px solid var(--hair);
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 18px 0 0;
+}
+/* Wide · No ball (· Byes · Leg byes): however many show, they share the row. */
+.kc-mods {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+.kc-pill {
+  min-height: 42px;
+  border-radius: 21px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid transparent;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0 8px;
+}
+.kc-pill[aria-checked="true"] {
+  background: var(--tint);
+  border-color: var(--ring);
+  color: var(--deep);
+}
+:root[data-mode="light"] .kc-pill {
+  background: #fff;
+  border-color: var(--glass-line);
+}
+:root[data-mode="light"] .kc-pill[aria-checked="true"] {
+  background: var(--tint);
+  border-color: var(--ring);
+}
+/* On a no ball, the pad's second row: "The runs came from  Bat · Byes · Leg byes" (as the phone). */
+.kc-from {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.kc-from > span {
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.kc-from > div {
+  display: flex;
+  gap: 8px;
+}
+.kc-from > div > .kc-pill {
+  flex: 1;
+}
+
+/* A labelled on/off switch (the phone's SwitchRow): words on the left, the switch on the right. */
+.kc-switch {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 52px;
+  cursor: pointer;
+}
+.kc-switch > span {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kc-switch b {
+  font-size: 15px;
+  font-weight: var(--w-strong);
+}
+.kc-switch small {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted);
+}
+.kc-switch input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 51px;
+  height: 31px;
+  margin: 0;
+  border-radius: 16px;
+  background: rgba(120, 120, 140, 0.32);
+  position: relative;
+  cursor: pointer;
+  transition: background-color 180ms var(--ease-out, ease-out);
+}
+.kc-switch input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: transform 180ms var(--ease-out, ease-out);
+}
+.kc-switch input[type="checkbox"]:checked {
+  background: var(--accent);
+}
+.kc-switch input[type="checkbox"]:checked::after {
+  transform: translateX(20px);
+}
+:root[data-mode="light"] .kc-switch input[type="checkbox"] {
+  background: var(--line);
+}
+:root[data-mode="light"] .kc-switch input[type="checkbox"]:checked {
+  background: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kc-switch input[type="checkbox"],
+  .kc-switch input[type="checkbox"]::after {
+    transition: none;
+  }
+}
+.kc-keys {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.kc-key {
+  height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  line-height: 32px;
+  font-variant-numeric: var(--figures);
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid transparent;
+  border-radius: 18px;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+}
+.kc-key small {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.kc-key.b {
+  background: var(--tint);
+  color: var(--deep);
+  border-color: var(--ring);
+}
+.kc-key.six {
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+  color: var(--ink);
+}
+:root[data-mode="light"] .kc-key {
+  background: #fff;
+  border-color: var(--glass-line);
+  border-radius: 16px;
+  font-weight: 300;
+}
+:root[data-mode="light"] .kc-key.b {
+  border-color: var(--ring);
+  color: var(--deep);
+}
+:root[data-mode="light"] .kc-key.six {
+  background: var(--tint);
+}
+.kc-padfoot {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  gap: 10px;
+}
+.kc-padfoot .kc-btn {
+  height: 64px;
+  border-radius: 32px;
+  font-size: 18px;
+}
+.kc-padfoot .kc-undo {
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 500;
+}
+:root[data-mode="light"] .kc-padfoot .kc-undo {
+  border-style: dashed;
+  border-color: #7a8391;
+}
+@media (max-width: 700px) {
+  .kc-score {
+    font-size: 76px;
+    line-height: 80px;
+  }
+  /* Columns a phone drops. */
+  .kc-x {
+    display: none;
+  }
+  .kc-bt th:not(:first-child),
+  .kc-bt td:not(:first-child) {
+    width: 15%;
+  }
+  /* The pad docks at the bottom, as on the phone. */
+  .kc-livegrid {
+    padding-bottom: 360px;
+  }
+  .kc-padcol {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 15;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  .kc-padcol .kc-pad {
+    padding: 12px;
+    gap: 8px;
+  }
+  :root[data-mode="light"] .kc-padcol {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #fff;
+    padding: 0 16px 12px;
+    border-top: 1px solid var(--hair);
+  }
+  :root[data-mode="light"] .kc-padcol .kc-pad {
+    border-top: 0;
+    padding-top: 12px;
+  }
+  .kc-padcol .kc-pill {
+    min-height: 38px;
+    font-size: 13px;
+  }
+  .kc-key {
+    height: 56px;
+    font-size: 24px;
+  }
+  .kc-padfoot .kc-btn {
+    height: 56px;
+    font-size: 17px;
+  }
+}

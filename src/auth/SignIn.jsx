@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { sendCode, verifyCode } from "../api/accountApi";
 import ErrorBanner from "../ErrorBanner";
-import { font, footballTheme as theme } from "../theme";
+import { font, neutralTheme as theme, syncDocumentSport } from "../theme";
+import Mark from "../ui/Mark";
 import { formatPhone, useAuthOptions } from "../useAuthOptions";
 import { getSignedOutReason, setSession } from "./session";
 
@@ -15,9 +16,12 @@ const CODE_LENGTH = 6;
 const inputStyle = {
   width: "100%",
   boxSizing: "border-box",
-  padding: "0.75rem 0.9rem",
-  borderRadius: 8,
-  border: "1.5px solid #d8d4c8",
+  minHeight: 48,
+  padding: "0.7rem 0.95rem",
+  borderRadius: 14,
+  border: "1px solid var(--field-line)",
+  background: "var(--field)",
+  color: "var(--ink)",
   fontSize: 16,
   fontFamily: font.body,
 };
@@ -26,11 +30,11 @@ const primaryButton = (busy) => ({
   width: "100%",
   minHeight: 48,
   marginTop: 14,
-  background: theme.accent,
+  background: theme.accentGradient,
   color: theme.accentInk,
   border: "none",
-  borderRadius: 8,
-  fontWeight: 700,
+  borderRadius: 999,
+  fontWeight: 600,
   fontSize: 15,
   cursor: busy ? "wait" : "pointer",
   opacity: busy ? 0.75 : 1,
@@ -52,6 +56,8 @@ const hintStyle = { fontSize: 13, color: theme.muted, margin: "10px 2px 0", line
 
 export default function SignIn() {
   const options = useAuthOptions();
+  // Outside a tournament: the neutral wallpaper (a page left open on a sport would keep its own).
+  useEffect(() => syncDocumentSport("None"), []);
   const [step, setStep] = useState("contact"); // contact | code | name
   // What was typed; once a code is sent, the email or number as the server stored it.
   const [contact, setContact] = useState("");
@@ -133,13 +139,14 @@ export default function SignIn() {
   const waitSeconds = Math.max(0, Math.ceil((resendAt - now) / 1000));
 
   return (
-    <div style={{ minHeight: "100vh", background: theme.background, fontFamily: font.body, color: theme.onDark, padding: "0 clamp(1rem, 4vw, 2rem)" }}>
+    <div style={{ color: theme.onDark, padding: "0 16px 4rem" }}>
       <div style={{ maxWidth: 420, margin: "0 auto", paddingTop: "clamp(2.5rem, 10vh, 6rem)" }}>
-        <p style={{ fontFamily: font.condensed, fontSize: 18, letterSpacing: "0.35em", color: theme.accent, margin: 0, fontWeight: 600 }}>
-          KICKCRICKET
-        </p>
-        <h1 style={{ fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 2.8rem)", margin: "0.2rem 0 1.6rem", lineHeight: 1 }}>
-          {step === "name" ? "WELCOME" : "SIGN IN"}
+        <div className="kc-brand" style={{ cursor: "default", marginBottom: 18 }}>
+          <Mark size={36} />
+          <span>KickCricket</span>
+        </div>
+        <h1 className="kc-title" style={{ margin: "0 0 1.4rem" }}>
+          {step === "name" ? "Welcome" : "Sign in"}
         </h1>
 
         <ErrorBanner message={error} />

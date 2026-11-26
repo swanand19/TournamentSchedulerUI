@@ -41,7 +41,7 @@ export function pathFor({ view, stage, tournamentId, activeMatchId, liveMatchId,
         case "matchSetup": return activeMatchId ? `${t}/match/${activeMatchId}/setup` : t;
         case "liveMatch": return liveMatchId ? `${t}/match/${liveMatchId}` : t;
         case "watchMatch": return watchMatchId ? `${t}/match/${watchMatchId}/watch` : t;
-        case "matches": return matchesTab === "stats" ? `${t}/stats` : t;
+        case "matches": return matchesTab && matchesTab !== "matches" ? `${t}/${matchesTab}` : t;
         default: return t;
       }
     }
@@ -86,7 +86,7 @@ export function parsePath(pathname) {
   if (first === "t" && id(second)) {
     const tournament = (screen, matchId = null) => ({ name: "tournament", id: id(second), screen, matchId });
     if (!third) return tournament("landing");
-    if (["teams", "people", "knockout", "stats", "pool", "auction", "draw"].includes(third) && !fourth) return tournament(third);
+    if (["teams", "people", "knockout", "table", "summary", "stats", "pool", "auction", "draw"].includes(third) && !fourth) return tournament(third);
     if (third === "match" && id(fourth)) {
       if (!fifth) return tournament("match", id(fourth));
       if (fifth === "setup" || fifth === "watch") return tournament(fifth, id(fourth));

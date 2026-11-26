@@ -50,7 +50,7 @@ function Preview({ t, w, sport }) {
           <span style={pill(t.accentSoft, t.accent)}>Not started</span>
         </div>
         <h2 style={{ margin: 0, fontFamily: font.display, fontWeight: 400, fontSize: "clamp(1.6rem, 6vw, 2.4rem)", lineHeight: 1.1 }}>
-          {w.home.name.toUpperCase()} <span style={{ color: t.accent }}>V</span> {w.away.name.toUpperCase()}
+          {w.home.name} <span style={{ color: t.accent }}>v</span> {w.away.name}
         </h2>
         {w.formatLine && <div style={{ fontSize: 14 }}>{w.formatLine}</div>}
         {w.tossLine && <div style={{ fontSize: 14, fontWeight: 600 }}>{w.tossLine}</div>}
@@ -85,9 +85,9 @@ function WatchStrip({ t, sport, matchId, scoring, over, canScore, onOpenScoring,
 }
 
 function inningsLabel(state) {
-  if (state.status === "SuperOver") return "SUPER OVER";
+  if (state.status === "SuperOver") return "Super over";
   const live = state.current;
-  if (!live) return state.status === "Completed" || state.status === "Abandoned" ? "RESULT" : state.status === "InningsBreak" ? "INNINGS BREAK" : "BEFORE THE FIRST BALL";
+  if (!live) return state.status === "Completed" || state.status === "Abandoned" ? "Result" : state.status === "InningsBreak" ? "Innings break" : "Before the first ball";
   const n = live.inningsNumber;
   return `${n}${n === 1 ? "ST" : n === 2 ? "ND" : n === 3 ? "RD" : "TH"} INNINGS`;
 }
@@ -102,9 +102,9 @@ function CricketBoard({ t, state }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ flex: 1, fontFamily: font.condensed, fontSize: 19, letterSpacing: "0.12em", color: t.accent }}>{inningsLabel(state)}</span>
         {finished ? (
-          <span style={pill("rgba(99,153,34,0.18)", "#B9DB94")}>Result</span>
+          <span style={pill("color-mix(in srgb, var(--success) 18%, transparent)", "var(--success-ink)")}>Result</span>
         ) : live ? (
-          <span style={pill(t.successSolid, "#FFFFFF")}><span className="live-dot" />LIVE</span>
+          <span style={pill(t.successSolid, "#FFFFFF")}><span className="live-dot" />Live</span>
         ) : (
           <span style={pill(t.accentSoft, t.accent)}>{state.status === "InningsBreak" ? "Break" : "Not started"}</span>
         )}
@@ -112,8 +112,8 @@ function CricketBoard({ t, state }) {
       {live ? (
         <>
           <div style={{ fontFamily: font.display, fontSize: 24 }}>
-            {live.battingTeamName.toUpperCase()}
-            {opponent && <span style={{ fontFamily: font.body, fontSize: 12, fontWeight: 600, color: t.onDarkMuted, marginInlineStart: 8 }}>V {opponent.toUpperCase()}</span>}
+            {live.battingTeamName}
+            {opponent && <span style={{ fontFamily: font.body, fontSize: 12, fontWeight: 600, color: t.onDarkMuted, marginInlineStart: 8 }}>v {opponent}</span>}
           </div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }} aria-live="polite">
             <span className="num" style={{ fontFamily: font.display, fontSize: "clamp(3rem, 10vw, 4.5rem)", lineHeight: 1 }}>
@@ -127,7 +127,7 @@ function CricketBoard({ t, state }) {
                 {live.overs}
                 {live.oversLimit ? <span style={{ fontSize: 18, color: t.onDarkMuted }}> / {live.oversLimit}</span> : null}
               </span>
-              <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: t.onDarkMuted }}>OVERS · CRR {live.runRate.toFixed(2)}</span>
+              <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: t.onDarkMuted }}>Overs · CRR {live.runRate.toFixed(2)}</span>
             </span>
           </div>
           {live.target != null && (
@@ -141,11 +141,11 @@ function CricketBoard({ t, state }) {
               {live.requiredRunRate != null && <span>RRR {live.requiredRunRate.toFixed(2)}</span>}
             </div>
           )}
-          {live.freeHitPending && <div style={{ color: t.accent, fontWeight: 700, fontSize: 14 }}>FREE HIT — next ball</div>}
+          {live.freeHitPending && <div style={{ color: t.accent, fontWeight: 700, fontSize: 14 }}>Free hit — next ball</div>}
         </>
       ) : (
         <div style={{ fontFamily: font.display, fontSize: 28, lineHeight: 1.1 }}>
-          {state.homeTeamName.toUpperCase()} <span style={{ color: t.accent }}>V</span> {state.awayTeamName.toUpperCase()}
+          {state.homeTeamName} <span style={{ color: t.accent }}>v</span> {state.awayTeamName}
         </div>
       )}
       {done.length > 0 && (
@@ -159,7 +159,7 @@ function CricketBoard({ t, state }) {
         </div>
       )}
       {!live && state.tossSummary && <span style={{ fontSize: 12, color: t.onDarkMuted }}>{state.tossSummary}.</span>}
-      {state.resultSummary && <div style={{ fontFamily: font.display, fontSize: 22, color: t.accent }}>{state.resultSummary.toUpperCase()}</div>}
+      {state.resultSummary && <div style={{ fontFamily: font.display, fontSize: 22, color: t.accent }}>{state.resultSummary}</div>}
     </Board>
   );
 }
@@ -168,7 +168,7 @@ function CreaseCard({ t, live }) {
   const batter = (b, striker) => {
     const sr = b.ballsFaced ? ((b.runs * 100) / b.ballsFaced).toFixed(1) : "0.0";
     return (
-      <div key={b.playerId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 8, background: striker ? "#EDEAE0" : "transparent" }}>
+      <div key={b.playerId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 8, background: striker ? "var(--chip)" : "transparent" }}>
         <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 5, background: striker ? t.accent : "transparent", border: `1.5px solid ${striker ? t.accent : t.muted}` }} />
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: "block", fontWeight: 600, fontSize: 16 }}>{b.playerName}{striker ? " *" : ""}</span>
@@ -184,7 +184,7 @@ function CreaseCard({ t, live }) {
       {live.striker && batter(live.striker, true)}
       {live.nonStriker && batter(live.nonStriker, false)}
       {b && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 8px 4px", borderTop: "1px solid rgba(27,27,27,0.1)", marginTop: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 8px 4px", borderTop: "1px solid rgba(var(--fg-rgb), 0.1)", marginTop: 4 }}>
           <span style={{ flex: 1, fontWeight: 600, fontSize: 16 }}>{b.playerName}</span>
           <span className="num" style={{ fontFamily: font.display, fontSize: 20 }}>{b.overs}-{b.maidens}-{b.runs}-{b.wickets}</span>
         </div>
@@ -213,7 +213,7 @@ function OverStrip({ t, live, ballsPerOver }) {
   return (
     <div style={{ background: t.deck, border: `1px solid ${t.borderOnDark}`, borderRadius: 12, padding: "10px 12px", color: t.onDark }}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
-        <span style={{ flex: 1, fontFamily: font.condensed, fontSize: 18, letterSpacing: "0.12em" }}>THIS OVER ({overNumber})</span>
+        <span style={{ flex: 1, fontFamily: font.condensed, fontSize: 18, letterSpacing: "0.12em" }}>This over ({overNumber})</span>
         <span style={{ fontSize: 12, color: t.onDarkMuted, fontWeight: 600 }}>{runs} runs</span>
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -315,10 +315,10 @@ function FootballBoard({ t, match, events }) {
     <Board t={t}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
         <div style={{ flex: 1, display: "grid", gap: 6 }}>
-          <span style={{ fontFamily: font.condensed, fontSize: 19, letterSpacing: "0.12em", color: t.accent }}>{match.currentPeriodLabel?.toUpperCase()}</span>
+          <span style={{ fontFamily: font.condensed, fontSize: 19, letterSpacing: "0.12em", color: t.accent }}>{match.currentPeriodLabel}</span>
           <span>
-            {isLive ? <span style={pill(t.successSolid, "#FFFFFF")}><span className="live-dot" />LIVE</span>
-              : <span style={pill(done ? "rgba(99,153,34,0.18)" : t.accentSoft, done ? "#B9DB94" : t.accent)}>{status}</span>}
+            {isLive ? <span style={pill(t.successSolid, "#FFFFFF")}><span className="live-dot" />Live</span>
+              : <span style={pill(done ? "color-mix(in srgb, var(--success) 18%, transparent)" : t.accentSoft, done ? "var(--success-ink)" : t.accent)}>{status}</span>}
           </span>
         </div>
         {!done && clock && (
@@ -328,13 +328,13 @@ function FootballBoard({ t, match, events }) {
         )}
       </div>
       <div className="scorebug" aria-live="polite">
-        <div style={{ textAlign: "right", fontFamily: font.display, fontSize: 22 }}>{match.homeTeamName.toUpperCase()}</div>
+        <div style={{ textAlign: "right", fontFamily: font.display, fontSize: 22 }}>{match.homeTeamName}</div>
         <div className="scorebug-score num" style={{ fontFamily: font.display, fontSize: 56, display: "flex", gap: 12, background: t.deckRaised, borderRadius: 12, padding: "0 14px" }}>
           <Bump value={match.homeScore} style={{ color: t.accent }} />
           <span style={{ opacity: 0.5 }}>:</span>
           <Bump value={match.awayScore} />
         </div>
-        <div style={{ textAlign: "left", fontFamily: font.display, fontSize: 22 }}>{match.awayTeamName.toUpperCase()}</div>
+        <div style={{ textAlign: "left", fontFamily: font.display, fontSize: 22 }}>{match.awayTeamName}</div>
       </div>
       {match.penaltyHomeScore != null && match.penaltyAwayScore != null && (
         <div style={{ textAlign: "center", color: t.accent, fontWeight: 700, fontSize: 14 }}>Penalties {match.penaltyHomeScore}–{match.penaltyAwayScore}</div>
@@ -385,10 +385,7 @@ export default function MatchWatch({ sport, matchId, canScore, onBack, onOpenSco
     <OpenPlayerContext.Provider value={onOpenPlayer ?? null}>
       <div style={{ display: "grid", gap: 16, color: t.onDark }}>
         <div>
-          <button
-            onClick={onBack}
-            style={{ minHeight: 44, background: "transparent", color: t.onDark, border: `1px solid ${t.borderOnDark}`, borderRadius: 8, padding: "0.5rem 1rem", fontWeight: 600, cursor: "pointer" }}
-          >
+          <button type="button" className="kc-link" onClick={onBack} style={{ minHeight: 40, fontWeight: 500 }}>
             ← Back to matches
           </button>
         </div>
@@ -399,7 +396,7 @@ export default function MatchWatch({ sport, matchId, canScore, onBack, onOpenSco
           <Preview t={t} w={w} sport={key} />
         ) : (
           <>
-            <div role="tablist" style={{ display: "flex", gap: 8, borderBottom: `1px solid ${t.borderOnDark}` }}>
+            <div role="tablist" aria-label="Match" className="kc-seg" style={{ overflowX: "auto" }}>
               {tabs.map((x) => {
                 const on = tab === x.key;
                 return (
@@ -408,9 +405,9 @@ export default function MatchWatch({ sport, matchId, canScore, onBack, onOpenSco
                     role="tab"
                     aria-selected={on}
                     onClick={() => setTab(x.key)}
-                    style={{ background: "transparent", color: on ? t.accent : t.onDarkMuted, border: "none", borderBottom: `3px solid ${on ? t.accent : "transparent"}`, padding: "0.6rem 1rem", minHeight: 44, fontSize: 15, cursor: "pointer", fontFamily: font.display, letterSpacing: "0.04em" }}
+                    type="button"
                   >
-                    {x.label.toUpperCase()}
+                    {x.label}
                   </button>
                 );
               })}

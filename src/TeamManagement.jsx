@@ -24,10 +24,10 @@ import {
 const inputStyle = {
   padding: "0.4rem 0.6rem",
   borderRadius: 6,
-  border: "1.5px solid #d8d4c8",
+  border: "1.5px solid var(--line)",
   fontSize: 14,
-  background: "#fff",
-  color: "#1B1B1B",
+  background: "var(--field)",
+  color: "var(--ink)",
 };
 
 const emptyDraft = () => ({
@@ -54,7 +54,7 @@ function ShirtField({ team, playerId, value, onChange }) {
         style={{ ...inputStyle, width: 60 }}
       />
       {others.length > 0 && (
-        <span style={{ fontSize: 12, color: "#58625A" }}>Also worn by {others.map((p) => p.name).join(", ")}</span>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>Also worn by {others.map((p) => p.name).join(", ")}</span>
       )}
     </>
   );
@@ -140,7 +140,7 @@ function AddPlayerRow({ tournamentId, team, isCricket, showPhone, theme, playerP
 
   return (
     <div>
-      {error && <p role="alert" style={{ color: "#a33", fontSize: 13, margin: "10px 0 0" }}>{error}</p>}
+      {error && <p role="alert" style={{ color: "var(--danger-ink)", fontSize: 13, margin: "10px 0 0" }}>{error}</p>}
       {step === "find" && (
         <div style={row}>
           <input
@@ -597,19 +597,18 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
     );
   }
 
-  const smallButton = { background: "none", border: "1px solid #ccc", borderRadius: 6, padding: "0.2rem 0.6rem", fontSize: 12, cursor: "pointer", minHeight: 32 };
+  const smallButton = { background: "var(--glass)", color: "var(--ink)", border: "1px solid var(--glass-line)", borderRadius: 18, padding: "0 14px", fontSize: 14, fontWeight: 500, cursor: "pointer", minHeight: 36 };
   const chip = (bg, fg) => ({ fontSize: 11, fontWeight: 700, padding: "0.1rem 0.45rem", borderRadius: 5, background: bg, color: fg, marginLeft: 6, whiteSpace: "nowrap" });
 
   return (
-    <div style={{ maxWidth: 1040, margin: "0 auto", padding: "2.5rem clamp(1rem, 4vw, 2rem)", color: theme.onDark, fontFamily: font.body }}>
-      <button
-        onClick={onBack}
-        style={{ background: theme.surfaceOnDark, color: theme.onDark, border: `1px solid ${theme.borderOnDark}`, borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 20 }}
-      >
-        ← Back
-      </button>
+    <div style={{ color: theme.onDark }}>
+      {onBack && (
+        <button type="button" className="kc-btn sm sec" onClick={onBack} style={{ marginBottom: 18 }}>
+          ← Back
+        </button>
+      )}
 
-      <h2 style={{ fontFamily: font.display, fontSize: 28, margin: "0 0 1.2rem" }}>{canEdit ? <>MANAGE TEAMS &amp; PLAYERS</> : "TEAMS"}</h2>
+      <h2 className="kc-h2" style={{ margin: "0 0 16px" }}>{canEdit ? <>Manage teams &amp; players</> : "Teams"}</h2>
 
       <ErrorBanner message={error} />
 
@@ -628,7 +627,7 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
           <button
             onClick={handleCreateTeam}
             disabled={creatingTeam}
-            style={{ background: theme.deep, color: theme.cream, border: "none", borderRadius: 8, padding: "0.6rem 1.2rem", fontWeight: 600, cursor: creatingTeam ? "not-allowed" : "pointer", fontSize: 14, opacity: creatingTeam ? 0.6 : 1 }}
+            className="kc-btn pri"
           >
             {creatingTeam ? "Adding…" : "Add team"}
           </button>
@@ -664,7 +663,7 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                   <button onClick={() => saveEditTeam(team.id)} style={{ background: theme.successSolid, color: "#fff", border: "none", borderRadius: 6, padding: "0.4rem 0.8rem", fontSize: 14, cursor: "pointer" }}>
                     Save
                   </button>
-                  <button onClick={() => setEditingTeamId(null)} style={{ background: "transparent", border: "1px solid #ccc", borderRadius: 6, padding: "0.4rem 0.8rem", fontSize: 14, cursor: "pointer" }}>
+                  <button onClick={() => setEditingTeamId(null)} style={{ background: "transparent", border: "1px solid var(--line)", borderRadius: 6, padding: "0.4rem 0.8rem", fontSize: 14, cursor: "pointer" }}>
                     Cancel
                   </button>
                 </div>
@@ -675,25 +674,25 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                     style={{ fontWeight: 600, fontSize: 16, cursor: "pointer" }}
                   >
                     {theme.icon} {team.name} <span style={{ fontSize: 14, color: theme.muted }}>({team.players.length} players)</span>
-                    {team.players.some((p) => p.isMe) && <span style={chip(theme.tint, theme.successInk)}>YOUR TEAM</span>}
-                    {team.admins?.some((a) => a.isMe) && <span style={chip(theme.accentSoft, theme.warnInk)}>YOU RUN IT</span>}
+                    {team.players.some((p) => p.isMe) && <span style={chip(theme.tint, theme.successInk)}>Your team</span>}
+                    {team.admins?.some((a) => a.isMe) && <span style={chip(theme.accentSoft, theme.warnInk)}>You run it</span>}
                   </span>
                   <div style={{ display: "flex", gap: 6 }}>
                     {manage && (
-                      <button onClick={() => startEditTeam(team)} style={{ background: "none", border: "1px solid #ccc", borderRadius: 6, padding: "0.3rem 0.7rem", fontSize: 12, cursor: "pointer" }}>
+                      <button onClick={() => startEditTeam(team)} style={smallButton}>
                         Rename
                       </button>
                     )}
                     {canEdit && (
                       <>
-                        <button onClick={() => handleDeleteTeam(team.id)} style={{ background: "none", border: `1px solid ${theme.danger}`, color: "#a33", borderRadius: 6, padding: "0.3rem 0.7rem", fontSize: 12, cursor: "pointer" }}>
+                        <button onClick={() => handleDeleteTeam(team.id)} style={{ ...smallButton, color: "var(--danger-ink)" }}>
                           Delete
                         </button>
                       </>
                     )}
                     <button
                       onClick={() => setExpandedTeamId(expandedTeamId === team.id ? null : team.id)}
-                      style={{ background: "none", border: "1px solid #ccc", borderRadius: 6, padding: "0.3rem 0.7rem", fontSize: 12, cursor: "pointer" }}
+                      style={smallButton}
                     >
                       {expandedTeamId === team.id ? "Hide players" : "Players"}
                     </button>
@@ -703,7 +702,7 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
             </div>
 
             {expandedTeamId === team.id && (
-              <div style={{ marginTop: 12, borderTop: "1px solid #e5e2d8", paddingTop: 12 }}>
+              <div style={{ marginTop: 12, borderTop: "1px solid var(--hair)", paddingTop: 12 }}>
                 {/* Owners share this; players type it under "Join a team" and pick their name. */}
                 {manage && team.joinCode && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: theme.tint, borderRadius: 8, padding: "0.6rem 0.8rem", marginBottom: 12, fontSize: 14 }}>
@@ -719,7 +718,7 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                       Players enter it under “Join a team”, then pick their name — or join as a new player.
                     </span>
                     {team.invite && (
-                      <div style={{ flexBasis: "100%", borderTop: "1px solid #e5e2d8", paddingTop: 8 }}>
+                      <div style={{ flexBasis: "100%", borderTop: "1px solid var(--hair)", paddingTop: 8 }}>
                         <span style={{ color: theme.muted, display: "block", marginBottom: 6 }}>Invite link</span>
                         <InviteLink invite={team.invite} teamName={team.name} buttonStyle={smallButton} mutedColor={theme.muted} />
                       </div>
@@ -762,12 +761,12 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                       <button onClick={saveEditPlayer} style={{ background: theme.successSolid, color: "#fff", border: "none", borderRadius: 6, padding: "0.4rem 0.7rem", fontSize: 12, cursor: "pointer" }}>
                         Save
                       </button>
-                      <button onClick={() => setEditingPlayer(null)} style={{ background: "transparent", border: "1px solid #ccc", borderRadius: 6, padding: "0.4rem 0.7rem", fontSize: 12, cursor: "pointer" }}>
+                      <button onClick={() => setEditingPlayer(null)} style={{ background: "transparent", border: "1px solid var(--line)", borderRadius: 6, padding: "0.4rem 0.7rem", fontSize: 12, cursor: "pointer" }}>
                         Cancel
                       </button>
                     </div>
                   ) : (
-                    <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#EDEAE0", padding: "0.4rem 0.7rem", borderRadius: 6, fontSize: 14, marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
+                    <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--chip)", padding: "0.4rem 0.7rem", borderRadius: 6, fontSize: 14, marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
                       <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>
                         {/* A linked player's own photo (HLD P-26). */}
                         {p.photoUrl && (
@@ -783,8 +782,8 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                               <span style={{ color: theme.muted }}> · {describePlayer(p.cricket)}</span>
                             )
                           : p.position && <span style={{ color: theme.muted }}> · {p.position}</span>}
-                        {p.isMe && <span style={chip(theme.accentSoft, theme.warnInk)}>YOU</span>}
-                        {p.isLinked && !p.isMe && <span style={chip(theme.tint, theme.successInk)} title="Signed in to the app">LINKED</span>}
+                        {p.isMe && <span style={chip(theme.accentSoft, theme.warnInk)}>You</span>}
+                        {p.isLinked && !p.isMe && <span style={chip(theme.tint, theme.successInk)} title="Signed in to the app">Linked</span>}
                         {manage && (p.email || p.phone) && (
                           <span style={{ color: theme.muted, fontSize: 12 }}>
                             {" "}{p.isLinked ? p.email ?? formatPhone(p.phone) : `· waiting for ${p.email ?? formatPhone(p.phone)} to sign up`}
@@ -803,7 +802,7 @@ function TeamManagementBody({ tournamentId, onBack, sport = "Football", canEdit 
                           </button>
                         )}
                         {manage && (
-                          <button onClick={() => handleDeletePlayer(team, p)} style={{ ...smallButton, border: `1px solid ${theme.danger}`, color: "#a33" }}>
+                          <button onClick={() => handleDeletePlayer(team, p)} style={{ ...smallButton, color: "var(--danger-ink)" }}>
                             Remove
                           </button>
                         )}
@@ -877,7 +876,7 @@ function TeamAdmins({ team, busyId, onAdd, onRemove, showPhone, theme, smallButt
   const candidates = team.players.filter((p) => p.isLinked && !running.has(p.name));
 
   return (
-    <div style={{ marginTop: 14, borderTop: "1px solid #e5e2d8", paddingTop: 12 }}>
+    <div style={{ marginTop: 14, borderTop: "1px solid var(--hair)", paddingTop: 12 }}>
       <div style={{ fontSize: 13, fontWeight: 700, color: theme.muted, marginBottom: 4 }}>Team admins</div>
       <p style={{ fontSize: 12, color: theme.muted, margin: "0 0 8px" }}>
         They can add and remove this team’s players and choose its captain. They can’t score matches or change other teams.

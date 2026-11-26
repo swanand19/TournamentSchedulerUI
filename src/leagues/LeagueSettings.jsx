@@ -167,7 +167,7 @@ export default function LeagueSettings({ leagueId, onBack, onDeleted }) {
               <span style={{ fontSize: 14, color: theme.muted }}>No other {theme.label.toLowerCase()} tournaments of yours to add.</span>
             ) : (
               candidates.map((c) => (
-                <div key={c.tournamentId} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, borderTop: "1px solid #e4e0d4" }}>
+                <div key={c.tournamentId} style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, borderTop: "1px solid var(--hair)" }}>
                   <span style={{ flex: 1 }}>
                     <strong style={{ display: "block", fontWeight: 600 }}>{c.name}</strong>
                     <span style={{ fontSize: 13, color: theme.muted }}>{c.line}</span>

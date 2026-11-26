@@ -48,7 +48,7 @@ export default function PictureField({ label, hint, shape, link, name, upload, r
     if (window.confirm(`Remove the ${label.toLowerCase()}? It goes for everyone straight away.`)) run(async () => (await remove()).url);
   };
 
-  const initials = (name ?? "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+  const initials = (name ?? "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("") || "?";
 
   return (
     <div style={{ display: "grid", gap: 10, marginBottom: 14 }}>
@@ -68,9 +68,9 @@ export default function PictureField({ label, hint, shape, link, name, upload, r
       </div>
       {shape === "banner" &&
         (src ? (
-          <img src={src} alt={label} style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", borderRadius: 10, background: theme.tint }} />
+          <img src={src} alt={label} style={{ width: "100%", maxWidth: 420, aspectRatio: "16 / 9", objectFit: "cover", borderRadius: 10, background: theme.tint }} />
         ) : (
-          <div style={{ width: "100%", aspectRatio: "16 / 9", borderRadius: 10, border: `1px dashed ${theme.muted}`, display: "grid", placeItems: "center", color: theme.muted, fontSize: 13 }}>
+          <div style={{ width: "100%", maxWidth: 420, aspectRatio: "16 / 9", borderRadius: 10, border: `1px dashed ${theme.muted}`, display: "grid", placeItems: "center", color: theme.muted, fontSize: 13 }}>
             No banner yet · 16:9
           </div>
         ))}

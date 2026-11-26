@@ -16,7 +16,7 @@ function BattingTable({ rows }) {
     <table className="num" style={{ width: "100%", borderCollapse: "collapse" }}>
       <thead>
         <tr>
-          <th style={{ ...head, textAlign: "left" }}>BATTING</th>
+          <th style={{ ...head, textAlign: "left" }}>Batting</th>
           <th style={head}>R</th>
           <th style={head}>B</th>
           <th style={head}>4s</th>
@@ -26,7 +26,7 @@ function BattingTable({ rows }) {
       </thead>
       <tbody>
         {rows.map((r) => (
-          <tr key={r.playerId} style={{ borderTop: "1px solid #e5e2d8", opacity: r.hasBatted ? 1 : 0.55 }}>
+          <tr key={r.playerId} style={{ borderTop: "1px solid var(--hair)", opacity: r.hasBatted ? 1 : 0.55 }}>
             <td style={nameCell}>
               <strong>{r.playerName}</strong>
               {r.isStriker && <span title="On strike" style={{ color: theme.accentInk }}> *</span>}
@@ -50,19 +50,19 @@ function BowlingTable({ rows }) {
     <table className="num" style={{ width: "100%", borderCollapse: "collapse", marginTop: 14 }}>
       <thead>
         <tr>
-          <th style={{ ...head, textAlign: "left" }}>BOWLING</th>
+          <th style={{ ...head, textAlign: "left" }}>Bowling</th>
           <th style={head}>O</th>
           <th style={head}>M</th>
           <th style={head}>R</th>
           <th style={head}>W</th>
-          <th style={head}>ECON</th>
+          <th style={head}>Econ</th>
           <th style={head}>WD</th>
           <th style={head}>NB</th>
         </tr>
       </thead>
       <tbody>
         {rows.map((r) => (
-          <tr key={r.playerId} style={{ borderTop: "1px solid #e5e2d8" }}>
+          <tr key={r.playerId} style={{ borderTop: "1px solid var(--hair)" }}>
             <td style={nameCell}>{r.playerName}</td>
             <td style={cell}>{r.overs}</td>
             <td style={cell}>{r.maidens}</td>
@@ -91,8 +91,8 @@ function InningsBlock({ innings }) {
     <div style={{ background: theme.cream, color: theme.ink, borderRadius: 12, padding: "1rem 1.1rem", marginBottom: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10, gap: 10 }}>
         <h4 style={{ fontFamily: font.display, fontSize: 16, margin: 0 }}>
-          {innings.battingTeamName.toUpperCase()}
-          {innings.isSuperOver && <span style={{ color: theme.accentInk, fontSize: 12 }}> · SUPER OVER</span>}
+          {innings.battingTeamName}
+          {innings.isSuperOver && <span style={{ color: theme.accentInk, fontSize: 12 }}> · Super over</span>}
           {innings.isFollowOn && <span style={{ color: theme.muted, fontSize: 12 }}> · following on</span>}
         </h4>
         <span style={{ fontFamily: font.display, fontSize: 20 }}>
@@ -103,11 +103,11 @@ function InningsBlock({ innings }) {
 
       <BattingTable rows={innings.batting} />
 
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, borderTop: "1px solid #e5e2d8", padding: "0.4rem 0.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, borderTop: "1px solid var(--hair)", padding: "0.4rem 0.5rem" }}>
         <span style={{ color: theme.muted }}>Extras {extras && `(${extras})`}</span>
         <strong>{innings.extrasTotal}</strong>
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, borderTop: "2px solid #d8d4c8", padding: "0.4rem 0.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, borderTop: "2px solid var(--line)", padding: "0.4rem 0.5rem" }}>
         <strong>Total</strong>
         <strong>
           {innings.runs}/{innings.wickets} ({innings.overs} ov, RR {innings.runRate.toFixed(2)})

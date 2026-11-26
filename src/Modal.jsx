@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const backdrop = {
-  position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex",
+  position: "fixed", inset: 0, background: "var(--scrim)", WebkitBackdropFilter: "blur(6px)", backdropFilter: "blur(6px)", display: "flex",
   alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16,
   overscrollBehavior: "contain",
 };
@@ -65,7 +65,8 @@ export default function Modal({ labelledBy, onClose, panelStyle, children }) {
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        style={{ maxWidth: 420, width: "100%", maxHeight: "85vh", overflowY: "auto", ...panelStyle }}
+        // The sheet under the dialog's own content: a frosted pane in dark, white in light (where panes open up).
+        style={{ maxWidth: 420, width: "100%", maxHeight: "85vh", overflowY: "auto", background: "var(--sheet)", color: "var(--ink)", borderRadius: 24, border: "1px solid var(--pane-line)", boxShadow: "0 30px 80px rgba(0,0,0,0.35)", WebkitBackdropFilter: "blur(24px)", backdropFilter: "blur(24px)", ...panelStyle }}
         onClick={(e) => e.stopPropagation()}
       >
         {children}

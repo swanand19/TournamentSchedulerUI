@@ -2,25 +2,26 @@ import { useRef, useState } from "react";
 
 // Styles and the request runner shared by the lasting-team screens (kept out of parts.jsx so that file holds components only).
 
+/** The phone's pill buttons: the tinted primary, a glass (dark) or outlined (light) secondary, danger. */
 export const button = (theme, kind = "primary") => ({
   minHeight: 44,
-  border: kind === "secondary" ? `1.5px solid ${theme.ink}33` : "none",
-  borderRadius: 8,
-  padding: "0.55rem 1.1rem",
-  fontWeight: 700,
-  fontSize: 14,
+  border: kind === "secondary" ? "1px solid var(--glass-line)" : "1px solid transparent",
+  borderRadius: 22,
+  padding: "0 18px",
+  fontWeight: "var(--w-strong)",
+  fontSize: 15,
   cursor: "pointer",
-  background: kind === "primary" ? theme.accent : kind === "danger" ? "#b3261e" : "transparent",
+  background: kind === "primary" ? theme.accentGradient : kind === "danger" ? "var(--danger-solid)" : "var(--glass)",
   color: kind === "primary" ? theme.accentInk : kind === "danger" ? "#fff" : theme.ink,
 });
 
 export const input = {
   flex: "1 1 200px",
-  minHeight: 44,
-  padding: "0.6rem 0.8rem",
-  borderRadius: 8,
-  border: "1.5px solid #d8d4c8",
-  fontSize: 14,
+  minHeight: 48,
+  padding: "0 14px",
+  borderRadius: 14,
+  border: "1px solid var(--field-line)",
+  fontSize: 15,
   boxSizing: "border-box",
 };
 

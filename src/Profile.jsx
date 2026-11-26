@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { setAppearance, useAppearance } from "./appearance";
 import { getCareer, getProfile } from "./api/profileApi";
 import ErrorBanner from "./ErrorBanner";
 import { font, footballTheme, themeFor } from "./theme";
@@ -36,7 +37,7 @@ const dateRange = (a, b) => {
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const initials = (name) => {
   const w = name.trim().split(/\s+/).filter(Boolean);
-  return w.length === 0 ? "?" : w.length === 1 ? w[0].slice(0, 2).toUpperCase() : (w[0][0] + w[1][0]).toUpperCase();
+  return w.length === 0 ? "?" : w.length === 1 ? w[0].slice(0, 2) : (w[0][0] + w[1][0]);
 };
 
 /** The figure that leads each stat group. */
@@ -49,6 +50,26 @@ const TABS = [
 ];
 
 const plainButton = { background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit", color: "inherit" };
+
+function AppearanceChoice() {
+  const { choice } = useAppearance();
+  return (
+    <div>
+      <div className="kc-cap" style={{ marginBottom: 8 }}>Appearance</div>
+      <div className="kc-seg" role="radiogroup" aria-label="Appearance">
+        {[
+          ["system", "Device"],
+          ["dark", "Dark"],
+          ["light", "Light"],
+        ].map(([key, label]) => (
+          <button key={key} type="button" role="radio" aria-checked={choice === key} className={choice === key ? "on" : undefined} onClick={() => setAppearance(key)}>
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Profile({ who, onBack, onEditAccount, onOpenTournament, onOpenPerson, onWatchMatch }) {
   const [profile, setProfile] = useState(null);
@@ -75,23 +96,19 @@ export default function Profile({ who, onBack, onEditAccount, onOpenTournament, 
   }, [who]);
 
   const base = footballTheme;
-  const theme = themeFor(sport);
 
   return (
-    <div style={{ minHeight: "100vh", background: sport ? theme.background : base.night, fontFamily: font.body, color: base.onDark }}>
-      <header style={{ background: sport ? theme.deck : base.night, borderBottom: `1px solid ${base.borderOnDark}` }}>
-        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 clamp(1rem, 3vw, 1.5rem)", minHeight: 64, display: "flex", alignItems: "center" }}>
-          <button onClick={onBack} style={{ ...plainButton, color: theme.accent, fontWeight: 600, fontSize: 15, minHeight: 44 }}>
-            ← Back
-          </button>
-        </div>
-      </header>
+    <div style={{ color: base.onDark }} data-sport={sport ?? undefined}>
+      <div className="kc-wrap" style={{ paddingTop: 14 }}>
+        <button type="button" className="kc-link" onClick={onBack} style={{ minHeight: 40, fontWeight: 500 }}>
+          ← Back
+        </button>
+      </div>
 
       <main
+        className="kc-wrap"
         style={{
-          maxWidth: 1180,
-          margin: "0 auto",
-          padding: "2rem clamp(1rem, 3vw, 1.5rem) 3rem",
+          padding: "1rem 0 3rem",
           display: "flex",
           flexWrap: "wrap",
           gap: 32,
@@ -171,7 +188,7 @@ function Identity({ profile, follow, onFollowed, onList, onWatchMatch, sport, on
           )}
         </div>
         <div>
-          <h1 style={{ margin: 0, fontFamily: font.display, fontWeight: 400, fontSize: 40, lineHeight: "44px", letterSpacing: 0.5 }}>{profile.name.toUpperCase()}</h1>
+          <h1 className="kc-title">{profile.name}</h1>
           <div style={{ fontSize: 15, color: t.onDarkMuted, marginTop: 4 }}>
             Playing since {monthYear(profile.memberSince)}
             {profile.tournamentsRun > 0 ? ` · Organiser of ${plural(profile.tournamentsRun, "tournament")}` : ""}
@@ -185,6 +202,8 @@ function Identity({ profile, follow, onFollowed, onList, onWatchMatch, sport, on
             Edit account
           </button>
         ) : null}
+        {/* Dark or light, kept in this browser (the phone keeps its own); follows the device unless chosen. */}
+        {profile.isMe ? <AppearanceChoice /> : null}
       </div>
 
       {follow ? (
@@ -234,7 +253,7 @@ function Identity({ profile, follow, onFollowed, onList, onWatchMatch, sport, on
           onClick={() => onWatchMatch(m.tournamentId, m.matchId)}
           style={{ ...plainButton, textAlign: "left", borderRadius: 12, background: t.surfaceOnDark, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 2 }}
         >
-          <span style={{ fontSize: 12, fontWeight: 700, color: t.liveOnDark ?? t.accent }}>● PLAYING NOW · WATCH LIVE</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: t.liveOnDark ?? t.accent }}>● Playing now · watch live</span>
           <span style={{ fontWeight: 700 }}>{m.match}</span>
           <span style={{ fontSize: 13, color: t.onDarkMuted }}>{m.tournamentName}</span>
         </button>

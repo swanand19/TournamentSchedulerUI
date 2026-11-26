@@ -71,18 +71,18 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
     }
   };
 
-  if (loading || !data) return <p style={{ color: "rgba(247,245,239,0.6)" }}>Loading shootout…</p>;
+  if (loading || !data) return <p style={{ color: "rgba(var(--fg-rgb), 0.6)" }}>Loading shootout…</p>;
 
   const kickList = (teamId) => data.kicks.filter((k) => k.teamId === teamId);
   const teams = [match.homeTeam, match.awayTeam].filter(Boolean);
 
   return (
     <div>
-      <div style={{ background: "#F7F5EF", color: "#1B1B1B", borderRadius: 14, padding: "1.5rem", marginBottom: 20, textAlign: "center" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#8a4b1b", letterSpacing: "0.08em", marginBottom: 8 }}>
-          <TargetIcon size={14} /> PENALTY SHOOTOUT
+      <div style={{ background: "var(--cream)", color: "var(--ink)", borderRadius: 14, padding: "1.5rem", marginBottom: 20, textAlign: "center" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--warn-ink)", letterSpacing: "0.08em", marginBottom: 8 }}>
+          <TargetIcon size={14} /> Penalty shootout
         </div>
-        <div className="num" style={{ fontFamily: font.display, fontSize: 42, color: "#1B4332", display: "flex", justifyContent: "center", gap: 12 }}>
+        <div className="num" style={{ fontFamily: font.display, fontSize: 42, color: "var(--fb-deep)", display: "flex", justifyContent: "center", gap: 12 }}>
           <Bump value={data.homeScore} />
           <span style={{ opacity: 0.35 }}>–</span>
           <Bump value={data.awayScore} />
@@ -93,7 +93,7 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
         {teams.map((t) => (
-          <div key={t.id} style={{ background: "#F7F5EF", color: "#1B1B1B", borderRadius: 12, padding: "1rem" }}>
+          <div key={t.id} style={{ background: "var(--cream)", color: "var(--ink)", borderRadius: 12, padding: "1rem" }}>
             <h4 style={{ fontFamily: font.display, fontSize: 16, margin: "0 0 8px" }}>{t.name}</h4>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {kickList(t.id).map((k) => (
@@ -108,11 +108,11 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
         ))}
       </div>
 
-      <div style={{ background: "rgba(247,245,239,0.06)", border: "1px solid rgba(247,245,239,0.15)", borderRadius: 12, padding: "1.2rem", marginBottom: 20 }}>
-        <p style={{ fontSize: 12, color: "rgba(247,245,239,0.7)", marginBottom: 8 }}>
+      <div style={{ background: "rgba(var(--fg-rgb), 0.06)", border: "1px solid rgba(var(--fg-rgb), 0.15)", borderRadius: 12, padding: "1.2rem", marginBottom: 20 }}>
+        <p style={{ fontSize: 12, color: "rgba(var(--fg-rgb), 0.7)", marginBottom: 8 }}>
           Team taking this kick
           {data.nextTeamId && (
-            <span style={{ color: "#F2A93B", fontWeight: 700 }}>
+            <span style={{ color: "var(--fb-accent)", fontWeight: 700 }}>
               {" — "}{(teams.find((t) => t.id === data.nextTeamId) || {}).name} are up
             </span>
           )}
@@ -126,9 +126,9 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
                 onClick={() => { setSelectedTeamId(t.id); setSelectedPlayerId(null); }}
                 style={{
                   flex: 1, padding: "0.5rem", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
-                  border: isTurn ? "1.5px solid #F2A93B" : "1.5px solid transparent",
-                  background: selectedTeamId === t.id ? "#1B4332" : "rgba(247,245,239,0.15)",
-                  color: "#F7F5EF",
+                  border: isTurn ? "1.5px solid var(--fb-accent)" : "1.5px solid transparent",
+                  background: selectedTeamId === t.id ? "var(--fb-accent)" : "rgba(var(--fg-rgb), 0.15)",
+                  color: "var(--on-page)",
                 }}
               >
                 {t.name}{isTurn ? " ●" : ""}
@@ -137,7 +137,7 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
           })}
         </div>
         {data.nextTeamId && selectedTeamId && selectedTeamId !== data.nextTeamId && (
-          <p style={{ fontSize: 12, color: "#F2A93B", marginBottom: 10 }}>
+          <p style={{ fontSize: 12, color: "var(--fb-accent)", marginBottom: 10 }}>
             Out of turn — {(teams.find((t) => t.id === data.nextTeamId) || {}).name} are due to kick.
             Recording anyway is allowed if that's what happened on the pitch.
           </p>
@@ -145,7 +145,7 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
 
         {selectedTeamId && (
           <>
-            <p style={{ fontSize: 12, color: "rgba(247,245,239,0.7)", marginBottom: 8 }}>Taker</p>
+            <p style={{ fontSize: 12, color: "rgba(var(--fg-rgb), 0.7)", marginBottom: 8 }}>Taker</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
                 {eligiblePlayers(selectedTeamId === match.homeTeamId ? match.homeTeam : match.awayTeam).map((p) => {
                     const available = isAvailableTaker(p.id, selectedTeamId);
@@ -160,8 +160,8 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
                             cursor: available ? "pointer" : "not-allowed",
                             opacity: available ? 1 : 0.35,
                             textDecoration: available ? "none" : "line-through",
-                            background: selectedPlayerId === p.id ? "#F2A93B" : "rgba(247,245,239,0.12)",
-                            color: selectedPlayerId === p.id ? "#1B1B1B" : "#F7F5EF",
+                            background: selectedPlayerId === p.id ? "var(--fb-accent)" : "rgba(var(--fg-rgb), 0.12)",
+                            color: selectedPlayerId === p.id ? "var(--ink)" : "var(--on-page)",
                           }}
                         >
                           {p.jerseyNumber != null ? `#${p.jerseyNumber} ` : ""}{p.name}
@@ -186,7 +186,7 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
         )}
       </div>
 
-      <p style={{ fontSize: 12, color: "rgba(247,245,239,0.7)", marginBottom: 8 }}>
+      <p style={{ fontSize: 12, color: "rgba(var(--fg-rgb), 0.7)", marginBottom: 8 }}>
         If the shootout can't reasonably continue, end it manually and declare a winner:
       </p>
       <div style={{ display: "flex", gap: 8 }}>
@@ -195,7 +195,7 @@ export default function PenaltyShootout({ matchId, match, onDecided }) {
             key={t.id}
             onClick={() => handleManualEnd(t.id)}
             disabled={busy}
-            style={{ flex: 1, background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.6rem", fontSize: 12, cursor: "pointer" }}
+            style={{ flex: 1, background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 8, padding: "0.6rem", fontSize: 12, cursor: "pointer" }}
           >
             Declare {t.name} winner
           </button>

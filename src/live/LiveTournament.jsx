@@ -12,6 +12,7 @@ import { SourceContext, publicSource } from "../api/source";
 import { getPublicMatches, getPublicPlayer, getPublicTournament } from "../api/publicApi";
 import { getSession } from "../auth/session";
 import { pictureSrc } from "../pictures";
+import TopBar from "../ui/TopBar";
 
 // A public tournament (6E) for anyone with its link, no account needed: its matches, table and stats,
 // knockouts, and every match through the same viewer the app uses. Outside the sign-in gate (main.jsx).
@@ -97,16 +98,17 @@ export default function LiveTournament() {
   const signedIn = !!getSession();
   const tabs = TABS.filter((x) => x.key !== "knockout" || tournament?.hasKnockouts);
 
-  const page = { minHeight: "100vh", background: theme.background, color: theme.onDark, fontFamily: font.body, paddingBottom: "4rem" };
-  const main = { maxWidth: 1040, margin: "0 auto", padding: "2rem clamp(1rem, 4vw, 2rem)" };
+  // The page sits on the body's wallpaper (syncDocumentSport above picks the sport's), under the same bar as the app.
+  const page = { color: theme.onDark, paddingBottom: "4rem" };
 
   if (error) {
     return (
       <div style={page}>
-        <main style={{ ...main, maxWidth: 560 }}>
-          <h1 style={{ fontFamily: font.display, fontSize: 30, margin: "1rem 0" }}>LIVE SCORES</h1>
+        <TopBar crumb={[{ label: "Live scores" }]} />
+        <main className="kc-wrap kc-main" style={{ maxWidth: 640 }}>
+          <h1 className="kc-title" style={{ marginBottom: 16 }}>Live scores</h1>
           <ErrorBanner message={error} />
-          <a href="/" style={{ color: theme.accent, fontWeight: 600 }}>Go to KickCricket</a>
+          <a href="/" className="kc-link">Go to KickCricket</a>
         </main>
       </div>
     );
@@ -115,53 +117,42 @@ export default function LiveTournament() {
   return (
     <SourceContext.Provider value={source}>
       <div style={page}>
-        <header
-          style={{
-            padding: "2rem clamp(1rem, 4vw, 2rem) 1.5rem",
-            borderBottom: `3px solid ${theme.borderOnDark}`,
-            // The owners' banner (HLD P-26) behind the name, under a wash that keeps the light text readable.
-            ...(tournament?.bannerUrl && {
-              backgroundImage: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url("${pictureSrc(tournament.bannerUrl)}")`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }),
-          }}
-        >
-          <div style={{ maxWidth: 1040, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 12 }}>
-            <div>
-              <p style={{ fontFamily: font.condensed, fontSize: 18, letterSpacing: "clamp(0.12em, 0.9vw, 0.3em)", color: theme.accent, margin: 0, fontWeight: 600 }}>
-                {theme.label.toUpperCase()} · LIVE SCORES
-              </p>
-              <h1 style={{ display: "flex", alignItems: "center", gap: 14, fontFamily: font.display, fontSize: "clamp(2rem, 8vw, 3rem)", margin: "0.2rem 0 0", lineHeight: 1.05, textTransform: "uppercase", overflowWrap: "anywhere" }}>
-                {tournament?.logoUrl && (
-                  <img src={pictureSrc(tournament.logoUrl)} alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
-                )}
-                <span>{tournament?.name ?? "Loading…"}</span>
-              </h1>
+        <TopBar crumb={[{ label: "Live scores" }]} signIn={false} />
+        <div className="kc-wrap kc-thead">
+          {/* The owners' banner (HLD P-26) above the name, on the Matches tab as in the app. */}
+          {tournament?.bannerUrl && place.tab === "matches" && !place.matchId && (
+            <img className="kc-banner" src={pictureSrc(tournament.bannerUrl)} alt="" onError={(e) => (e.currentTarget.style.display = "none")} />
+          )}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
+            {tournament?.logoUrl && (
+              <img className="kc-logo" src={pictureSrc(tournament.logoUrl)} alt="" width={56} height={56} style={{ width: 56, height: 56, borderRadius: 14 }} onError={(e) => (e.currentTarget.style.display = "none")} />
+            )}
+            <div className="kc-grow" style={{ flexBasis: 280 }}>
+              <h1 className="kc-title" style={{ overflowWrap: "anywhere" }}>{tournament?.name ?? "Loading…"}</h1>
               {tournament && (
-                <p style={{ margin: "6px 0 0", color: theme.onDarkMuted, fontSize: 14 }}>
-                  {[STATUS[tournament.status], dateLine(tournament)].filter(Boolean).join(" · ")}
-                </p>
-              )}
-              {/* A league's season (2026-11-24): its league's public page, every season and all-time stats. */}
-              {tournament?.league?.leagueCode && (
-                <a href={`/leagues/${tournament.league.leagueCode}`} style={{ display: "inline-block", marginTop: 8, color: theme.accent, fontSize: 14, fontWeight: 600 }}>
-                  Season {tournament.league.season} of {tournament.league.name} →
-                </a>
+                <div className="kc-sub" style={{ marginTop: 6 }}>
+                  {[STATUS[tournament.status], dateLine(tournament), `${theme.label} · live scores`].filter(Boolean).join(" · ")}
+                  {/* A league's season (2026-11-24): its league's public page, every season and all-time stats. */}
+                  {tournament.league?.leagueCode && (
+                    <>
+                      {" · "}
+                      <a className="kc-link" href={`/leagues/${tournament.league.leagueCode}`}>
+                        Season {tournament.league.season} of {tournament.league.name}
+                      </a>
+                    </>
+                  )}
+                </div>
               )}
             </div>
             {tournament && (
-              <a
-                href={`/follow/${code}`}
-                style={{ minHeight: 44, display: "inline-flex", alignItems: "center", background: theme.accent, color: theme.accentInk, borderRadius: 8, padding: "0 1.1rem", fontWeight: 700, fontSize: 14, textDecoration: "none" }}
-              >
+              <a className="kc-btn sm pri" href={`/follow/${code}`}>
                 {signedIn ? "Follow in the app" : "Sign in to follow"}
               </a>
             )}
           </div>
-        </header>
+        </div>
 
-        <main style={main}>
+        <main className="kc-wrap kc-main">
           {!tournament ? (
             <p style={{ color: theme.onDarkMuted }}>Loading…</p>
           ) : place.matchId ? (
@@ -178,7 +169,7 @@ export default function LiveTournament() {
             </div>
           ) : (
             <>
-              <div role="tablist" style={{ display: "flex", gap: 8, marginBottom: 20, borderBottom: `1px solid ${theme.borderOnDark}`, overflowX: "auto" }}>
+              <div role="tablist" aria-label="Live scores" className="kc-seg" style={{ marginBottom: 20, overflowX: "auto" }}>
                 {tabs.map((x) => {
                   const on = place.tab === x.key;
                   return (
@@ -187,9 +178,9 @@ export default function LiveTournament() {
                       role="tab"
                       aria-selected={on}
                       onClick={() => go({ tab: x.key, matchId: null })}
-                      style={{ background: "transparent", color: on ? theme.accent : theme.onDarkMuted, border: "none", borderBottom: `3px solid ${on ? theme.accent : "transparent"}`, padding: "0.6rem 1rem", minHeight: 44, fontSize: 15, cursor: "pointer", fontFamily: font.display, letterSpacing: "0.04em", whiteSpace: "nowrap" }}
+                      type="button"
                     >
-                      {x.label.toUpperCase()}
+                      {x.label}
                     </button>
                   );
                 })}
@@ -257,7 +248,7 @@ export default function LiveTournament() {
               <p id="public-player" style={{ margin: 0 }}>{player.error}</p>
             ) : (
               <>
-                <h2 id="public-player" style={{ fontFamily: font.display, fontSize: 24, margin: "0 0 12px" }}>{player.name.toUpperCase()}</h2>
+                <h2 id="public-player" style={{ fontFamily: font.display, fontSize: 24, margin: "0 0 12px" }}>{player.name}</h2>
                 <div style={{ display: "grid", gap: 8 }}>
                   {player.sports.filter((s) => s.matches > 0).map((s) => (
                     <div key={s.sport} style={{ background: theme.tint, borderRadius: 10, padding: "0.7rem 0.9rem" }}>
@@ -269,7 +260,7 @@ export default function LiveTournament() {
                   ))}
                   {player.sports.every((s) => s.matches === 0) && <p style={{ margin: 0, fontSize: 14 }}>No completed matches yet.</p>}
                 </div>
-                <button onClick={() => setPlayer(null)} style={{ marginTop: 16, minHeight: 44, width: "100%", background: theme.deep, color: theme.cream, border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer" }}>
+                <button onClick={() => setPlayer(null)} style={{ marginTop: 16, minHeight: 44, width: "100%", background: theme.accent, color: theme.accentInk, border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer" }}>
                   Close
                 </button>
               </>

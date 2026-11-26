@@ -1,18 +1,21 @@
-import { font, themeFor } from "./theme";
+import { themeFor } from "./theme";
 import { useEffect, useState } from "react";
-import { TargetIcon, PauseIcon, FlagIcon, PlayIcon, TrophyIcon } from "./icons";
+import { TargetIcon, FlagIcon, TrophyIcon } from "./icons";
+import { BracketIcon, EyeIcon } from "./ui/icons";
 import { getKnockout } from "./api/knockoutApi";
 import ChampionBanner from "./ChampionBanner";
 
-// Status pill text with its icon; the icon never carries the meaning on its own.
-const paused = (text) => <><PauseIcon size={12} /> {text}</>;
-const target = (text) => <><TargetIcon size={12} /> {text}</>;
-// A match is "live" — and so blocks another from starting — in these states. The two sports name
-// their in-play states differently, so the set is the union of both.
+// A tournament's Matches tab (2026-11-26, the canvas's "Web · Matches" boards): the filter, each match
+// being played featured at the top (Watch / Open live scorer), then the groups and the knockouts as
+// grids of match cards. A card opens what its match allows the person: the scorer's screens for
+// someone who may score (set up, score, the summary), the viewer for everyone else.
+
+// A match is "live" — and so blocks another with the same team from starting — in these states. The
+// two sports name their in-play states differently, so the set is the union of both.
 const LIVE_STATUSES = ["InProgress", "Paused", "PenaltyShootout", "InningsBreak", "SuperOver"];
 
-// The filter above the list, as on the phone's Matches tab. A match is upcoming until it starts,
-// completed once it's over (or abandoned), and live in between.
+// As on the phone's Matches tab: upcoming until it starts, completed once it's over (or abandoned),
+// live in between.
 const FILTERS = [
   { key: "all", label: "All" },
   { key: "live", label: "Live" },
@@ -21,8 +24,50 @@ const FILTERS = [
 ];
 const phaseOf = (m) => (m.status === "NotStarted" ? "upcoming" : m.status === "Completed" || m.status === "Abandoned" ? "completed" : "live");
 
-// Someone who can't score here (a player, say) watches instead: "Match preview", "Watch live",
-// "View result" all open the watcher's screen (onWatchMatch).
+/** The status words on a card. "Paused" covers three football situations, so the period tells them apart. */
+function statusWords(m, isCricket) {
+  if (m.status === "InProgress") return "Live";
+  if (m.status === "NotStarted") return "Upcoming";
+  if (m.status === "Abandoned") return "Abandoned";
+  if (isCricket) {
+    if (m.status === "InningsBreak") return "Innings break";
+    if (m.status === "SuperOver") return "Super over";
+    if (m.status === "Completed") return m.isDraw ? "Draw" : m.isTie ? "Tie" : "Result";
+  } else {
+    if (m.status === "PenaltyShootout") return "Penalties";
+    if (m.status === "Completed") return "Full time";
+    if (m.status === "Paused") {
+      if (m.periodState !== "Ended") return "Stopped";
+      return m.currentHalf === 1 ? "Half time" : m.currentHalf === 3 ? "Extra-time break" : "Awaiting result";
+    }
+  }
+  return "";
+}
+
+/** "Match 3, Group A" / "Match 4, Semi-final 1". */
+const matchLabel = (m) => `Match ${m.matchNumber}${m.roundLabel ? `, ${m.roundLabel}` : m.groupName ? `, Group ${m.groupName}` : ""}`;
+
+function Sides({ m, isCricket }) {
+  const sides = [
+    { name: m.homeTeamName, id: m.homeTeamId, fig: isCricket ? m.homeLine : m.homeScore, pens: m.penaltyWinnerTeamId === m.homeTeamId },
+    { name: m.awayTeamName, id: m.awayTeamId, fig: isCricket ? m.awayLine : m.awayScore, pens: m.penaltyWinnerTeamId === m.awayTeamId },
+  ];
+  const started = m.status !== "NotStarted";
+  return sides.map((s, i) => {
+    const won = (m.winnerTeamId != null && m.winnerTeamId === s.id) || (m.penaltyWinnerTeamId != null && s.pens);
+    const lost = (m.winnerTeamId != null || m.penaltyWinnerTeamId != null) && !won;
+    return (
+      <div key={i} className="kc-side-line" style={{ opacity: lost ? 0.6 : 1 }}>
+        <b>
+          {won && <TrophyIcon size={14} title="Winner" style={{ color: "var(--deep)", marginInlineEnd: 6 }} />}
+          {s.name}
+        </b>
+        <span className="fig">{started ? s.fig ?? "—" : ""}</span>
+      </div>
+    );
+  });
+}
+
 export default function MatchList({ tournamentId, matches, loading, tournamentStarted, starting, onStartTournament, onStartMatch, onEnterMatch, onWatchMatch, onOpenKnockouts, canScore = true, onBack, sport = "Football" }) {
   const isCricket = sport === "Cricket";
   const theme = themeFor(sport);
@@ -51,266 +96,162 @@ export default function MatchList({ tournamentId, matches, loading, tournamentSt
   }
   const busyTeam = (m) => playing.get(m.homeTeamId) ?? playing.get(m.awayTeamId) ?? null;
 
-  const statusStyle = (status) => {
-    if (status === "Completed") return { background: "rgba(99,153,34,0.15)", color: "#3b6d11" };
-    if (status === "Abandoned") return { background: "rgba(226,75,74,0.15)", color: "#a33" };
-    if (LIVE_STATUSES.includes(status))
-      return { background: theme.accentSoft, color: theme.warnInk };
-    return { background: "rgba(247,245,239,0.12)", color: "rgba(247,245,239,0.7)" };
-  };
-
-  // "Paused" covers three different situations, so the period tells them apart at a glance.
-  const footballStatusLabel = (m) => {
-    if (m.status === "InProgress") return "● LIVE";
-    if (m.status === "PenaltyShootout") return target("PENALTIES");
-    if (m.status === "Completed") return "FULL TIME";
-    if (m.status === "Paused") {
-      if (m.periodState !== "Ended") return paused("STOPPED");
-      return m.currentHalf === 1 ? paused("HALF TIME")
-        : m.currentHalf === 3 ? paused("ET BREAK")
-        : paused("AWAITING RESULT");
-    }
-    return "NOT STARTED";
-  };
-
-  const cricketStatusLabel = (m) => {
-    if (m.status === "InProgress") return "● LIVE";
-    if (m.status === "InningsBreak") return paused("INNINGS BREAK");
-    if (m.status === "SuperOver") return target("SUPER OVER");
-    if (m.status === "Abandoned") return "ABANDONED";
-    if (m.status === "Completed") return m.isDraw ? "DRAW" : m.isTie ? "TIE" : "RESULT";
-    return "NOT STARTED";
-  };
-
-  const statusLabel = isCricket ? cricketStatusLabel : footballStatusLabel;
-
   const [filter, setFilter] = useState("all");
   const shown = filter === "all" ? matches : matches.filter((m) => phaseOf(m) === filter);
   const count = (key) => (key === "all" ? matches.length : matches.filter((m) => phaseOf(m) === key).length);
+  const live = shown.filter((m) => LIVE_STATUSES.includes(m.status));
 
-  // The groups, then the knockout matches in their own section (they have no group).
+  // The groups, then the knockout matches in their own section (they have no group). The live ones
+  // are featured above instead.
   const KNOCKOUT = "knockout:";
-  const grouped = shown.reduce((acc, m) => {
-    const key = m.stage === "Knockout" ? KNOCKOUT : m.groupName;
-    (acc[key] = acc[key] || []).push(m);
-    return acc;
-  }, {});
+  const grouped = shown
+    .filter((m) => !LIVE_STATUSES.includes(m.status))
+    .reduce((acc, m) => {
+      const key = m.stage === "Knockout" ? KNOCKOUT : m.groupName;
+      (acc[key] = acc[key] || []).push(m);
+      return acc;
+    }, {});
   const sections = Object.entries(grouped).sort(([a], [b]) => (a === KNOCKOUT) - (b === KNOCKOUT));
+  const hasKnockouts = matches.some((m) => m.stage === "Knockout");
+
+  /** What a card does when clicked, and the caption under it when it can't. */
+  const actionOf = (m) => {
+    if (!canScore) return { open: () => onWatchMatch(m.id) };
+    if (m.status === "NotStarted") {
+      // A knockout match whose sides aren't known yet shows where they come from ("Group A winner").
+      if (m.homeTeamId == null || m.awayTeamId == null) return { note: "Waiting for its teams" };
+      const busy = busyTeam(m);
+      if (busy) return { note: `${busy} is playing now` };
+      return { open: () => onStartMatch(m.id), note: isCricket ? "Set up the toss and XIs" : "Set up and kick off" };
+    }
+    return { open: () => onEnterMatch(m.id) };
+  };
 
   return (
     <div>
       {onBack && (
-        <button
-          onClick={onBack}
-          style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16 }}
-        >
+        <button type="button" className="kc-btn sm sec" onClick={onBack} style={{ marginBottom: 16 }}>
           ← Back to schedule
         </button>
       )}
 
-      <h2 style={{ fontFamily: font.display, fontSize: 26, margin: "0 0 1rem" }}>MATCHES</h2>
       {knockoutsOver > 0 && <ChampionBanner name={champion} theme={theme} />}
 
       {!tournamentStarted && (
-        <div style={{ background: "rgba(247,245,239,0.06)", border: "1px solid rgba(247,245,239,0.15)", borderRadius: 12, padding: "1.5rem", textAlign: "center", marginBottom: 20 }}>
-          <p style={{ color: "rgba(247,245,239,0.75)", marginBottom: 16, fontSize: 14 }}>
-            This tournament hasn't started yet. Starting it will generate matches from the active schedule.
+        <div className="kc-pane lined flush" style={{ padding: "22px 24px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <p className="kc-grow" style={{ margin: 0, flexBasis: 260 }}>
+            This tournament hasn't started yet. Starting it makes its matches from the active schedule.
           </p>
-          <button
-            onClick={onStartTournament}
-            disabled={starting}
-            style={{ background: theme.accent, color: theme.accentInk, border: "none", borderRadius: 10, padding: "0.9rem 1.6rem", fontWeight: 400, fontSize: 16, cursor: "pointer", fontFamily: font.display, letterSpacing: "0.03em" }}
-          >
-            {starting ? "STARTING…" : <><FlagIcon /> START TOURNAMENT</>}
+          <button type="button" className="kc-btn pri" onClick={onStartTournament} disabled={starting}>
+            <FlagIcon /> {starting ? "Starting…" : "Start tournament"}
           </button>
         </div>
       )}
 
-      {tournamentStarted && loading && <p style={{ color: "rgba(247,245,239,0.6)" }}>Loading matches…</p>}
+      {tournamentStarted && loading && !matches.length && <p className="kc-cap">Loading matches…</p>}
 
-      {tournamentStarted && !loading && matches.length > 0 && (
-        <div role="group" aria-label="Show matches" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>
-          {FILTERS.map((f) => {
-            const on = filter === f.key;
-            return (
-              <button
-                key={f.key}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setFilter(f.key)}
-                style={{
-                  minHeight: 36,
-                  background: on ? theme.accent : "rgba(247,245,239,0.1)",
-                  color: on ? theme.accentInk : "#F7F5EF",
-                  border: on ? `1px solid ${theme.accent}` : "1px solid rgba(247,245,239,0.22)",
-                  borderRadius: 999,
-                  padding: "0.35rem 0.9rem",
-                  fontSize: 14,
-                  fontWeight: on ? 700 : 500,
-                  cursor: "pointer",
-                }}
-              >
-                {f.label} <span style={{ opacity: 0.75 }}>{count(f.key)}</span>
+      {tournamentStarted && matches.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div className="kc-seg filter" role="group" aria-label="Show matches">
+            {FILTERS.map((f) => (
+              <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
+                {f.label} <i>{count(f.key)}</i>
               </button>
-            );
-          })}
+            ))}
+          </div>
+          <span className="kc-grow" />
+          {hasKnockouts && onOpenKnockouts && (
+            <button type="button" className="kc-link kc-desk-only" onClick={onOpenKnockouts}>
+              <BracketIcon size={18} /> See the bracket
+            </button>
+          )}
         </div>
       )}
 
-      {tournamentStarted && !loading && matches.length > 0 && shown.length === 0 && (
-        <p style={{ color: "rgba(247,245,239,0.7)", fontSize: 14 }}>
+      {tournamentStarted && matches.length > 0 && shown.length === 0 && (
+        <p className="kc-sub" style={{ marginTop: 18 }}>
           {filter === "live" ? "No match is being played right now." : filter === "upcoming" ? "No matches left to play." : "No matches have finished yet."}
         </p>
       )}
 
-      {tournamentStarted && !loading && sections.map(([groupName, groupMatches]) => (
-        <div key={groupName} style={{ marginBottom: 24 }}>
-          {groupName === KNOCKOUT ? (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <h3 style={{ fontFamily: font.display, fontSize: 18, color: theme.accent, margin: 0 }}>KNOCKOUTS</h3>
-              {onOpenKnockouts && (
-                <button onClick={onOpenKnockouts} style={{ background: "none", border: "none", color: theme.accent, textDecoration: "underline", fontSize: 14, cursor: "pointer", minHeight: 44 }}>
-                  See the bracket
+      {/* Each match being played, featured: the score and the two ways in. */}
+      {tournamentStarted &&
+        live.map((m) => (
+          <div key={m.id} className="kc-match featured drop-in" style={{ marginTop: 20 }}>
+            <div style={{ minWidth: 0 }}>
+              <span className="kc-status" style={{ marginBottom: 6 }}>
+                <span className="kc-dot" aria-hidden="true" /> {statusWords(m, isCricket)} · {matchLabel(m)}
+              </span>
+              <Sides m={m} isCricket={isCricket} />
+              {!isCricket && m.penaltyHomeScore != null && (
+                <span className="kc-cap">
+                  <TargetIcon size={12} /> {m.penaltyHomeScore}–{m.penaltyAwayScore} on penalties
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" className="kc-btn sec" onClick={() => onWatchMatch(m.id)}>
+                <EyeIcon /> Watch
+              </button>
+              {canScore && (
+                <button type="button" className="kc-btn pri" onClick={() => onEnterMatch(m.id)}>
+                  Open live scorer
                 </button>
               )}
             </div>
-          ) : (
-            <h3 style={{ fontFamily: font.display, fontSize: 18, color: theme.accent, marginBottom: 10 }}>GROUP {groupName}</h3>
-          )}
-          <div className="stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
-            {groupMatches.map((m, i) => {
-              const st = statusStyle(m.status);
-              const busy = m.status === "NotStarted" ? busyTeam(m) : null;
-              // A knockout match whose sides aren't known yet shows where they come from ("Group A winner").
-              const waiting = m.status === "NotStarted" && (m.homeTeamId == null || m.awayTeamId == null);
-              const canStart = m.status === "NotStarted" && !busy && !waiting;
-              const isLive = LIVE_STATUSES.includes(m.status);
-              return (
-                // The live match is ringed in the accent so it can be found in a long list at a glance.
-                <div key={m.id} style={{ "--i": i, background: theme.cream, color: theme.ink, borderRadius: 10, padding: "1rem", boxShadow: isLive ? `0 0 0 2px ${theme.accent}` : "none" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span style={{ fontFamily: "'Teko', sans-serif", fontSize: 12, color: theme.muted, fontWeight: 600 }}>
-                      M{String(m.matchNumber).padStart(2, "0")}{m.roundLabel ? ` · ${m.roundLabel.toUpperCase()}` : ""}
-                    </span>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: "0.25rem 0.6rem", borderRadius: 6, ...st }}>
-                      {m.status === "InProgress" ? <><span className="live-dot" />LIVE</> : statusLabel(m)}
-                    </span>
-                  </div>
-                  {/* Cricket scores are two lines of their own ("164/6 (20.0)"), so the sides
-                      stack rather than sitting either end of a single score. */}
-                  {isCricket ? (
-                    <div className="num" style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>
-                      {[
-                        { name: m.homeTeamName, line: m.homeLine, id: m.homeTeamId },
-                        { name: m.awayTeamName, line: m.awayLine, id: m.awayTeamId },
-                      ].map((side) => (
-                        <div key={side.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "2px 0" }}>
-                          <span style={{ opacity: m.winnerTeamId && m.winnerTeamId !== side.id ? 0.55 : 1 }}>
-                            {m.winnerTeamId != null && m.winnerTeamId === side.id && <TrophyIcon size={14} title="Winner" style={{ color: theme.warnInk, marginInlineEnd: 4 }} />}
-                            {side.name}
-                          </span>
-                          <span style={{ fontFamily: font.display, fontSize: 16, color: theme.deep, whiteSpace: "nowrap" }}>
-                            {side.line ?? (m.status === "NotStarted" ? "" : "—")}
-                          </span>
-                        </div>
-                      ))}
-                      {m.status === "NotStarted" && (
-                        <div style={{ textAlign: "center", fontFamily: font.display, fontSize: 14, color: theme.warnInk, marginTop: 4 }}>VS</div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="num" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 16, fontWeight: 600, marginBottom: 12 }}>
-                      <span style={{ flex: 1 }}>{m.homeTeamName}</span>
-                      {m.penaltyWinnerTeamId != null && m.penaltyWinnerTeamId === m.homeTeamId && <TrophyIcon size={14} title="Won on penalties" style={{ color: theme.warnInk, marginInlineStart: 4 }} />}{m.status !== "NotStarted" ? (
-                        <span style={{ fontFamily: font.display, fontSize: 18, color: theme.deep, margin: "0 10px" }}>
-                          {m.homeScore} - {m.awayScore}
-                        </span>
-                      ) : (
-                        <span style={{ fontFamily: font.display, fontSize: 14, color: theme.warnInk, margin: "0 10px" }}>VS</span>
-                      )}
-                      <span style={{ flex: 1, textAlign: "right" }}>
-                        {m.penaltyWinnerTeamId != null && m.penaltyWinnerTeamId === m.awayTeamId && <TrophyIcon size={14} title="Won on penalties" style={{ color: theme.warnInk, marginInlineEnd: 4 }} />}
-                        {m.awayTeamName}
-                      </span>
-                    </div>
-                  )}
-
-                  {isCricket && m.resultSummary && (
-                    <div style={{ textAlign: "center", fontSize: 11, color: theme.warnInk, fontWeight: 700, marginTop: -6, marginBottom: 10 }}>
-                      {m.resultSummary}
-                    </div>
-                  )}
-                  {!isCricket && m.penaltyHomeScore != null && (
-                    <div style={{ textAlign: "center", fontSize: 11, color: theme.warnInk, fontWeight: 700, marginTop: -6, marginBottom: 10 }}>
-                      <TargetIcon size={12} /> {m.penaltyHomeScore}-{m.penaltyAwayScore} on penalties
-                    </div>
-                  )}
-
-                  {!canScore && (
-                    <button
-                      onClick={() => onWatchMatch(m.id)}
-                      style={{
-                        width: "100%",
-                        background: isLive ? theme.accent : "transparent",
-                        color: isLive ? theme.accentInk : theme.deep,
-                        border: isLive ? "none" : `1.5px solid ${theme.deep}`,
-                        borderRadius: 8,
-                        padding: "0.6rem",
-                        fontWeight: 700,
-                        fontSize: 14,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {isLive ? <><span className="live-dot" />Watch live</> : m.status === "NotStarted" ? "Match preview" : "View result"}
-                    </button>
-                  )}
-
-                  {canScore && m.status === "NotStarted" && (
-                    <button
-                      onClick={() => onStartMatch(m.id)}
-                      disabled={!canStart}
-                      style={{
-                        width: "100%",
-                        background: theme.deep,
-                        color: theme.cream,
-                        border: "none",
-                        borderRadius: 8,
-                        padding: "0.6rem",
-                        fontWeight: 700,
-                        fontSize: 14,
-                        cursor: canStart ? "pointer" : "not-allowed",
-                      }}
-                    >
-                      {waiting ? "Waiting for its teams" : busy ? `${busy} is playing now` : <><PlayIcon size={14} /> Start match</>}
-                    </button>
-                  )}
-
-                  {canScore && isLive && (
-                    <button
-                      onClick={() => onEnterMatch(m.id)}
-                      style={{ width: "100%", background: theme.accent, color: theme.accentInk, border: "none", borderRadius: 8, padding: "0.6rem", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
-                    >
-                      <span className="live-dot" />Enter live match
-                    </button>
-                  )}
-                  {canScore && (m.status === "Completed" || m.status === "Abandoned") && (
-                    <button
-                      onClick={() => onEnterMatch(m.id)}
-                      style={{ width: "100%", background: "transparent", color: theme.deep, border: `1.5px solid ${theme.deep}`, borderRadius: 8, padding: "0.6rem", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
-                    >
-                      View summary
-                    </button>
-                  )}
-                </div>
-              );
-            })}
           </div>
-        </div>
-      ))}
+        ))}
 
-      {tournamentStarted && !loading && matches.length === 0 && (
-        <p style={{ color: "rgba(247,245,239,0.6)", fontSize: 14 }}>No matches found.</p>
-      )}
+      {tournamentStarted &&
+        sections.map(([groupName, groupMatches]) => (
+          <section key={groupName}>
+            <div className="kc-sechd">
+              <h2 className="kc-h2">{groupName === KNOCKOUT ? "Knockouts" : `Group ${groupName}`}</h2>
+              {groupName === KNOCKOUT && onOpenKnockouts ? (
+                <button type="button" className="kc-link" onClick={onOpenKnockouts}>
+                  Bracket
+                </button>
+              ) : (
+                <span className="kc-cap">
+                  {groupMatches.length} {groupMatches.length === 1 ? "match" : "matches"}
+                </span>
+              )}
+            </div>
+            <div className="kc-matches stagger">
+              {groupMatches.map((m, i) => {
+                const act = actionOf(m);
+                const done = m.status === "Completed" || m.status === "Abandoned";
+                const Tag = act.open ? "button" : "div";
+                return (
+                  <Tag
+                    key={m.id}
+                    type={act.open ? "button" : undefined}
+                    className={`kc-match${act.open ? " pressable" : ""}`}
+                    style={{ "--i": i, cursor: act.open ? "pointer" : "default" }}
+                    onClick={act.open}
+                    aria-label={act.open ? `${matchLabel(m)}: ${m.homeTeamName} v ${m.awayTeamName}` : undefined}
+                  >
+                    <span className="lab">
+                      <span>{matchLabel(m)}</span>
+                      <span className={done ? "res" : undefined}>{statusWords(m, isCricket)}</span>
+                    </span>
+                    <Sides m={m} isCricket={isCricket} />
+                    {isCricket && m.resultSummary && <span className="won">{m.resultSummary}</span>}
+                    {!isCricket && m.penaltyHomeScore != null && (
+                      <span className="won">
+                        <TargetIcon size={12} /> {m.penaltyHomeScore}–{m.penaltyAwayScore} on penalties
+                      </span>
+                    )}
+                    {!done && act.note && <span className="kc-cap" style={{ marginTop: 2 }}>{act.note}</span>}
+                    {!canScore && !done && m.status === "NotStarted" && <span className="kc-cap" style={{ marginTop: 2 }}>Match preview</span>}
+                  </Tag>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+
+      {tournamentStarted && !loading && matches.length === 0 && <p className="kc-sub">No matches yet.</p>}
     </div>
   );
 }

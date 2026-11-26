@@ -390,7 +390,7 @@ function LotDeck({ s, now, act, action }) {
         </div>
         {leftMs != null && (
           <div className="stack" style={{ alignItems: "flex-end" }}>
-            <span className="teko num" style={{ fontSize: 56, lineHeight: "48px", color: leftMs <= 3000 && !paused ? "#ffb4b3" : undefined }}>{Math.ceil(leftMs / 1000)}s</span>
+            <span className="teko num" style={{ fontSize: 56, lineHeight: "48px", color: leftMs <= 3000 && !paused ? "var(--danger-ink)" : undefined }}>{Math.ceil(leftMs / 1000)}s</span>
             <span className="small dim">{paused ? "paused" : "clock"}</span>
           </div>
         )}
@@ -442,7 +442,7 @@ function Purses({ s, wide }) {
           <div key={t.teamId} className={wide ? `tile${t.isHighest ? " lit" : ""}` : "between small"}>
             {wide ? (
               <>
-                <div className="between"><b>{t.name}</b>{t.isHighest && <span className="small gold" style={{ fontWeight: 700 }}>HIGHEST</span>}</div>
+                <div className="between"><b>{t.name}</b>{t.isHighest && <span className="small gold" style={{ fontWeight: 700 }}>Highest</span>}</div>
                 <span className="teko num" style={{ fontSize: 34, lineHeight: "30px" }}>{amount(t.purseLeft)}</span>
                 <span className="small dim">{set.unit} left · {t.players} of {set.minSquad}–{set.maxSquad}</span>
               </>
@@ -465,8 +465,8 @@ function SoldCard({ last, s }) {
     <div role="status" style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 40, padding: 16 }}>
       <section className="stamp" style={{ width: "min(620px, 100%)", borderRadius: 24, padding: "36px 40px", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
         background: last.sold ? "linear-gradient(180deg, color-mix(in srgb, var(--acc) 30%, var(--deck)), var(--deck))" : "var(--deck)",
-        border: `3px solid ${last.sold ? "var(--acc)" : "rgba(247,245,239,.3)"}`, boxShadow: "0 30px 120px rgba(0,0,0,.5)" }}>
-        <div className="disp" style={{ fontSize: 88, lineHeight: "84px", color: last.sold ? "var(--acc)" : "#F7F5EF" }}>{last.sold ? "Sold" : "Unsold"}</div>
+        border: `3px solid ${last.sold ? "var(--acc)" : "rgba(var(--fg-rgb), .3)"}`, boxShadow: "0 30px 120px rgba(0,0,0,.5)" }}>
+        <div className="disp" style={{ fontSize: 88, lineHeight: "84px", color: last.sold ? "var(--acc)" : "var(--on-page)" }}>{last.sold ? "Sold" : "Unsold"}</div>
         <div className="disp" style={{ fontSize: 38, lineHeight: "42px" }}>{last.playerName}</div>
         {last.sold && (
           <div style={{ fontSize: 22 }}>
@@ -537,7 +537,7 @@ function Results({ s, sport, act, action, tournamentId }) {
                 <div key={x.lotId} className="between small">
                   <span className="stack" style={{ minWidth: 0 }}>
                     <span>{x.name}</span>
-                    <span className="muted" style={{ fontSize: 12, color: x.movedFromTeamName ? "#8a4b1b" : undefined }}>
+                    <span className="muted" style={{ fontSize: 12, color: x.movedFromTeamName ? "var(--warn-ink)" : undefined }}>
                       {x.movedFromTeamName ? `Moved from ${x.movedFromTeamName}` : [x.role, x.tierName && `Tier ${x.tierName}`, x.byDraw ? "drawn" : x.assigned ? "assigned" : x.round > 1 ? `round ${x.round}` : null].filter(Boolean).join(" · ")}
                     </span>
                   </span>
@@ -671,7 +671,7 @@ function FillDialog({ tournamentId, s, sport, act, action, onClose }) {
           {p.teams.map((t) => (
             <div key={t.teamId} className="between body">
               <b>{t.name}</b>
-              <span className="row num"><span className="muted small">{t.has} → {t.has + t.gets}</span><b className="gold" style={{ color: t.gets ? "var(--s1)" : "#6b675b", width: 48, textAlign: "right" }}>{t.gets ? `+${t.gets}` : "none"}</b></span>
+              <span className="row num"><span className="muted small">{t.has} → {t.has + t.gets}</span><b className="gold" style={{ color: t.gets ? "var(--s1)" : "var(--muted)", width: 48, textAlign: "right" }}>{t.gets ? `+${t.gets}` : "none"}</b></span>
             </div>
           ))}
           <span className="small muted">{p.note}</span>

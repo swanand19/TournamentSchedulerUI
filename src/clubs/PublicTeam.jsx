@@ -7,9 +7,9 @@ import { Card, Errors, Heading, Page } from "./parts";
 // results only — the server strips emails, numbers, codes and photos. A tournament that is public links to its live scores.
 
 const SECTIONS = [
-  { key: "live", title: "BEING PLAYED" },
-  { key: "upcoming", title: "STILL TO PLAY" },
-  { key: "past", title: "PLAYED" },
+  { key: "live", title: "Being played" },
+  { key: "upcoming", title: "Still to play" },
+  { key: "past", title: "Played" },
 ];
 
 export default function PublicTeam({ code }) {
@@ -70,13 +70,13 @@ export default function PublicTeam({ code }) {
         );
       })}
 
-      <Heading theme={theme}>PLAYERS · {club.players.length}</Heading>
+      <Heading theme={theme}>Players · {club.players.length}</Heading>
       <Card theme={theme}>
         {club.players.length === 0 ? (
           <span style={{ color: theme.muted }}>No players yet.</span>
         ) : (
           club.players.map((p, i) => (
-            <span key={i} style={{ padding: "4px 0", borderBottom: "1px solid #e4e0d4" }}>
+            <span key={i} style={{ padding: "4px 0", borderBottom: "1px solid var(--hair)" }}>
               <strong style={{ fontWeight: 600 }}>{p.name}</strong>
               {p.isCaptain ? " · Captain" : ""}
               {p.detail ? <span style={{ color: theme.muted }}> · {p.detail}</span> : null}

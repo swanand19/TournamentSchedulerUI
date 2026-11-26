@@ -18,6 +18,7 @@ import CricketScorecard from "./CricketScorecard";
 import Bump from "../Bump";
 import Modal from "../Modal";
 import ErrorBanner from "../ErrorBanner";
+import { BackIcon, OutIcon, UndoIcon } from "../ui/icons";
 import ScoringBanner from "../ScoringBanner";
 import { ScoringControls } from "../ScoringControls";
 import { claimScoring } from "../api/scoringApi";
@@ -30,45 +31,49 @@ import { LIVE_POLL_MS, useLive } from "../realtime/useLive";
 // which bowlers may take the next over, which dismissals are on, whether the innings can be
 // declared. If a button is missing, the engine said so.
 
+// The phone's surfaces (2026-11-26): content on panes, the pad on glass; in light, open sections.
 const panel = {
-  background: theme.surfaceOnDark,
-  border: `1px solid ${theme.borderOnDark}`,
-  borderRadius: 12,
-  padding: "1rem 1.1rem",
+  background: theme.cream,
+  borderRadius: 22,
+  padding: "16px 20px",
   marginBottom: 14,
 };
 
-const lightPanel = { ...panel, background: theme.cream, color: theme.ink, border: "none" };
+const lightPanel = panel;
 
 const button = (background, color) => ({
   background,
   color,
-  border: "none",
-  borderRadius: 8,
-  padding: "0.55rem 1rem",
-  fontWeight: 700,
-  fontSize: 14,
+  border: "1px solid transparent",
+  borderRadius: 22,
+  minHeight: 44,
+  padding: "0 18px",
+  fontWeight: "var(--w-strong)",
+  fontSize: 15,
   cursor: "pointer",
 });
 
 const ghostButton = {
-  background: "transparent",
-  color: theme.onDark,
-  border: `1px solid ${theme.borderOnDark}`,
-  borderRadius: 8,
-  padding: "0.5rem 1rem",
-  fontSize: 14,
+  background: "var(--glass)",
+  color: theme.ink,
+  border: "1px solid var(--glass-line)",
+  borderRadius: 22,
+  minHeight: 44,
+  padding: "0 18px",
+  fontSize: 15,
+  fontWeight: 500,
   cursor: "pointer",
 };
 
 const select = {
-  padding: "0.45rem 0.6rem",
-  borderRadius: 6,
-  border: "1.5px solid #d8d4c8",
-  fontSize: 14,
-  background: "#fff",
+  minHeight: 44,
+  padding: "0 12px",
+  borderRadius: 14,
+  border: "1px solid var(--field-line)",
+  fontSize: 15,
+  background: "var(--field)",
   color: theme.ink,
-  minWidth: 160,
+  minWidth: 180,
 };
 
 /**
@@ -79,15 +84,15 @@ const select = {
 function DlsPanel({ dls, chasing }) {
   const ahead = dls.runsAheadOfPar;
   const status = ahead == null ? null
-    : ahead > 0 ? { text: `Ahead by ${ahead}`, color: "#A8DC86" }
-    : ahead < 0 ? { text: `Behind by ${-ahead}`, color: "#F4A3A3" }
+    : ahead > 0 ? { text: `Ahead by ${ahead}`, color: "var(--success-ink)" }
+    : ahead < 0 ? { text: `Behind by ${-ahead}`, color: "var(--danger-ink)" }
     : { text: "Level with par", color: theme.onDark };
 
   return (
     <div style={{ ...panel, padding: "0.8rem 1rem" }} aria-live="polite">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: theme.accent }}>
-          DLS · {dls.edition.toUpperCase()}
+          DLS · {dls.edition}
         </span>
         {dls.target != null && (
           <span className="num" style={{ fontSize: 14 }}>
@@ -135,7 +140,7 @@ function ReduceOversDialog({ live, busy, isDls, onCancel, onConfirm }) {
 
   return (
     <Modal labelledBy="reduce-title" onClose={onCancel} panelStyle={{ ...lightPanel, marginBottom: 0 }}>
-      <h4 id="reduce-title" style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 6px" }}>REDUCE OVERS</h4>
+      <h4 id="reduce-title" style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 6px" }}>Reduce overs</h4>
       <p style={{ fontSize: 14, color: theme.muted, margin: "0 0 12px", lineHeight: 1.5 }}>
         {live.battingTeamName} are {live.overs} overs into a {live.oversLimit}-over innings.
         {isDls && live.inningsNumber === 2 && " The target will be revised by DLS."}
@@ -153,10 +158,10 @@ function ReduceOversDialog({ live, busy, isDls, onCancel, onConfirm }) {
         />
       </label>
       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-        <button onClick={() => onConfirm(overs)} disabled={busy || !valid} style={button(theme.deep, theme.cream)}>
+        <button onClick={() => onConfirm(overs)} disabled={busy || !valid} style={button(theme.accent, theme.accentInk)}>
           Reduce to {overs} over{overs === 1 ? "" : "s"}
         </button>
-        <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid #ccc" }}>
+        <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid var(--line)" }}>
           Cancel
         </button>
       </div>
@@ -181,7 +186,7 @@ function ReplacePlayerDialog({ actions, busy, onCancel, onConfirm }) {
 
   return (
     <Modal labelledBy="replace-title" onClose={onCancel} panelStyle={{ ...lightPanel, marginBottom: 0 }}>
-      <h4 id="replace-title" style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 6px" }}>CORRECT A PLAYER</h4>
+      <h4 id="replace-title" style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 6px" }}>Correct a player</h4>
       <p style={{ fontSize: 14, color: theme.muted, margin: "0 0 12px", lineHeight: 1.5 }}>
         Picked the wrong name? Nothing that happened changes — only who it's credited to.
       </p>
@@ -222,10 +227,10 @@ function ReplacePlayerDialog({ actions, busy, onCancel, onConfirm }) {
         </>
       )}
       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-        <button onClick={() => onConfirm(wrong.playerId, right.playerId)} disabled={busy || !wrong || !right} style={button(theme.deep, theme.cream)}>
+        <button onClick={() => onConfirm(wrong.playerId, right.playerId)} disabled={busy || !wrong || !right} style={button(theme.accent, theme.accentInk)}>
           {right ? `Make it ${right.playerName}` : "Correct"}
         </button>
-        <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid #ccc" }}>
+        <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid var(--line)" }}>
           Cancel
         </button>
       </div>
@@ -234,46 +239,86 @@ function ReplacePlayerDialog({ actions, busy, onCancel, onConfirm }) {
 }
 
 /** A chip in the over strip: the ball as a scorer would write it. */
+/** One ball of "This over": a run in a ring, a four or six in the accent's ring, a wicket in red, an extra as a pill. */
 function BallChip({ ball }) {
-  const background = ball.isWicket ? "#e24b4a"
-    : ball.isBoundary ? theme.accent
-    : ball.isExtra ? "rgba(247,245,239,0.25)"
-    : "rgba(247,245,239,0.12)";
-  const color = ball.isBoundary ? theme.accentInk : theme.onDark;
-
+  const kind = ball.isWicket ? " w" : ball.isBoundary ? " four" : ball.isExtra ? " extra" : "";
   return (
-    <span
-      title={ball.isFreeHit ? "Free hit" : undefined}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minWidth: 32,
-        height: 32,
-        padding: "0 6px",
-        borderRadius: 16,
-        background,
-        color,
-        fontWeight: 700,
-        fontSize: 12,
-        border: ball.isFreeHit ? `2px solid ${theme.accent}` : "none",
-      }}
-    >
+    <span className={`kc-ball${kind}${ball.isFreeHit ? " fh" : ""}`} title={ball.isFreeHit ? "Free hit" : undefined}>
       {ball.display}
     </span>
   );
 }
 
-function BatterRow({ batter, striker }) {
-  if (!batter) return null;
+const strikeRate = (b) => (b.ballsFaced > 0 ? ((b.runs * 100) / b.ballsFaced).toFixed(1) : "—");
+
+/** "2.3" overs at 19 runs: 7.60 an over. */
+function economy(bowler, ballsPerOver = 6) {
+  const [o, b = "0"] = String(bowler.overs).split(".");
+  const balls = Number(o) * ballsPerOver + Number(b);
+  return balls > 0 ? ((bowler.runs * ballsPerOver) / balls).toFixed(2) : "—";
+}
+
+/** The batters in and this over's bowler, as the phone's board shows them. */
+function Crease({ live, ballsPerOver }) {
+  const batters = [live.striker && { ...live.striker, on: true }, live.nonStriker].filter(Boolean);
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, padding: "0.25rem 0" }}>
-      <span style={{ fontWeight: striker ? 700 : 400 }}>
-        {batter.playerName}{striker ? " *" : ""}
-      </span>
-      <span style={{ color: theme.onDarkMuted }}>
-        {batter.runs} ({batter.ballsFaced}){batter.fours || batter.sixes ? ` · ${batter.fours}×4 ${batter.sixes}×6` : ""}
-      </span>
+    <div style={{ ...panel, padding: "6px 20px 10px" }}>
+      <table className="kc-st num kc-bt">
+        <thead>
+          <tr>
+            <th className="l">Batting</th>
+            <th>Runs</th>
+            <th>Balls</th>
+            <th className="kc-x">4s</th>
+            <th className="kc-x">6s</th>
+            <th>SR</th>
+          </tr>
+        </thead>
+        <tbody>
+          {batters.map((b) => (
+            <tr key={b.playerId ?? b.playerName}>
+              <td className="l">
+                <b style={{ fontWeight: "var(--w-strong)" }}>{b.playerName}</b>
+                {b.on && <span style={{ color: "var(--deep)", fontSize: 13, marginLeft: 6 }}>on strike</span>}
+              </td>
+              <td>{b.runs}</td>
+              <td>{b.ballsFaced}</td>
+              <td className="kc-x">{b.fours}</td>
+              <td className="kc-x">{b.sixes}</td>
+              <td>{strikeRate(b)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {live.bowler && (
+        <table className="kc-st num kc-bt" style={{ marginTop: 4 }}>
+          <thead>
+            <tr>
+              <th className="l">Bowling</th>
+              <th>O</th>
+              <th className="kc-x">M</th>
+              <th>R</th>
+              <th>W</th>
+              <th>Econ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="l"><b style={{ fontWeight: "var(--w-strong)" }}>{live.bowler.playerName}</b></td>
+              <td>{live.bowler.overs}</td>
+              <td className="kc-x">{live.bowler.maidens}</td>
+              <td>{live.bowler.runs}</td>
+              <td>{live.bowler.wickets}</td>
+              <td>{economy(live.bowler, ballsPerOver)}</td>
+            </tr>
+          </tbody>
+        </table>
+      )}
+      {live.partnershipBalls > 0 && (
+        <div className="kc-cap" style={{ padding: "12px 0 4px" }}>
+          Partnership {live.partnershipRuns} ({live.partnershipBalls} {live.partnershipBalls === 1 ? "ball" : "balls"})
+        </div>
+      )}
     </div>
   );
 }
@@ -315,7 +360,7 @@ function PickPlayer({ title, players, onPick, busy, cta, animate = false, strike
         <button
           onClick={() => playerId && onPick(Number(playerId), strike ? newOnStrike : undefined)}
           disabled={!playerId || busy}
-          style={{ ...button(theme.deep, theme.cream), opacity: playerId && !busy ? 1 : 0.5 }}
+          style={{ ...button(theme.accent, theme.accentInk), opacity: playerId && !busy ? 1 : 0.5 }}
         >
           {cta}
         </button>
@@ -333,8 +378,8 @@ function PickPlayer({ title, players, onPick, busy, cta, animate = false, strike
                 aria-checked={newOnStrike === value}
                 onClick={() => setNewOnStrike(value)}
                 style={{
-                  ...button(newOnStrike === value ? theme.deep : "transparent", newOnStrike === value ? theme.cream : theme.ink),
-                  border: newOnStrike === value ? "none" : "1.5px solid #d8d4c8",
+                  ...button(newOnStrike === value ? theme.accent : "transparent", newOnStrike === value ? theme.accentInk : theme.ink),
+                  border: newOnStrike === value ? "none" : "1.5px solid var(--line)",
                 }}
               >
                 {label}
@@ -349,7 +394,7 @@ function PickPlayer({ title, players, onPick, busy, cta, animate = false, strike
           <p style={{ fontSize: 13, color: theme.muted, margin: "0 0 6px" }}>
             Only batters who retired hurt are left. If none of them can come back, nobody is left to bat and the innings is over.
           </p>
-          <button type="button" onClick={onEndInnings} disabled={busy} style={{ ...button("transparent", theme.ink), border: "1.5px solid #d8d4c8" }}>
+          <button type="button" onClick={onEndInnings} disabled={busy} style={{ ...button("transparent", theme.ink), border: "1.5px solid var(--line)" }}>
             Nobody can come back: end the innings
           </button>
         </div>
@@ -378,7 +423,7 @@ function StartInningsForm({ state, onStart, busy }) {
   return (
     <div className="drop-in" style={lightPanel}>
       <h4 style={{ fontFamily: font.display, fontSize: 16, margin: "0 0 4px" }}>
-        {teamName.toUpperCase()} TO BAT
+        {teamName} to bat
       </h4>
       <p style={{ fontSize: 12, color: theme.muted, marginTop: 0 }}>
         {state.status === "SuperOver"
@@ -420,7 +465,8 @@ function StartInningsForm({ state, onStart, busy }) {
 
 /** The wicket dialog: only the dismissals the engine says are on right now. */
 // Where runs may come from in this match: the bat always, byes and leg byes if the rules allow them.
-const FROM_LABEL = { Bat: "Off the bat", Byes: "Byes", LegByes: "Leg byes" };
+// Read after "The runs came from" (the user's wording, 2026-11-26).
+const FROM_LABEL = { Bat: "Bat", Byes: "Byes", LegByes: "Leg byes" };
 const runSources = (rules) =>
   ["Bat", "Byes", "LegByes"].filter((f) => f === "Bat" || (f === "Byes" ? rules.byesAllowed : rules.legByesAllowed));
 
@@ -452,13 +498,13 @@ function keyCaption(n, { wide, noBall, from, widePenalty }) {
   return "";
 }
 
-// "The runs came: Off the bat / Byes / Leg byes" - nothing to ask on a wide or when only the bat counts.
+// "The runs came from: Bat / Byes / Leg byes" - nothing to ask on a wide or when only the bat counts.
 function RunsFromChoice({ rules, wide, value, onChange }) {
   const sources = runSources(rules);
   if (wide || sources.length < 2) return null;
   return (
-    <div role="radiogroup" aria-label="The runs came" style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
-      <span style={{ fontSize: 11, color: theme.muted, marginRight: 4 }}>THE RUNS CAME</span>
+    <div role="radiogroup" aria-label="The runs came from" style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+      <span style={{ fontSize: 11, color: theme.muted, marginRight: 4 }}>The runs came from</span>
       {sources.map((f) => (
         <button
           key={f}
@@ -467,8 +513,8 @@ function RunsFromChoice({ rules, wide, value, onChange }) {
           aria-checked={value === f}
           onClick={() => onChange(f)}
           style={{
-            ...button(value === f ? theme.deep : "transparent", value === f ? theme.cream : theme.ink),
-            border: value === f ? "none" : "1.5px solid #d8d4c8",
+            ...button(value === f ? theme.accent : "transparent", value === f ? theme.accentInk : theme.ink),
+            border: value === f ? "none" : "1.5px solid var(--line)",
             padding: "0.4rem 0.7rem",
             fontSize: 12,
           }}
@@ -496,7 +542,7 @@ function MoreRunsDialog({ state, wide, noBall, from: startFrom, busy, onCancel, 
   const valid = Number.isInteger(runs) && runs >= 1 && runs <= 15;
   return (
     <Modal labelledBy="more-runs-title" onClose={onCancel} panelStyle={{ ...lightPanel, marginBottom: 0 }}>
-      <h4 id="more-runs-title" style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 4px" }}>MORE RUNS</h4>
+      <h4 id="more-runs-title" style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 4px" }}>More runs</h4>
       <p style={{ fontSize: 13, color: theme.muted, margin: "0 0 12px" }}>
         {live.bowler?.playerName ?? "Bowler"} to {striker} · {wide ? "a wide" : noBall ? "a no ball" : "a legal ball"}
       </p>
@@ -509,10 +555,10 @@ function MoreRunsDialog({ state, wide, noBall, from: startFrom, busy, onCancel, 
         <p style={{ fontSize: 12, color: theme.muted, margin: 0 }}>{says}</p>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-        <button onClick={() => onConfirm(runs, from)} disabled={busy || !valid} style={button(theme.deep, theme.cream)}>
+        <button onClick={() => onConfirm(runs, from)} disabled={busy || !valid} style={button(theme.accent, theme.accentInk)}>
           Record {runs} ({live.runs + (valid ? runs : 0) + penalty}/{live.wickets})
         </button>
-        <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid #ccc" }}>Cancel</button>
+        <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid var(--line)" }}>Cancel</button>
       </div>
     </Modal>
   );
@@ -548,7 +594,7 @@ function WicketDialog({ state, wide, noBall, from: padFrom, onCancel, onConfirm,
 
   return (
     <Modal labelledBy="wicket-title" onClose={onCancel} panelStyle={{ ...lightPanel, marginBottom: 0 }}>
-        <h4 id="wicket-title" style={{ fontFamily: font.display, fontSize: 18, margin: wide || noBall ? "0 0 4px" : "0 0 12px" }}>WICKET</h4>
+        <h4 id="wicket-title" style={{ fontFamily: font.display, fontSize: 18, margin: wide || noBall ? "0 0 4px" : "0 0 12px" }}>Wicket</h4>
         {(wide || noBall) && (
           <p style={{ fontSize: 13, color: theme.muted, margin: "0 0 12px" }}>Off a {wide ? "wide" : "no ball"} · only these are possible</p>
         )}
@@ -582,8 +628,8 @@ function WicketDialog({ state, wide, noBall, from: padFrom, onCancel, onConfirm,
                   aria-checked={directHit === value}
                   onClick={() => { setDirectHit(value); if (value) setReceiver(""); }}
                   style={{
-                    ...button(directHit === value ? theme.deep : "transparent", directHit === value ? theme.cream : theme.ink),
-                    border: directHit === value ? "none" : "1.5px solid #d8d4c8",
+                    ...button(directHit === value ? theme.accent : "transparent", directHit === value ? theme.accentInk : theme.ink),
+                    border: directHit === value ? "none" : "1.5px solid var(--line)",
                     flex: 1,
                   }}
                 >
@@ -625,33 +671,19 @@ function WicketDialog({ state, wide, noBall, from: padFrom, onCancel, onConfirm,
             </>
           )}
 
+          {/* One switch, "Counts as a ball", off by default (the user's choice, 2026-11-26; it was a two-way question). */}
           {retiring && (
-            <div>
-              <div id="retire-label" style={{ fontSize: 12, color: theme.muted, marginBottom: 6 }}>Does it count as a ball?</div>
-              <div role="radiogroup" aria-labelledby="retire-label" style={{ display: "flex", gap: 6 }}>
-                {[[false, "No, between balls"], [true, "Yes, on this ball"]].map(([value, label]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    role="radio"
-                    aria-checked={onTheBall === value}
-                    onClick={() => setOnTheBall(value)}
-                    style={{
-                      ...button(onTheBall === value ? theme.deep : "transparent", onTheBall === value ? theme.cream : theme.ink),
-                      border: onTheBall === value ? "none" : "1.5px solid #d8d4c8",
-                      flex: 1,
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p style={{ fontSize: 12, color: theme.muted, margin: "6px 0 0" }}>
-                {onTheBall
-                  ? "Recorded on this ball: it counts for the bowler and the batter, with any runs off it."
-                  : "Nothing is bowled: no ball for the bowler or the batter, and the over carries on."}
-              </p>
-            </div>
+            <label className="kc-switch">
+              <span>
+                <b>Counts as a ball</b>
+                <small>
+                  {onTheBall
+                    ? "On: recorded on this ball, for the bowler and the batter, with any runs off it."
+                    : "Off: nothing is bowled, no ball for the bowler or the batter, and the over carries on."}
+                </small>
+              </span>
+              <input type="checkbox" role="switch" checked={onTheBall} onChange={(e) => setOnTheBall(e.target.checked)} />
+            </label>
           )}
 
           {timedOut && (
@@ -690,11 +722,11 @@ function WicketDialog({ state, wide, noBall, from: padFrom, onCancel, onConfirm,
             })}
             disabled={busy || !outId}
             // Red is for wickets; retiring hurt costs none.
-            style={type === "RetiredHurt" ? button(theme.deep, theme.cream) : button(theme.dangerSolid, "#fff")}
+            style={type === "RetiredHurt" ? button(theme.accent, theme.accentInk) : button(theme.dangerSolid, "#fff")}
           >
             {type === "RetiredHurt" ? "Confirm retirement" : "Confirm wicket"}
           </button>
-          <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid #ccc" }}>
+          <button onClick={onCancel} style={{ ...button("transparent", theme.ink), border: "1px solid var(--line)" }}>
             Cancel
           </button>
         </div>
@@ -787,12 +819,12 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
     return (
       <div>
         <ErrorBanner message={error} />
-        <button onClick={onBack} style={ghostButton}>← Back to matches</button>
+        <button type="button" onClick={onBack} className="kc-btn sec">← Back to matches</button>
       </div>
     );
   }
 
-  if (!state) return <p style={{ color: theme.onDarkMuted }}>Loading match…</p>;
+  if (!state) return <p className="kc-cap">Loading match…</p>;
 
   const live = state.current;
   const actions = state.actions;
@@ -802,74 +834,34 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
   // After a wicket, the batter still in — the one the new batter may or may not take strike from.
   const survivor = live?.striker ?? live?.nonStriker ?? null;
 
+  const ordinal = (n) => ["1st", "2nd", "3rd", "4th"][n - 1] ?? `${n}th`;
+  const earlier = state.innings.filter((i) => i.status === "Completed");
+  const byesOk = state.rules.byesAllowed;
+  const legByesOk = state.rules.legByesAllowed;
+  const from = (f) => setAttribution(attribution === f ? "Bat" : f);
+
   return (
-    <div style={{ color: theme.onDark, fontFamily: font.body }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-        <button onClick={onBack} style={ghostButton}>← Back to matches</button>
-        <div style={{ display: "flex", gap: 6 }}>
+    <div className="kc-live">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+          <button type="button" onClick={onBack} className="kc-ib kc-glass" aria-label="Back to matches" title="Back to matches">
+            <BackIcon />
+          </button>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 20, lineHeight: "25px", fontWeight: "var(--w-bold)" }}>
+              {state.homeTeamName} v {state.awayTeamName}
+            </div>
+            <div className="kc-cap">{[state.roundLabel, state.tossSummary].filter(Boolean).join(" · ")}</div>
+          </div>
+        </div>
+        <div className="kc-seg" role="tablist" aria-label="Scoring or scorecard">
           {["console", "scorecard"].map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              style={{
-                ...ghostButton,
-                background: tab === t ? theme.accent : "transparent",
-                color: tab === t ? theme.accentInk : theme.onDark,
-                border: tab === t ? "none" : `1px solid ${theme.borderOnDark}`,
-                fontWeight: 700,
-              }}
-            >
-              {t === "console" ? "SCORING" : "SCORECARD"}
+            <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
+              {t === "console" ? "Scoring" : "Scorecard"}
             </button>
           ))}
         </div>
       </div>
-
-      {/* --- The scoreboard, always on --------------------------------- */}
-      <div style={{ ...panel, textAlign: "center" }}>
-        <div style={{ fontSize: 12, color: theme.onDarkMuted, letterSpacing: "0.05em" }}>
-          {state.homeTeamName.toUpperCase()} v {state.awayTeamName.toUpperCase()}
-        </div>
-        {live ? (
-          <>
-            <div className="num" style={{ fontFamily: font.display, fontSize: 40, lineHeight: 1.1, margin: "6px 0" }}>
-              {/* Runs tick every ball, so they don't animate; a wicket is rare enough to mark. */}
-              {live.runs}/<Bump value={live.wickets} />
-              <span style={{ fontSize: 18, color: theme.onDarkMuted }}>
-                {" "}({live.overs}{live.oversLimit ? `/${live.oversLimit}` : ""})
-              </span>
-            </div>
-            <div style={{ fontSize: 14, color: theme.onDarkMuted }}>
-              {live.battingTeamName} · RR {live.runRate.toFixed(2)}
-              {live.target != null && (
-                <> · need <strong style={{ color: theme.accent }}>{live.runsRequired}</strong> from {live.ballsRemaining} balls
-                  {live.requiredRunRate != null && <> (RRR {live.requiredRunRate.toFixed(2)})</>}
-                </>
-              )}
-            </div>
-            {live.freeHitPending && (
-              <div className="pop-in" style={{ marginTop: 8, display: "inline-block", background: theme.accent, color: theme.accentInk, borderRadius: 14, padding: "0.2rem 0.8rem", fontSize: 12, fontWeight: 700 }}>
-                FREE HIT
-              </div>
-            )}
-          </>
-        ) : (
-          <div style={{ fontFamily: font.display, fontSize: 22, margin: "8px 0" }}>
-            {state.innings.length === 0 ? "YET TO START" : state.status.toUpperCase()}
-          </div>
-        )}
-
-        {state.tossSummary && !live && (
-          <div style={{ fontSize: 12, color: theme.onDarkMuted }}>{state.tossSummary}.</div>
-        )}
-        {state.resultSummary && (
-          <div style={{ marginTop: 8, fontFamily: font.display, fontSize: 16, color: theme.accent }}>
-            {state.resultSummary}
-          </div>
-        )}
-      </div>
-
-      {state.dls && <DlsPanel dls={state.dls} chasing={live?.inningsNumber === 2} />}
 
       <ErrorBanner message={error} />
       <ScoringBanner sport="cricket" matchId={matchId} scoring={state.scoring} onChange={(scoring) => setState((s) => ({ ...s, scoring }))} onWatch={onWatch} />
@@ -877,246 +869,268 @@ export default function CricketLiveMatch({ matchId, onBack, onCompleted, onWatch
       {tab === "scorecard" ? (
         <CricketScorecard matchId={matchId} refreshKey={state.innings.reduce((n, i) => n + i.runs + i.wickets, 0)} />
       ) : (
-        <ScoringControls locked={locked}>
-          {/* --- Between innings ------------------------------------- */}
-          {actions.canStartInnings && (
-            <StartInningsForm
-              state={state}
-              busy={busy}
-              onStart={(payload) => act(() => startInnings(matchId, payload))}
-            />
-          )}
-
-          {actions.canEnforceFollowOn && (
-            <div className="drop-in" style={lightPanel}>
-              <h4 style={{ fontFamily: font.display, fontSize: 16, margin: "0 0 8px" }}>FOLLOW-ON AVAILABLE</h4>
-              <p style={{ fontSize: 12, color: theme.muted, marginTop: 0 }}>
-                The lead is enough to make the other side bat again straight away.
-              </p>
-              <button onClick={() => act(() => enforceFollowOn(matchId))} disabled={busy} style={button(theme.deep, theme.cream)}>
-                Enforce the follow-on
-              </button>
-            </div>
-          )}
-
-          {actions.canStartSuperOver && state.innings.every((i) => i.status === "Completed") && !actions.canStartInnings && (
-            <div className="drop-in" style={lightPanel}>
-              <button onClick={() => act(() => startSuperOver(matchId))} disabled={busy} style={button(theme.accent, theme.accentInk)}>
-                🎯 Set up a super over
-              </button>
-            </div>
-          )}
-
-          {/* --- Who is in ------------------------------------------- */}
-          {actions.needsBatter && (
-            <PickPlayer
-              title="NEXT BATTER IN"
-              animate
-              players={actions.availableBatters}
-              retiredHurtIds={actions.retiredHurtBatterIds ?? []}
-              busy={busy}
-              cta="Send them out"
-              strike={survivor ? { survivorName: survivor.playerName, newOnStrike: !live.striker } : undefined}
-              onPick={(playerId, onStrike) => act(() => setBatter(matchId, playerId, onStrike))}
-              onEndInnings={actions.canEndInningsNoBatters
-                ? () => confirm(`Nobody who retired hurt can come back, so ${live.battingTeamName} are all out for ${live.runs}. End the innings?`)
-                    && act(() => endInnings(matchId, "AllOut"))
-                : undefined}
-            />
-          )}
-
-          {actions.needsBowler && !actions.needsBatter && (
-            <PickPlayer
-              title="NEXT OVER"
-              players={actions.availableBowlers}
-              busy={busy}
-              cta="Bring them on"
-              onPick={(playerId) => act(() => setBowler(matchId, playerId))}
-            />
-          )}
-
-          {/* --- The middle ------------------------------------------ */}
-          {live && (
-            <div style={panel}>
-              <BatterRow batter={live.striker} striker />
-              <BatterRow batter={live.nonStriker} />
-              {live.bowler && (
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, padding: "0.25rem 0", borderTop: `1px solid ${theme.borderOnDark}`, marginTop: 6, paddingTop: 8 }}>
-                  <span>{live.bowler.playerName}</span>
-                  <span style={{ color: theme.onDarkMuted }}>
-                    {live.bowler.overs}–{live.bowler.maidens}–{live.bowler.runs}–{live.bowler.wickets}
-                  </span>
-                </div>
+        <div className="kc-grid2 kc-livegrid">
+          {/* --- The scoreboard --------------------------------------- */}
+          <section className="kc-col" aria-label="Scoreboard">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {live ? (
+                <span className="kc-status">
+                  <span className="kc-dot" aria-hidden="true" /> Live, {live.battingTeamName} batting
+                </span>
+              ) : (
+                <span className="kc-status quiet">{state.innings.length === 0 ? "Yet to start" : state.status === "InningsBreak" ? "Innings break" : state.status}</span>
               )}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12, alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: theme.onDarkMuted, marginRight: 4 }}>THIS OVER</span>
-                {live.thisOver.length === 0
-                  ? <span style={{ fontSize: 12, color: theme.onDarkMuted }}>—</span>
-                  : live.thisOver.map((b) => <BallChip key={b.sequenceNumber} ball={b} />)}
-              </div>
-              {live.partnershipBalls > 0 && (
-                <div style={{ fontSize: 11, color: theme.onDarkMuted, marginTop: 8 }}>
-                  Partnership {live.partnershipRuns} ({live.partnershipBalls})
-                </div>
-              )}
+              {live && <span className="kc-cap">{ordinal(live.inningsNumber)} innings{live.oversLimit ? `, ${live.oversLimit} overs` : ""}</span>}
             </div>
-          )}
 
-          {/* --- The pad --------------------------------------------- */}
-          {actions.canRecordBall && (
-            <div style={lightPanel}>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                {[["Wide", wide, () => { setWide(!wide); setNoBall(false); }],
-                  ["No ball", noBall, () => { setNoBall(!noBall); setWide(false); }]].map(([label, on, toggle]) => (
-                  <button
-                    key={label}
-                    onClick={toggle}
-                    style={{
-                      ...button(on ? theme.deep : "transparent", on ? theme.cream : theme.ink),
-                      border: on ? "none" : "1.5px solid #d8d4c8",
-                    }}
-                  >
-                    {label}
-                  </button>
+            {live ? (
+              <>
+                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, marginTop: 10 }}>
+                  <div className="kc-score num">
+                    {/* Runs tick every ball, so they don't animate; a wicket is rare enough to mark. */}
+                    {live.runs}<span className="kc-slash">/</span><Bump value={live.wickets} />
+                  </div>
+                  <div style={{ textAlign: "right", paddingBottom: 12 }}>
+                    <div className="kc-figure num" style={{ fontSize: 30, lineHeight: "34px" }}>{live.overs}</div>
+                    <div className="kc-cap">
+                      {live.oversLimit ? `of ${live.oversLimit} overs · ` : "overs · "}rate {live.runRate.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+                {live.target != null && (
+                  <div className="kc-need">
+                    <b style={{ fontWeight: "var(--w-strong)" }}>Need {live.runsRequired} off {live.ballsRemaining}</b>
+                    {live.requiredRunRate != null && <span style={{ opacity: 0.85 }}>Required {live.requiredRunRate.toFixed(2)}</span>}
+                  </div>
+                )}
+                {live.freeHitPending && (
+                  <div className="pop-in kc-need" style={{ marginLeft: live.target != null ? 8 : 0 }}>
+                    <b style={{ fontWeight: "var(--w-strong)" }}>Free hit</b>
+                  </div>
+                )}
+                {earlier.length > 0 && (
+                  <div className="kc-cap" style={{ marginTop: 12 }}>
+                    {earlier.map((i) => `${i.battingTeamName} ${i.scoreLine}`).join(" · ")}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div style={{ margin: "10px 0 6px" }}>
+                {earlier.map((i) => (
+                  <div key={i.inningsId ?? i.battingTeamName} className="kc-side-line" style={{ fontSize: 20, lineHeight: "30px" }}>
+                    <b>{i.battingTeamName}</b>
+                    <span className="fig">{i.scoreLine}</span>
+                  </div>
                 ))}
+                {state.tossSummary && state.innings.length === 0 && <p className="kc-sub">{state.tossSummary}.</p>}
+              </div>
+            )}
 
-                {/* On a wide every run is a wide; otherwise say where the runs came from (only the bat's are the batter's). */}
-                <div style={{ marginLeft: "auto" }}>
-                  <RunsFromChoice rules={state.rules} wide={wide} value={attribution} onChange={setAttribution} />
+            {state.resultSummary && (
+              <div style={{ marginTop: 10, fontSize: 18, lineHeight: "24px", color: "var(--deep)", fontWeight: "var(--w-strong)" }}>{state.resultSummary}</div>
+            )}
+
+            {state.dls && <div style={{ marginTop: 16 }}><DlsPanel dls={state.dls} chasing={live?.inningsNumber === 2} /></div>}
+
+            {live && <div style={{ marginTop: 20 }}><Crease live={live} ballsPerOver={state.rules.ballsPerOver ?? 6} /></div>}
+
+            {live && (
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 6, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 15 }}>This over</span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  {live.thisOver.length === 0 ? <span className="kc-cap">Nothing bowled yet</span> : live.thisOver.map((b) => <BallChip key={b.sequenceNumber} ball={b} />)}
                 </div>
+                <span className="kc-grow" />
+                {live.thisOver.length > 0 && <span className="kc-cap">{live.thisOver.reduce((n, b) => n + b.runs, 0)} runs</span>}
               </div>
+            )}
 
-              {/* Always one row of eight: wrapping on a phone put 5 and 6 somewhere new. */}
-              <div className="num" style={{ display: "grid", gridTemplateColumns: "repeat(8, minmax(0, 1fr))", gap: 6 }}>
-                {[0, 1, 2, 3, 4, 5, 6].map((runs) => {
-                  // A no-ball hit for four is still a four; byes to the rope and wides aren't boundaries.
-                  const boundary = (runs === 4 || runs === 6) && !wide && attribution === "Bat";
-                  const impossible = wide && runs === 6; // a wide can't be hit
-                  const caption = keyCaption(runs, { wide, noBall, from: attribution, widePenalty: state.rules.widePenaltyRuns });
-                  return (
-                    <button
-                      key={runs}
-                      onClick={() => act(() => recordBall(matchId, buildBall(runs)))}
-                      disabled={busy || impossible}
-                      aria-label={caption ? `${runs}, ${caption}` : `${runs}`}
-                      style={{
-                        ...button(boundary ? theme.accent : theme.deep, boundary ? theme.accentInk : theme.cream),
-                        padding: caption ? "0.55rem 0 0.45rem" : "0.9rem 0",
-                        fontSize: 18,
-                        fontFamily: font.display,
-                        fontWeight: 400, // Anton has one weight; the helper's 700 would be faked
-                        opacity: impossible ? 0.35 : 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 2,
-                      }}
-                    >
-                      {runs}
-                      {caption && <span style={{ fontFamily: font.body, fontSize: 10, fontWeight: 600, whiteSpace: "nowrap" }}>{caption}</span>}
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setShowMoreRuns(true)}
-                  disabled={busy}
-                  aria-label="More than 6 runs"
-                  style={{ ...button("transparent", theme.ink), border: "1.5px solid #d8d4c8", padding: "0.9rem 0", fontSize: 18, fontFamily: font.display, fontWeight: 400 }}
-                >
-                  7+
-                </button>
-              </div>
-
-              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                <button onClick={() => setShowWicket(true)} disabled={busy} style={button(theme.dangerSolid, "#fff")}>
-                  ✖ Wicket
-                </button>
-                <button
-                  onClick={() => act(() => recordBall(matchId, buildBall(0, { penaltyRuns: 5 })))}
-                  disabled={busy}
-                  style={{ ...button("transparent", theme.ink), border: "1.5px solid #d8d4c8" }}
-                >
-                  +5 penalty
-                </button>
-                {actions.canUndo && (
-                  <button
-                    onClick={() => act(() => undoBall(matchId))}
-                    disabled={busy}
-                    style={{ ...button("transparent", theme.ink), border: "1.5px solid #d8d4c8", marginLeft: "auto" }}
-                  >
-                    ↶ Undo last ball
+            {/* --- Ending things --------------------------------------- */}
+            <ScoringControls locked={locked}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 22 }}>
+                {actions.canDeclare && (
+                  <button onClick={() => act(() => endInnings(matchId, "Declared"))} disabled={busy} style={ghostButton}>
+                    Declare
                   </button>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* --- Ending things --------------------------------------- */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {actions.canDeclare && (
-              <button onClick={() => act(() => endInnings(matchId, "Declared"))} disabled={busy} style={ghostButton}>
-                Declare
-              </button>
-            )}
-            {actions.canReduceOvers && (
-              <button onClick={() => setShowReduce(true)} disabled={busy} style={ghostButton}>
-                Reduce overs (rain)
-              </button>
-            )}
-            {actions.canRecordBall && (actions.replaceableBatters?.length > 0 || actions.replaceableBowler) && (
-              <button onClick={() => setShowReplace(true)} disabled={busy} style={ghostButton}>
-                Correct a player
-              </button>
-            )}
-            {actions.canEndInnings && (
-              <button
-                onClick={() => confirm(
-                  state.dls && live?.inningsNumber === 2
-                    ? `Stop play for good? The match will be decided on the DLS par score (${state.dls.parScore ?? "not yet set"}).`
-                    : "End this innings?"
-                ) && act(() => endInnings(matchId, "Abandoned"))}
-                disabled={busy}
-                style={ghostButton}
-              >
-                End innings
-              </button>
-            )}
-            {actions.canComplete && (
-              <>
-                <button
-                  onClick={() => confirm("Sign the match off as it stands?") && act(() => completeCricketMatch(matchId, { force: true }))}
-                  disabled={busy}
-                  style={ghostButton}
-                >
-                  Sign off
-                </button>
-                {actions.canRecordNoResult !== false ? (
+                {actions.canReduceOvers && (
+                  <button onClick={() => setShowReduce(true)} disabled={busy} style={ghostButton}>
+                    Reduce overs (rain)
+                  </button>
+                )}
+                {actions.canRecordBall && (actions.replaceableBatters?.length > 0 || actions.replaceableBowler) && (
+                  <button onClick={() => setShowReplace(true)} disabled={busy} style={ghostButton}>
+                    Correct a player
+                  </button>
+                )}
+                {actions.canRecordBall && (
+                  <button onClick={() => act(() => recordBall(matchId, buildBall(0, { penaltyRuns: 5 })))} disabled={busy} style={ghostButton}>
+                    +5 penalty runs
+                  </button>
+                )}
+                {actions.canEndInnings && (
                   <button
-                    onClick={() => confirm("Record this match as abandoned with no result?") && act(() => completeCricketMatch(matchId, { noResult: true }))}
+                    onClick={() => confirm(
+                      state.dls && live?.inningsNumber === 2
+                        ? `Stop play for good? The match will be decided on the DLS par score (${state.dls.parScore ?? "not yet set"}).`
+                        : "End this innings?"
+                    ) && act(() => endInnings(matchId, "Abandoned"))}
                     disabled={busy}
                     style={ghostButton}
                   >
-                    No result
+                    End innings
                   </button>
-                ) : (
+                )}
+                {actions.canComplete && (
                   <>
-                    <button onClick={() => awardTo(state.homeTeamId, state.homeTeamName)} disabled={busy} style={ghostButton}>
-                      Award to {state.homeTeamName}
+                    <button
+                      onClick={() => confirm("Sign the match off as it stands?") && act(() => completeCricketMatch(matchId, { force: true }))}
+                      disabled={busy}
+                      style={ghostButton}
+                    >
+                      Sign off
                     </button>
-                    <button onClick={() => awardTo(state.awayTeamId, state.awayTeamName)} disabled={busy} style={ghostButton}>
-                      Award to {state.awayTeamName}
-                    </button>
+                    {actions.canRecordNoResult !== false ? (
+                      <button
+                        onClick={() => confirm("Record this match as abandoned with no result?") && act(() => completeCricketMatch(matchId, { noResult: true }))}
+                        disabled={busy}
+                        style={ghostButton}
+                      >
+                        No result
+                      </button>
+                    ) : (
+                      <>
+                        <button onClick={() => awardTo(state.homeTeamId, state.homeTeamName)} disabled={busy} style={ghostButton}>
+                          Award to {state.homeTeamName}
+                        </button>
+                        <button onClick={() => awardTo(state.awayTeamId, state.awayTeamName)} disabled={busy} style={ghostButton}>
+                          Award to {state.awayTeamName}
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
-              </>
-            )}
-            {finished && (
-              <button onClick={onCompleted} style={{ ...button(theme.accent, theme.accentInk), marginLeft: "auto" }}>
-                Done
-              </button>
-            )}
-          </div>
-        </ScoringControls>
+                {finished && (
+                  <button onClick={onCompleted} className="kc-btn pri" style={{ marginLeft: "auto" }}>
+                    Done
+                  </button>
+                )}
+              </div>
+            </ScoringControls>
+          </section>
+
+          {/* --- The questions between balls, and the pad ---------------- */}
+          <section className="kc-aside kc-padcol" aria-label="Score this ball">
+            <ScoringControls locked={locked}>
+              {actions.canStartInnings && (
+                <StartInningsForm state={state} busy={busy} onStart={(payload) => act(() => startInnings(matchId, payload))} />
+              )}
+
+              {actions.canEnforceFollowOn && (
+                <div className="drop-in" style={lightPanel}>
+                  <h4 style={{ fontSize: 17, margin: "0 0 6px", fontWeight: "var(--w-strong)" }}>Follow-on available</h4>
+                  <p className="kc-cap" style={{ marginTop: 0 }}>The lead is enough to make the other side bat again straight away.</p>
+                  <button onClick={() => act(() => enforceFollowOn(matchId))} disabled={busy} className="kc-btn pri">
+                    Enforce the follow-on
+                  </button>
+                </div>
+              )}
+
+              {actions.canStartSuperOver && state.innings.every((i) => i.status === "Completed") && !actions.canStartInnings && (
+                <div className="drop-in" style={lightPanel}>
+                  <button onClick={() => act(() => startSuperOver(matchId))} disabled={busy} className="kc-btn pri">
+                    Set up a super over
+                  </button>
+                </div>
+              )}
+
+              {/* --- Who is in ------------------------------------------- */}
+              {actions.needsBatter && (
+                <PickPlayer
+                  title="Next batter in"
+                  animate
+                  players={actions.availableBatters}
+                  retiredHurtIds={actions.retiredHurtBatterIds ?? []}
+                  busy={busy}
+                  cta="Send them out"
+                  strike={survivor ? { survivorName: survivor.playerName, newOnStrike: !live.striker } : undefined}
+                  onPick={(playerId, onStrike) => act(() => setBatter(matchId, playerId, onStrike))}
+                  onEndInnings={actions.canEndInningsNoBatters
+                    ? () => confirm(`Nobody who retired hurt can come back, so ${live.battingTeamName} are all out for ${live.runs}. End the innings?`)
+                        && act(() => endInnings(matchId, "AllOut"))
+                    : undefined}
+                />
+              )}
+
+              {actions.needsBowler && !actions.needsBatter && (
+                <PickPlayer title="Next over" players={actions.availableBowlers} busy={busy} cta="Bring them on" onPick={(playerId) => act(() => setBowler(matchId, playerId))} />
+              )}
+
+              {/* --- The pad: the phone's keys ----------------------------- */}
+              {actions.canRecordBall && (
+                <div className="kc-pad">
+                  <div className="kc-mods">
+                    <button type="button" role="switch" aria-checked={wide} className="kc-pill" onClick={() => { setWide(!wide); setNoBall(false); setAttribution("Bat"); }}>Wide</button>
+                    <button type="button" role="switch" aria-checked={noBall} className="kc-pill" onClick={() => { setNoBall(!noBall); setWide(false); }}>No ball</button>
+                    {/* As the phone (keypad B): on a wide every run is a wide; on a no ball the row below asks instead. */}
+                    {byesOk && !wide && !noBall && (
+                      <button type="button" role="switch" aria-checked={attribution === "Byes"} className="kc-pill" onClick={() => from("Byes")}>Byes</button>
+                    )}
+                    {legByesOk && !wide && !noBall && (
+                      <button type="button" role="switch" aria-checked={attribution === "LegByes"} className="kc-pill" onClick={() => from("LegByes")}>Leg byes</button>
+                    )}
+                  </div>
+                  {/* On a no ball: where the runs came from (only the bat's are the batter's). */}
+                  {noBall && runSources(state.rules).length > 1 && (
+                    <div className="kc-from" role="radiogroup" aria-label="The runs came from">
+                      <span>The runs came from</span>
+                      <div>
+                        {runSources(state.rules).map((f) => (
+                          <button key={f} type="button" role="radio" aria-checked={attribution === f} className="kc-pill" onClick={() => setAttribution(f)}>
+                            {FROM_LABEL[f]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="kc-keys num">
+                    {[0, 1, 2, 3, 4, 6, 5].map((runs) => {
+                      // A no-ball hit for four is still a four; byes to the rope and wides aren't boundaries.
+                      const boundary = (runs === 4 || runs === 6) && !wide && attribution === "Bat";
+                      const impossible = wide && runs === 6; // a wide can't be hit
+                      const caption = keyCaption(runs, { wide, noBall, from: attribution, widePenalty: state.rules.widePenaltyRuns })
+                        || (runs === 0 ? "Dot" : boundary ? (runs === 4 ? "Four" : "Six") : "");
+                      return (
+                        <button
+                          key={runs}
+                          type="button"
+                          className={`kc-key${boundary ? " b" : ""}${boundary && runs === 6 ? " six" : ""}`}
+                          onClick={() => act(() => recordBall(matchId, buildBall(runs)))}
+                          disabled={busy || impossible}
+                          aria-label={caption ? `${runs}, ${caption}` : `${runs}`}
+                        >
+                          {runs}
+                          {caption && <small>{caption}</small>}
+                        </button>
+                      );
+                    })}
+                    <button type="button" className="kc-key" onClick={() => setShowMoreRuns(true)} disabled={busy} aria-label="More than 6 runs" style={{ fontSize: 24 }}>
+                      7+<small>More runs</small>
+                    </button>
+                  </div>
+                  <div className="kc-padfoot">
+                    <button type="button" className="kc-btn sec kc-undo" onClick={() => act(() => undoBall(matchId))} disabled={busy || !actions.canUndo}>
+                      <UndoIcon /> Undo
+                    </button>
+                    <button type="button" className="kc-btn danger" onClick={() => setShowWicket(true)} disabled={busy}>
+                      <OutIcon /> Out / Wicket
+                    </button>
+                  </div>
+                </div>
+              )}
+            </ScoringControls>
+          </section>
+        </div>
       )}
 
       {showReduce && live && (

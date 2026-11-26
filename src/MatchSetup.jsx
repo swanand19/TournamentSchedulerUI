@@ -83,9 +83,9 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
     (players || []).filter((p) => squadStatus[p.id] === "Starting").length;
 
   const badgeStyle = (status) => {
-    if (status === "Starting") return { background: "rgba(99,153,34,0.18)", color: "#3b6d11", border: "1.5px solid #639922" };
-    if (status === "Unavailable") return { background: "rgba(226,75,74,0.1)", color: "#a33", border: "1.5px solid transparent" };
-    return { background: "#EDEAE0", color: "#1B1B1B", border: "1.5px solid transparent" };
+    if (status === "Starting") return { background: "color-mix(in srgb, var(--success) 18%, transparent)", color: "var(--success-ink)", border: "1.5px solid var(--success)" };
+    if (status === "Unavailable") return { background: "color-mix(in srgb, var(--danger) 10%, transparent)", color: "var(--danger-ink)", border: "1.5px solid transparent" };
+    return { background: "var(--chip)", color: "var(--ink)", border: "1.5px solid transparent" };
   };
 
   const handleSubmit = async () => {
@@ -132,14 +132,14 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
     }
   };
 
-  if (loading) return <p style={{ color: "rgba(247,245,239,0.6)" }}>Loading match…</p>;
-  if (!match) return <p style={{ color: "rgba(247,245,239,0.6)" }}>Match not found.</p>;
+  if (loading) return <p style={{ color: "rgba(var(--fg-rgb), 0.6)" }}>Loading match…</p>;
+  if (!match) return <p style={{ color: "rgba(var(--fg-rgb), 0.6)" }}>Match not found.</p>;
 
   // Someone else is setting it up: the banner says who (Ask to score / Take over), not a form for nothing.
   const locked = !!match.scoring && !match.scoring.canScore;
 
   const renderTeamSquad = (team) => (
-    <div style={{ background: "#F7F5EF", color: "#1B1B1B", borderRadius: 12, padding: "1.2rem" }}>
+    <div style={{ background: "var(--cream)", color: "var(--ink)", borderRadius: 12, padding: "1.2rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <h4 style={{ fontFamily: font.display, fontSize: 18, margin: 0 }}>⚽ {team?.name}</h4>
         <span style={{ fontSize: 12, color: theme.muted }}>
@@ -186,13 +186,13 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
     <div>
       <button
         onClick={onBack}
-        style={{ background: "rgba(247,245,239,0.1)", color: "#F7F5EF", border: "1px solid rgba(247,245,239,0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16 }}
+        style={{ background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)", border: "1px solid rgba(var(--fg-rgb), 0.25)", borderRadius: 8, padding: "0.5rem 1rem", fontSize: 14, cursor: "pointer", marginBottom: 16 }}
       >
         ← Back to matches
       </button>
 
-      <h2 style={{ fontFamily: font.display, fontSize: 24, margin: "0 0 4px" }}>MATCH SETUP</h2>
-      <p style={{ color: "rgba(247,245,239,0.7)", fontSize: 14, marginBottom: 20 }}>
+      <h2 style={{ fontFamily: font.display, fontSize: 24, margin: "0 0 4px" }}>Match setup</h2>
+      <p style={{ color: "rgba(var(--fg-rgb), 0.7)", fontSize: 14, marginBottom: 20 }}>
         {match.homeTeamName} vs {match.awayTeamName}
       </p>
 
@@ -200,52 +200,52 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
       <ScoringBanner sport="football" matchId={matchId} scoring={match.scoring} onChange={(scoring) => setMatch((m) => ({ ...m, scoring }))} />
 
       {!locked && (<>
-      <div style={{ background: "rgba(247,245,239,0.06)", border: "1px solid rgba(247,245,239,0.15)", borderRadius: 12, padding: "1.5rem", marginBottom: 20 }}>
-        <h3 style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 14px" }}>MATCH RULES</h3>
+      <div style={{ background: "rgba(var(--fg-rgb), 0.06)", border: "1px solid rgba(var(--fg-rgb), 0.15)", borderRadius: 12, padding: "1.5rem", marginBottom: 20 }}>
+        <h3 style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 14px" }}>Match rules</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
-          <label style={{ fontSize: 14, color: "rgba(247,245,239,0.8)" }}>
+          <label style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.8)" }}>
             Players per side
             <input
               type="number" min={1} max={11}
               value={maxPlayersPerSide}
               onChange={(e) => setMaxPlayersPerSide(Math.max(1, Number(e.target.value) || 1))}
-              style={{ display: "block", width: "100%", marginTop: 4, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(247,245,239,0.3)", background: "rgba(247,245,239,0.1)", color: "#F7F5EF" }}
+              style={{ display: "block", width: "100%", marginTop: 4, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(var(--fg-rgb), 0.3)", background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)" }}
             />
           </label>
-          <label style={{ fontSize: 14, color: "rgba(247,245,239,0.8)" }}>
+          <label style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.8)" }}>
             Minutes per half
             <input
               type="number" min={1}
               value={minutesPerHalf}
               onChange={(e) => setMinutesPerHalf(Math.max(1, Number(e.target.value) || 1))}
-              style={{ display: "block", width: "100%", marginTop: 4, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(247,245,239,0.3)", background: "rgba(247,245,239,0.1)", color: "#F7F5EF" }}
+              style={{ display: "block", width: "100%", marginTop: 4, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(var(--fg-rgb), 0.3)", background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)" }}
             />
           </label>
-          <label style={{ fontSize: 14, color: "rgba(247,245,239,0.8)" }}>
+          <label style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.8)" }}>
             Max substitutions
             <input
               type="number" min={0}
               value={maxSubstitutions}
               onChange={(e) => setMaxSubstitutions(Math.max(0, Number(e.target.value) || 0))}
-              style={{ display: "block", width: "100%", marginTop: 4, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(247,245,239,0.3)", background: "rgba(247,245,239,0.1)", color: "#F7F5EF" }}
+              style={{ display: "block", width: "100%", marginTop: 4, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(var(--fg-rgb), 0.3)", background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)" }}
             />
           </label>
-          <label style={{ fontSize: 14, color: "rgba(247,245,239,0.8)" }}>
+          <label style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.8)" }}>
             Abandon below … players
             <input
               type="number" min={1} max={maxPlayersPerSide}
               value={effectiveMinPlayers}
               onChange={(e) => setMinPlayersPerSide(Math.min(maxPlayersPerSide, Math.max(1, Number(e.target.value) || 1)))}
-              style={{ display: "block", width: "100%", marginTop: 4, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(247,245,239,0.3)", background: "rgba(247,245,239,0.1)", color: "#F7F5EF" }}
+              style={{ display: "block", width: "100%", marginTop: 4, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(var(--fg-rgb), 0.3)", background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)" }}
             />
-            <span style={{ fontSize: 11, color: "rgba(247,245,239,0.7)", display: "block", marginTop: 4 }}>
+            <span style={{ fontSize: 11, color: "rgba(var(--fg-rgb), 0.7)", display: "block", marginTop: 4 }}>
               Red cards taking a side under this hand the match to the opponent (Law 3 uses 7 for 11-a-side).
             </span>
           </label>
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 20, marginTop: 18 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(247,245,239,0.85)", cursor: "pointer" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(var(--fg-rgb), 0.85)", cursor: "pointer" }}>
             <input type="checkbox" checked={extraTimeAllowed} 
               onChange={(e) => {
                 setExtraTimeAllowed(e.target.checked);
@@ -255,22 +255,22 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
             Allow extra time
           </label>
           {extraTimeAllowed && (
-            <label style={{ fontSize: 14, color: "rgba(247,245,239,0.8)", display: "block", marginTop: 8 }}>
+            <label style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.8)", display: "block", marginTop: 8 }}>
               Extra time half length (minutes) -max {minutesPerHalf} (regulation half length)
               <input
                 type="number" min={1} max={minutesPerHalf}
                 value={effectiveExtraTimeMinutes}
                 onChange={(e) => setExtraTimeMinutesPerHalf(Math.min(minutesPerHalf, Math.max(1, Number(e.target.value) || 1 )))}
-                style={{ display: "block", width: 120, marginTop: 4, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(247,245,239,0.3)", background: "rgba(247,245,239,0.1)", color: "#F7F5EF" }}
+                style={{ display: "block", width: 120, marginTop: 4, padding: "0.5rem", borderRadius: 6, border: "1.5px solid rgba(var(--fg-rgb), 0.3)", background: "rgba(var(--fg-rgb), 0.1)", color: "var(--on-page)" }}
               />
             </label>
           )}
           {match?.isKnockout ? (
-            <span style={{ fontSize: 14, color: "rgba(247,245,239,0.85)" }}>
+            <span style={{ fontSize: 14, color: "rgba(var(--fg-rgb), 0.85)" }}>
               {match.roundLabel ?? "A knockout match"} needs a winner: level scores go to extra time (if allowed), then penalties.
             </span>
           ) : (
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(247,245,239,0.85)", cursor: "pointer" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(var(--fg-rgb), 0.85)", cursor: "pointer" }}>
               <input type="checkbox" checked={drawAllowed}
                 onChange={(e) => {
                   setDrawAllowed(e.target.checked);
@@ -280,7 +280,7 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
               Draw allowed — uncheck to require penalties on a tie
             </label>
           )}
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(247,245,239,0.85)", cursor: "pointer" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: "rgba(var(--fg-rgb), 0.85)", cursor: "pointer" }}>
             <input type="checkbox" checked={rollingSubsAllowed} onChange={(e) => setRollingSubsAllowed(e.target.checked)} />
             Rolling substitutions allowed
           </label>
@@ -292,14 +292,14 @@ export default function MatchSetup({ matchId, onBack, onStarted }) {
         {renderTeamSquad(match.awayTeam)}
       </div>
 
-      <p style={{ fontSize: 12, color: "rgba(247,245,239,0.7)", marginBottom: 16 }}>
+      <p style={{ fontSize: 12, color: "rgba(var(--fg-rgb), 0.7)", marginBottom: 16 }}>
         Tap a player to cycle: Bench → Starting → Unavailable
       </p>
 
       <button
         onClick={handleSubmit}
         disabled={submitting}
-        style={{ width: "100%", background: theme.successSolid, color: "#F7F5EF", border: "none", borderRadius: 10, padding: "1rem", fontWeight: 400, fontSize: 16, cursor: "pointer", fontFamily: font.display, letterSpacing: "0.03em" }}
+        style={{ width: "100%", background: theme.successSolid, color: "#fff", border: "none", borderRadius: 10, padding: "1rem", fontWeight: 400, fontSize: 16, cursor: "pointer", fontFamily: font.display, letterSpacing: "0.03em" }}
       >
         {submitting ? "STARTING MATCH…" : "▶ START MATCH"}
       </button>

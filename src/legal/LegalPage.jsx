@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { font, footballTheme as t } from "../theme";
+import { neutralTheme as t, syncDocumentSport } from "../theme";
+import TopBar from "../ui/TopBar";
 
 // The two pages Google Play asks every app to link to: the privacy policy (/privacy) and how to delete
 // an account (/delete-account). Public and outside the sign-in gate (main.jsx), like /live/<code>,
@@ -15,19 +16,23 @@ const UPDATED = "23 November 2026";
 export default function LegalPage() {
   const page = window.location.pathname.startsWith("/delete-account") ? "delete" : "privacy";
 
+  useEffect(() => syncDocumentSport("None"), []);
   useEffect(() => {
     document.title = page === "delete" ? `Delete your account · ${APP}` : `Privacy policy · ${APP}`;
   }, [page]);
 
   return (
-    <div style={{ minHeight: "100vh", background: t.background, padding: "32px 16px 64px", fontFamily: font.body }}>
+    <div style={{ paddingBottom: 64 }}>
+      <TopBar crumb={[{ label: page === "delete" ? "Delete your account" : "Privacy policy" }]} />
       <main
         style={{
           maxWidth: 720,
-          margin: "0 auto",
+          width: "calc(100% - 32px)",
+          boxSizing: "border-box",
+          margin: "24px auto 0",
           background: t.cream,
           color: t.ink,
-          borderRadius: 16,
+          borderRadius: 22,
           padding: "28px clamp(18px, 5vw, 40px)",
           lineHeight: 1.6,
           fontSize: 16,
@@ -60,7 +65,7 @@ const link = (current) => ({
   alignItems: "center",
 });
 
-const h1 = { fontFamily: font.display, fontWeight: 400, fontSize: "clamp(30px, 6vw, 40px)", lineHeight: 1.1, margin: "0 0 12px" };
+const h1 = { fontFamily: "var(--font-display)", fontSize: "clamp(30px, 6vw, 40px)", lineHeight: 1.1, margin: "0 0 12px" };
 const h2 = { fontSize: 19, fontWeight: 700, margin: "28px 0 6px" };
 
 function Contact({ subject }) {

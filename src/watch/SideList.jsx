@@ -27,7 +27,7 @@ function Row({ t, player, sport, bench, first }) {
   const number = sport === "cricket" && player.battingOrder != null ? (bench ? null : player.battingOrder) : player.jerseyNumber;
   const tags = [player.isCaptain && "C", player.isWicketKeeper && "WK"].filter(Boolean);
   return (
-    <li style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 48, padding: "6px 16px", borderTop: first ? "none" : `1px solid rgba(27,27,27,0.08)` }}>
+    <li style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 48, padding: "6px 16px", borderTop: first ? "none" : `1px solid rgba(var(--fg-rgb), 0.08)` }}>
       <span className="num" style={{ width: 28, textAlign: "center", fontFamily: font.display, fontSize: 18, color: bench ? t.muted : t.deep }}>
         {number ?? "–"}
       </span>
@@ -54,8 +54,8 @@ function Row({ t, player, sport, bench, first }) {
 export default function SideList({ theme: t, side, sport }) {
   return (
     <section style={{ background: t.cream, color: t.ink, borderRadius: 14, overflow: "hidden", borderBottom: `2px solid ${t.deck}` }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid rgba(27,27,27,0.1)" }}>
-        <h3 style={{ margin: 0, flex: 1, fontFamily: font.display, fontWeight: 400, fontSize: 22, color: t.deep }}>{side.name.toUpperCase()}</h3>
+      <header style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid rgba(var(--fg-rgb), 0.1)" }}>
+        <h3 style={{ margin: 0, flex: 1, fontFamily: font.display, fontWeight: 400, fontSize: 22, color: t.deep }}>{side.name}</h3>
         <span style={{ fontSize: 12, fontWeight: 600, color: t.muted }}>{side.heading}</span>
       </header>
       {side.players.length === 0 ? (
@@ -67,7 +67,7 @@ export default function SideList({ theme: t, side, sport }) {
       )}
       {side.bench.length > 0 && (
         <>
-          <div style={{ background: "#EDEAE0", padding: "4px 16px", fontSize: 12, fontWeight: 600, color: t.muted }}>
+          <div style={{ background: "var(--chip)", padding: "4px 16px", fontSize: 12, fontWeight: 600, color: t.muted }}>
             {sport === "cricket" ? "Also in the squad" : "Bench"}
           </div>
           <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>

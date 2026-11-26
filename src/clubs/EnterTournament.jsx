@@ -85,8 +85,8 @@ export default function EnterTournament({ clubId: givenClub, entryId, code: give
             <span style={{ color: theme.muted }}>Only a team’s admins can enter it. Make a team on Home first, or ask its admin to enter it.</span>
           ) : (
             clubs.map((c) => (
-              <button key={c.clubId} onClick={() => pickClub(c.clubId)} className="pressable" style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "1px solid #e0dccf", borderRadius: 10, padding: "0.6rem 0.8rem", cursor: "pointer", textAlign: "left" }}>
-                <Logo link={c.logoUrl} name={c.name} size={36} theme={{ ...theme, onDark: theme.ink, surfaceOnDark: "#EDEAE0", borderOnDark: "#e0dccf" }} />
+              <button key={c.clubId} onClick={() => pickClub(c.clubId)} className="pressable" style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "1px solid var(--hair)", borderRadius: 10, padding: "0.6rem 0.8rem", cursor: "pointer", textAlign: "left" }}>
+                <Logo link={c.logoUrl} name={c.name} size={36} theme={{ ...theme, onDark: theme.ink, surfaceOnDark: "var(--hair)", borderOnDark: "var(--hair)" }} />
                 <span style={{ flex: 1 }}>
                   <strong>{c.name}</strong>
                   <span style={{ display: "block", fontSize: 13, color: theme.muted }}>{[c.sport, c.area, plural(c.players, "player")].filter(Boolean).join(" · ")}</span>
@@ -112,7 +112,7 @@ export default function EnterTournament({ clubId: givenClub, entryId, code: give
       ) : (
         <>
           <Card theme={theme} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Logo link={preview.logoUrl} name={preview.tournamentName} size={52} theme={{ ...theme, onDark: theme.ink, surfaceOnDark: "#EDEAE0", borderOnDark: "#e0dccf" }} />
+            <Logo link={preview.logoUrl} name={preview.tournamentName} size={52} theme={{ ...theme, onDark: theme.ink, surfaceOnDark: "var(--hair)", borderOnDark: "var(--hair)" }} />
             <span>
               <strong style={{ fontSize: 18 }}>{preview.tournamentName}</strong>
               <span style={{ display: "block", fontSize: 14, color: theme.muted }}>
@@ -139,7 +139,7 @@ export default function EnterTournament({ clubId: givenClub, entryId, code: give
                   Your team’s name in this tournament
                   <input value={teamName} onChange={(e) => setTeamName(e.target.value)} maxLength={100} style={{ ...input, width: "100%", marginTop: 4 }} />
                 </label>
-                {preview.teamNameProblem && teamName.trim() === preview.teamName && <span style={{ fontSize: 13, color: "#8a4b1b" }}>{preview.teamNameProblem}</span>}
+                {preview.teamNameProblem && teamName.trim() === preview.teamName && <span style={{ fontSize: 13, color: "var(--warn-ink)" }}>{preview.teamNameProblem}</span>}
                 <strong style={{ marginTop: 8 }}>The squad · {picked} of {preview.players.length}</strong>
                 {preview.players.map((p) => (
                   <Tick key={p.clubPlayerId} theme={theme} on={ticked.has(p.clubPlayerId)} reason={p.reason} onToggle={() => toggle(p.clubPlayerId)} title={`${p.name}${p.isCaptain ? " · Captain" : ""}`} detail={p.detail} />

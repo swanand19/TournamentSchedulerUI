@@ -11,10 +11,10 @@ import ErrorBanner from "./ErrorBanner";
 // shown with `watching`, so it doesn't talk about switched-off buttons.
 
 const box = (tone) => ({
-  background: tone === "ask" ? "rgba(242,169,59,0.15)" : "rgba(247,245,239,0.08)",
-  border: `1px solid ${tone === "ask" ? "#F2A93B" : "rgba(247,245,239,0.25)"}`,
-  color: "#F7F5EF",
-  borderRadius: 10,
+  background: tone === "ask" ? "var(--tint)" : "var(--glass)",
+  border: `1px solid ${tone === "ask" ? "var(--ring)" : "var(--glass-line)"}`,
+  color: "var(--on-page)",
+  borderRadius: 18,
   padding: "0.8rem 1rem",
   marginBottom: 14,
   fontSize: 14,
@@ -26,14 +26,14 @@ const box = (tone) => ({
 
 const button = (primary) => ({
   minHeight: 44,
-  borderRadius: 8,
+  borderRadius: 22,
   padding: "0.5rem 1rem",
   fontSize: 14,
   fontWeight: 700,
   cursor: "pointer",
-  border: primary ? "none" : "1px solid rgba(247,245,239,0.4)",
-  background: primary ? "#F2A93B" : "transparent",
-  color: primary ? "#1B1B1B" : "#F7F5EF",
+  border: primary ? "none" : "1px solid var(--glass-line)",
+  background: primary ? "var(--grad)" : "transparent",
+  color: primary ? "var(--accent-ink)" : "var(--ink)",
 });
 
 export default function ScoringBanner({ sport, matchId, scoring, onChange, onWatch, watching }) {

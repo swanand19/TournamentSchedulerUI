@@ -66,13 +66,13 @@ export function EntriesPanel({ tournamentId, theme, onTeamsChanged }) {
 
       {entries.waiting.length > 0 && (
         <>
-          <h3 style={{ margin: "4px 0 0", fontSize: 15, letterSpacing: "0.12em", color: theme.onDarkMuted }}>ASKING TO ENTER · {entries.waiting.length}</h3>
+          <h3 style={{ margin: "4px 0 0", fontSize: 15, letterSpacing: "0.12em", color: theme.onDarkMuted }}>Asking to enter · {entries.waiting.length}</h3>
           {entries.waiting.map((row) => {
             const blocked = row.players.filter((p) => p.reason);
             return (
               <Card key={row.entryId} theme={theme}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <Logo link={row.logoUrl} name={row.clubName} size={44} theme={{ ...theme, onDark: theme.ink, surfaceOnDark: "#EDEAE0", borderOnDark: "#e0dccf" }} />
+                  <Logo link={row.logoUrl} name={row.clubName} size={44} theme={{ ...theme, onDark: theme.ink, surfaceOnDark: "var(--hair)", borderOnDark: "var(--hair)" }} />
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <strong>{row.teamName}</strong>
                     <span style={{ display: "block", fontSize: 13, color: theme.muted }}>
@@ -92,7 +92,7 @@ export function EntriesPanel({ tournamentId, theme, onTeamsChanged }) {
                     ))}
                   </ul>
                 )}
-                {row.problem && <span style={{ fontSize: 13, color: "#8a4b1b" }}>{row.problem} Ask them to change their name, or decline.</span>}
+                {row.problem && <span style={{ fontSize: 13, color: "var(--warn-ink)" }}>{row.problem} Ask them to change their name, or decline.</span>}
                 {blocked.length > 0 && !row.problem && (
                   <span style={{ fontSize: 13, color: theme.muted }}>
                     {plural(blocked.length, "player")} already {blocked.length === 1 ? "has" : "have"} a place here and won’t come into the squad.

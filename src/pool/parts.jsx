@@ -35,7 +35,7 @@ export function Opt({ on, onPick, title, detail, disabled }) {
 export function Banner({ message, onDark }) {
   if (!message) return null;
   return (
-    <div role="alert" className="small" style={{ background: onDark ? "rgba(226,75,74,.16)" : "#fbe9e8", color: onDark ? "#ffb4b3" : "#a12f2e", borderRadius: 8, padding: "10px 12px", fontWeight: 600 }}>
+    <div role="alert" className="small" style={{ background: onDark ? "color-mix(in srgb, var(--danger) 16%, transparent)" : "var(--danger-tint)", color: onDark ? "var(--danger-ink)" : "var(--danger-ink)", borderRadius: 8, padding: "10px 12px", fontWeight: 600 }}>
       {message}
     </div>
   );

@@ -27,9 +27,9 @@ const card = {
 const input = {
   padding: "0.4rem 0.6rem",
   borderRadius: 6,
-  border: "1.5px solid #d8d4c8",
+  border: "1.5px solid var(--line)",
   fontSize: 14,
-  background: "#fff",
+  background: "var(--field)",
   color: theme.ink,
 };
 
@@ -107,10 +107,10 @@ function SquadPicker({ team, selection, onChange, playersPerSide }) {
     onChange(next);
   };
 
-  const countStyle = (ok) => ({ color: ok ? theme.successInk : "#a33", fontWeight: 700 });
+  const countStyle = (ok) => ({ color: ok ? theme.successInk : "var(--danger-ink)", fontWeight: 700 });
   const smallButton = {
     background: "transparent",
-    border: "1px solid #ccc",
+    border: "1px solid var(--line)",
     borderRadius: 6,
     padding: "0.25rem 0.6rem",
     fontSize: 11,
@@ -122,7 +122,7 @@ function SquadPicker({ team, selection, onChange, playersPerSide }) {
   return (
     <div style={{ ...card, marginBottom: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-        <h4 style={{ ...sectionTitle, margin: 0 }}>{team.name.toUpperCase()}</h4>
+        <h4 style={{ ...sectionTitle, margin: 0 }}>{team.name}</h4>
         <span style={{ fontSize: 11, color: theme.muted }}>
           <span style={countStyle(playing.length === playersPerSide)}>{playing.length}/{playersPerSide}</span>
           {" · "}
@@ -171,7 +171,7 @@ function SquadPicker({ team, selection, onChange, playersPerSide }) {
               padding: "0.35rem 0.5rem",
               borderRadius: 6,
               marginBottom: 4,
-              background: s.playing ? "#EDEAE0" : "transparent",
+              background: s.playing ? "var(--chip)" : "transparent",
             }}
           >
             <input
@@ -193,8 +193,8 @@ function SquadPicker({ team, selection, onChange, playersPerSide }) {
               title="Captain"
               style={{
                 width: 28, height: 26, borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
-                border: `1px solid ${s.captain ? theme.deep : "#ccc"}`,
-                background: s.captain ? theme.deep : "transparent",
+                border: `1px solid ${s.captain ? theme.deep : "var(--line)"}`,
+                background: s.captain ? theme.accent : "transparent",
                 color: s.captain ? theme.cream : theme.muted,
               }}
             >
@@ -206,8 +206,8 @@ function SquadPicker({ team, selection, onChange, playersPerSide }) {
               title="Wicket-keeper"
               style={{
                 width: 34, height: 26, borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: "pointer",
-                border: `1px solid ${s.keeper ? theme.deep : "#ccc"}`,
-                background: s.keeper ? theme.deep : "transparent",
+                border: `1px solid ${s.keeper ? theme.deep : "var(--line)"}`,
+                background: s.keeper ? theme.accent : "transparent",
                 color: s.keeper ? theme.cream : theme.muted,
               }}
             >
@@ -237,9 +237,9 @@ const choice = (on) => ({
   padding: "0.8rem 1rem",
   textAlign: "left",
   cursor: "pointer",
-  border: `1.5px solid ${on ? theme.deep : "#d8d4c8"}`,
-  background: on ? theme.deep : "transparent",
-  color: on ? theme.cream : theme.ink,
+  border: `1.5px solid ${on ? theme.deep : "var(--line)"}`,
+  background: on ? theme.accent : "transparent",
+  color: on ? theme.accentInk : theme.ink,
 });
 
 /** "Teams and rules · Toss": where the scorer is. */
@@ -273,12 +273,12 @@ function FlipCoin({ onClose }) {
   };
   return (
     <Modal labelledBy="flip-title" onClose={onClose} panelStyle={{ ...card, marginBottom: 0, maxWidth: 380 }}>
-      <h4 id="flip-title" style={{ ...sectionTitle, margin: "0 0 4px" }}>FLIP A COIN</h4>
+      <h4 id="flip-title" style={{ ...sectionTitle, margin: "0 0 4px" }}>Flip a coin</h4>
       <p style={{ fontSize: 13, color: theme.muted, margin: 0 }}>For when nobody has one. Let the captains call first.</p>
       <div className="coin-stage" aria-hidden="true">
         <div key={round} className={`coin-spin ${side ?? ""}`} onAnimationEnd={() => setLanded(true)}>
-          <div className="coin"><b>H</b><small>HEADS</small></div>
-          <div className="coin tails"><b>T</b><small>TAILS</small></div>
+          <div className="coin"><b>H</b><small>Heads</small></div>
+          <div className="coin tails"><b>T</b><small>Tails</small></div>
         </div>
       </div>
       <div aria-live="polite" style={{ textAlign: "center", minHeight: 52 }}>
@@ -457,7 +457,7 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
   };
   const pillButton = (on, enabled) => ({
     width: "100%",
-    background: on ? theme.accent : "rgba(232,176,58,0.3)",
+    background: on ? theme.accent : "color-mix(in srgb, var(--ck-accent) 30%, transparent)",
     color: theme.accentInk,
     border: "none",
     borderRadius: 10,
@@ -482,7 +482,7 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
       </button>
 
       <h2 style={{ fontFamily: font.display, fontSize: 24, margin: "0 0 4px" }}>
-        {options.homeTeamName.toUpperCase()} v {options.awayTeamName.toUpperCase()}
+        {options.homeTeamName} v {options.awayTeamName}
       </h2>
       <p style={{ color: theme.onDarkMuted, fontSize: 14, marginTop: 0, marginBottom: 18 }}>
         {step === 1 ? "Set the format and pick both XIs. The toss comes next." : "Record the toss, then start the match."}
@@ -504,21 +504,21 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
           </button>
         </div>
 
-        <h4 id="toss-won" style={sectionTitle}>WHO WON THE TOSS?</h4>
+        <h4 id="toss-won" style={sectionTitle}>Who won the toss?</h4>
         <div role="radiogroup" aria-labelledby="toss-won" style={{ display: "flex", gap: 10, marginBottom: 16 }}>
           {[...options.teams].sort((x) => (x.id === options.homeTeamId ? -1 : 1)).map((team) => {
             const on = tossWinnerTeamId === team.id;
             const captain = captainOf(team);
             return (
               <button key={team.id} role="radio" aria-checked={on} onClick={() => setTossWinnerTeamId(team.id)} style={choice(on)}>
-                <div style={{ fontFamily: font.display, fontSize: 18 }}>{team.name.toUpperCase()}{on ? " ✓" : ""}</div>
+                <div style={{ fontFamily: font.display, fontSize: 18 }}>{team.name}{on ? " ✓" : ""}</div>
                 {captain && <div style={{ fontSize: 12, opacity: 0.8 }}>Captain {captain}</div>}
               </button>
             );
           })}
         </div>
 
-        <h4 id="toss-chose" style={{ ...sectionTitle, opacity: tossWinnerTeamId ? 1 : 0.45 }}>ELECTED TO</h4>
+        <h4 id="toss-chose" style={{ ...sectionTitle, opacity: tossWinnerTeamId ? 1 : 0.45 }}>Elected to</h4>
         <div role="radiogroup" aria-labelledby="toss-chose" style={{ display: "flex", gap: 10, opacity: tossWinnerTeamId ? 1 : 0.45 }}>
           {[["Bat", "Bat first"], ["Bowl", "Bowl first"]].map(([value, label]) => (
             <button
@@ -536,7 +536,7 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
 
         {tossReady && (
           <div style={{ marginTop: 16 }}>
-            <div style={{ fontFamily: font.display, fontSize: 22 }}>{battingFirst.toUpperCase()} BAT FIRST</div>
+            <div style={{ fontFamily: font.display, fontSize: 22 }}>{battingFirst} bat first</div>
             <div style={{ fontSize: 13, color: theme.muted }}>{tossWinnerName} won the toss and chose to {tossDecision === "Bat" ? "bat" : "bowl"}.</div>
           </div>
         )}
@@ -564,7 +564,7 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
       {!locked && step === 1 && (<>
       {/* --- Format ------------------------------------------------- */}
       <div style={card}>
-        <h4 style={sectionTitle}>FORMAT</h4>
+        <h4 style={sectionTitle}>Format</h4>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
           {presetChoices.map((p) => (
@@ -577,9 +577,9 @@ export default function CricketMatchSetup({ matchId, onBack, onSetUp }) {
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: "pointer",
-                border: `1.5px solid ${preset === p.name ? theme.deep : "#d8d4c8"}`,
-                background: preset === p.name ? theme.deep : "transparent",
-                color: preset === p.name ? theme.cream : theme.ink,
+                border: `1.5px solid ${preset === p.name ? theme.deep : "var(--line)"}`,
+                background: preset === p.name ? theme.accent : "transparent",
+                color: preset === p.name ? theme.accentInk : theme.ink,
               }}
             >
               {p.label}

@@ -33,7 +33,7 @@ const SLOT_KINDS = [
 
 const LIVE = ["InProgress", "Paused", "PenaltyShootout", "InningsBreak", "SuperOver"];
 
-const input = { padding: "0.5rem 0.6rem", borderRadius: 8, border: "1.5px solid #d8d4c8", fontSize: 14, background: "#fff", color: "#1B1B1B", minHeight: 40 };
+const input = { padding: "0.5rem 0.6rem", borderRadius: 8, border: "1.5px solid var(--line)", fontSize: 14, background: "var(--field)", color: "var(--ink)", minHeight: 40 };
 const button = (bg, fg, extra = {}) => ({
   minHeight: 44, background: bg, color: fg, border: "none", borderRadius: 8, padding: "0.5rem 1rem",
   fontWeight: 700, fontSize: 14, cursor: "pointer", ...extra,
@@ -193,7 +193,7 @@ export default function Knockouts({ tournamentId, sport, tournament, started, ca
           ← Back
         </button>
       )}
-      <h2 style={{ fontFamily: font.display, fontSize: 26, margin: "0 0 1rem" }}>KNOCKOUT STAGE</h2>
+      <h2 style={{ fontFamily: font.display, fontSize: 26, margin: "0 0 1rem" }}>Knockout stage</h2>
 
       <ErrorBanner message={error} />
 
@@ -201,7 +201,7 @@ export default function Knockouts({ tournamentId, sport, tournament, started, ca
         <div className="drop-in" role="status" style={{ ...card, background: theme.accent, color: theme.accentInk, display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
           <TrophyIcon size={28} />
           <div>
-            <div style={{ fontFamily: font.display, fontSize: 22, lineHeight: 1.1 }}>{stage.championName.toUpperCase()}</div>
+            <div style={{ fontFamily: font.display, fontSize: 22, lineHeight: 1.1 }}>{stage.championName}</div>
             <div style={{ fontSize: 14 }}>won the final — the tournament&apos;s champions.</div>
           </div>
         </div>
@@ -224,14 +224,14 @@ export default function Knockouts({ tournamentId, sport, tournament, started, ca
                 return (
                   <div key={f.id} style={{ ...card, boxShadow: live ? `0 0 0 2px ${theme.accent}` : "none" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
-                      <span style={{ fontFamily: font.display, fontSize: 16, letterSpacing: "0.02em" }}>{f.label.toUpperCase()}</span>
+                      <span style={{ fontFamily: font.display, fontSize: 16, letterSpacing: "0.02em" }}>{f.label}</span>
                       <span style={{ fontSize: 12, color: theme.muted, whiteSpace: "nowrap" }}>
                         {live ? <><span className="live-dot" />Live</> : f.matchNumber ? `Match ${f.matchNumber}` : ""}
                       </span>
                     </div>
 
                     {[["Home", f.home], ["Away", f.away]].map(([side, s]) => (
-                      <div key={side} style={{ padding: "6px 0", borderTop: side === "Away" ? "1px solid #e5e2d8" : "none" }}>
+                      <div key={side} style={{ padding: "6px 0", borderTop: side === "Away" ? "1px solid var(--hair)" : "none" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                           <span style={{ fontWeight: s.teamName ? 700 : 400, fontStyle: s.teamName ? "normal" : "italic", color: s.teamName ? theme.ink : theme.muted, opacity: f.winnerTeamId && s.teamId && f.winnerTeamId !== s.teamId ? 0.55 : 1 }}>
                             {f.winnerTeamId != null && f.winnerTeamId === s.teamId && <TrophyIcon size={14} title="Through" style={{ color: theme.warnInk, marginInlineEnd: 4 }} />}
@@ -287,7 +287,7 @@ export default function Knockouts({ tournamentId, sport, tournament, started, ca
                       {canEdit && f.canChange && (
                         <>
                           <button onClick={() => openEditor(f)} style={button("transparent", theme.deep, { border: `1.5px solid ${theme.deep}` })}>Edit</button>
-                          <button onClick={() => remove(f)} disabled={busy === `delete-${f.id}`} style={button("transparent", "#a33", { border: `1.5px solid ${theme.danger}` })}>Delete</button>
+                          <button onClick={() => remove(f)} disabled={busy === `delete-${f.id}`} style={button("transparent", "var(--danger-ink)", { border: `1.5px solid ${theme.danger}` })}>Delete</button>
                         </>
                       )}
                     </div>
@@ -312,7 +312,7 @@ export default function Knockouts({ tournamentId, sport, tournament, started, ca
 
       {canEdit && editor && (
         <div style={{ ...card, marginBottom: 20 }}>
-          <h3 style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 12px" }}>{editor.fixtureId ? `EDIT ${editor.label.toUpperCase()}` : "ADD A KNOCKOUT MATCH"}</h3>
+          <h3 style={{ fontFamily: font.display, fontSize: 18, margin: "0 0 12px" }}>{editor.fixtureId ? `Edit ${editor.label}` : "Add a knockout match"}</h3>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, color: theme.muted }}>
               Round
@@ -353,7 +353,7 @@ export default function Knockouts({ tournamentId, sport, tournament, started, ca
             + Add a match
           </button>
           {fixtures.length > 0 && !stage.started && (
-            <button onClick={removeAll} disabled={busy === "clear"} style={button("transparent", "#F7A3A2", { border: "1px solid rgba(226,75,74,0.6)" })}>
+            <button onClick={removeAll} disabled={busy === "clear"} style={button("transparent", "var(--danger-ink)", { border: "1px solid color-mix(in srgb, var(--danger) 60%, transparent)" })}>
               Remove the knockout stage
             </button>
           )}
@@ -362,7 +362,7 @@ export default function Knockouts({ tournamentId, sport, tournament, started, ca
 
       {canEdit && !stage.started && presets.length > 0 && (
         <section>
-          <h3 style={{ fontFamily: font.display, fontSize: 20, margin: "0 0 4px" }}>FORMATS THAT FIT</h3>
+          <h3 style={{ fontFamily: font.display, fontSize: 20, margin: "0 0 4px" }}>Formats that fit</h3>
           <p style={{ color: theme.onDarkMuted, fontSize: 14, margin: "0 0 12px" }}>
             {stage.groups.length > 0
               ? "Sides fill in by themselves as each group finishes, so you can set this up now or later."
@@ -426,7 +426,7 @@ function SlotPicker({ title, value, onChange, teams, groups, earlier, labelOf, t
   const set = (patch) => onChange({ ...value, ...patch });
 
   return (
-    <fieldset style={{ border: "1px solid #e5e2d8", borderRadius: 8, padding: "0.6rem 0.8rem", margin: "0 0 10px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+    <fieldset style={{ border: "1px solid var(--hair)", borderRadius: 8, padding: "0.6rem 0.8rem", margin: "0 0 10px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
       <legend style={{ fontSize: 13, color: theme.muted, padding: "0 4px" }}>{title}</legend>
       <select aria-label={`${title}: comes from`} value={value.kind} onChange={(e) => set({ kind: e.target.value })} style={input}>
         {kinds.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
