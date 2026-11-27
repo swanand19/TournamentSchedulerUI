@@ -3,11 +3,12 @@ import { createTournament } from "../api/tournamentsApi";
 import { themeFor, font } from "../theme";
 import { Card, Errors, Heading, Logo, Page } from "../clubs/parts";
 import { button, input, label, useRun } from "../clubs/style";
+import Dropdown from "../ui/Dropdown";
 
 // A league's page on the web (canvas "Leagues and seasons", the phone's boards in one page): who runs it and its totals,
-// then Seasons (being played, still to play, played, each with its winner), Stats (every season or one; Batting · Bowling
-// · Fielding · MVP — football: Scoring · Playing · Discipline — each a row of leaderboard chips, as a tournament's Stats
-// tab) and Teams (titles, and every team's record). The same page serves the signed-out link (/leagues/<code>) through
+// then Seasons (being played, still to play, played, each with its winner), Stats (Batting · Bowling · Fielding · MVP —
+// football: Scoring · Playing · Discipline — then one line: a leaderboard dropdown, each option with its leader, and a
+// season dropdown; the user's pick A, 2026-11-27) and Teams (titles, and every team's record). The same page serves the signed-out link (/leagues/<code>) through
 // `source`; there a season links to its live scores. Organisers get "Start Season N" and the settings.
 
 const SECTIONS = [
@@ -203,31 +204,23 @@ function Stats({ league, theme, source, onOpenPlayer }) {
   const group = stats?.groups.find((g) => g.key === groupKey) ?? stats?.groups[0];
   const board = group ? (group.boards.find((b) => b.key === boardKeys[group.key]) ?? group.boards[0]) : null;
   const rows = board ? (all ? board.rows : board.rows.slice(0, 5)) : [];
-  const chip = (on) => ({
-    minHeight: 36,
-    whiteSpace: "nowrap",
-    flexShrink: 0,
-    background: on ? theme.accent : "rgba(var(--fg-rgb), 0.1)",
-    color: on ? theme.accentInk : theme.onDark,
-    border: on ? `1px solid ${theme.accent}` : "1px solid rgba(var(--fg-rgb), 0.22)",
-    borderRadius: 999,
-    padding: "0.35rem 0.9rem",
-    fontSize: 14,
-    fontWeight: on ? 700 : 500,
-    cursor: "pointer",
-  });
-  const row = { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 };
+  // The season: All, or one (newest first); hidden while the league has a single season.
+  const seasonPicker = league.seasons.length > 1 && (
+    <Dropdown
+      caption="Seasons"
+      options={[{ key: "all", label: "All seasons" }, ...[...league.seasons].sort((a, b) => b.number - a.number).map((s) => ({ key: String(s.number), label: `Season ${s.number}` }))]}
+      value={season == null ? "all" : String(season)}
+      shown={season == null ? "All" : `Season ${season}`}
+      onChange={(k) => {
+        setSeason(k === "all" ? null : Number(k));
+        setAll(false);
+      }}
+      style={{ width: 150, flex: "none" }}
+    />
+  );
 
   return (
     <>
-      <div role="group" aria-label="Seasons" style={row}>
-        <button type="button" aria-pressed={season == null} onClick={() => setSeason(null)} style={chip(season == null)}>All seasons</button>
-        {[...league.seasons].sort((a, b) => b.number - a.number).map((s) => (
-          <button key={s.number} type="button" aria-pressed={season === s.number} onClick={() => setSeason(s.number)} style={chip(season === s.number)}>
-            Season {s.number}
-          </button>
-        ))}
-      </div>
       <Errors message={error} />
       {!stats ? (
         !error && <p style={{ color: theme.onDarkMuted }}>Loading…</p>
@@ -249,22 +242,25 @@ function Stats({ league, theme, source, onOpenPlayer }) {
               </button>
             ))}
           </div>
-          {group && group.boards.length > 1 && (
-            <div role="group" aria-label={`${group.title} leaderboards`} style={row}>
-              {group.boards.map((b) => (
-                <button
-                  key={b.key}
-                  type="button"
-                  aria-pressed={board?.key === b.key}
-                  onClick={() => {
-                    setBoardKeys((k) => ({ ...k, [group.key]: b.key }));
+          {/* One line: the leaderboard (wide; each option shows its leader) and the season (small). A group with one
+              board just shows it. */}
+          {group && (group.boards.length > 1 || seasonPicker) && (
+            <div className="kc-pickers">
+              {group.boards.length > 1 ? (
+                <Dropdown
+                  caption="Leaderboard"
+                  options={group.boards.map((b) => ({ key: b.key, label: b.title, figure: b.rows[0]?.value, detail: b.rows[0]?.name }))}
+                  value={board?.key ?? group.boards[0].key}
+                  onChange={(k) => {
+                    setBoardKeys((m) => ({ ...m, [group.key]: k }));
                     setAll(false);
                   }}
-                  style={chip(board?.key === b.key)}
-                >
-                  {b.title}
-                </button>
-              ))}
+                  style={{ flex: 1, maxWidth: 420 }}
+                />
+              ) : (
+                <span style={{ flex: 1 }} />
+              )}
+              {seasonPicker}
             </div>
           )}
           {board && (
